@@ -6,8 +6,8 @@
 ## Phase 0: 準備
 
 - [x] T00 `wails init -n harness-app -t react-ts` で雛形を作る。Tailwind・Vitest・Recharts・jsdiff・react-markdown を導入する。`Makefile`（dev / test / build / dmg）を作る
-- [ ] T01 実環境の `~/.claude/projects/` の jsonl を数件**読むだけ**で構造を確認する。匿名化したサンプルを `testdata/claude/projects/...` に作る（正常行、壊れた行、tool_use、tool_result のエラー、訂正発言、複数モデルを含める）。サンプルのメモリと CLAUDE.md も置く
-- [ ] T02 `scripts/fake-claude.sh` を作る：引数を記録し、`input.json` を読んで決まった `output.md` と `rationale.md` を書く。異常系（非ゼロ終了、タイムアウト）を環境変数で切り替えられるようにする
+- [x] T01 実環境の `~/.claude/projects/` の jsonl を数件**読むだけ**で構造を確認する。匿名化したサンプルを `testdata/claude/projects/...` に作る（正常行、壊れた行、tool_use、tool_result のエラー、訂正発言、複数モデルを含める）。サンプルのメモリと CLAUDE.md も置く
+- [x] T02 `scripts/fake-claude.sh` を作る：引数を記録し、`input.json` を読んで決まった `output.md` と `rationale.md` を書く。異常系（非ゼロ終了、タイムアウト）を環境変数で切り替えられるようにする
 
 ## Phase 1: バックエンドの基盤
 
