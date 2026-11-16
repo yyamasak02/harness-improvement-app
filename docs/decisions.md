@@ -8,3 +8,4 @@
 - 2026-11-17 ロジックは internal/service に集約（app.go は薄い層）。E2E は testdata を TempDir に複製し cwd を書き換えて実行（/home/demo 等に触れない）。Wails バインディングは wails generate module で生成し frontend/wailsjs をコミット
 - 2026-11-17 wails.json の author（テンプレートが個人メールを埋めていた）を削除。過去コミットには残っているためユーザーに通知。dmg ビルド/起動確認は macOS 実機が必要で未検証（CI/release で検証する）
 - 2026-11-17 build/darwin/Info*.plist は v2.17 CLI が生成した safeBundleID を使っており、固定した Wails v2.10.2 では解決できないため {{.Name}} に置換（CI の dmg-smoke で検出）
+- 2026-11-17 独立レビューの承認は、リポジトリオーナー・github-actions・claude の投稿で、本文の最終行がマーカー、sha が head に一致するもののみ有効（公開リポジトリで第三者が承認を偽装できないように）。ブランチ保護（#47）が入るまでは merge-pr.sh を通さない手動マージ自体は防げない

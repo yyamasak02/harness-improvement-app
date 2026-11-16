@@ -4,7 +4,7 @@
 set -euo pipefail
 body="${PR_BODY:-}"
 [ "${PR_AUTHOR:-}" = "dependabot[bot]" ] && { echo "check-pr-issue-link: dependabot は免除"; exit 0; }
-if printf '%s' "$body" | grep -qiE '(close[sd]?|fix(e[sd])?|resolve[sd]?|refs?|related to)[: ]+#[0-9]+'; then
+if printf '%s' "$body" | grep -qiE '(^|[^[:alnum:]_])(close[sd]?|fix(e[sd])?|resolve[sd]?|refs?|related to)[: ]+#[0-9]+'; then
   echo "check-pr-issue-link OK"; exit 0
 fi
 if printf '%s' "$body" | grep -qE '\[no-issue\]: .+'; then

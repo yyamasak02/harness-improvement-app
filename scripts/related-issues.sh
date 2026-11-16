@@ -9,10 +9,11 @@ command -v gh >/dev/null || { echo "gh が必要です"; exit 1; }
 
 files=$( { git diff --name-only origin/main...HEAD 2>/dev/null; git diff --name-only HEAD 2>/dev/null; git ls-files --others --exclude-standard 2>/dev/null; } | sort -u)
 areas=$(FILES="$files" python3 - <<'PY'
-import os, re, fnmatch
+import os, re, sys, fnmatch
 try:
     import yaml
 except ImportError:
+    sys.stderr.write('警告: PyYAML が無いため area を導出できません（pip install pyyaml）。キーワード検索のみ行います\n')
     raise SystemExit
 conf = yaml.safe_load(open('.github/labeler.yml'))
 files = [f for f in os.environ.get('FILES', '').split('\n') if f]
