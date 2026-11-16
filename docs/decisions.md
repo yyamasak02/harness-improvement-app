@@ -7,3 +7,4 @@
 - 2026-11-17 runner は Setpgid でプロセスグループごと kill（macOS/Linux 前提）。stdout/stderr は job.log に統合
 - 2026-11-17 ロジックは internal/service に集約（app.go は薄い層）。E2E は testdata を TempDir に複製し cwd を書き換えて実行（/home/demo 等に触れない）。Wails バインディングは wails generate module で生成し frontend/wailsjs をコミット
 - 2026-11-17 wails.json の author（テンプレートが個人メールを埋めていた）を削除。過去コミットには残っているためユーザーに通知。dmg ビルド/起動確認は macOS 実機が必要で未検証（CI/release で検証する）
+- 2026-11-17 build/darwin/Info*.plist は v2.17 CLI が生成した safeBundleID を使っており、固定した Wails v2.10.2 では解決できないため {{.Name}} に置換（CI の dmg-smoke で検出）
