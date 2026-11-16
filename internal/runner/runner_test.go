@@ -208,3 +208,28 @@ func TestResolveClaudeByOS(t *testing.T) {
 		}
 	})
 }
+
+func TestPromptIsSafeForCmdShim(t *testing.T) {
+	if strings.ContainsAny(prompt, "%\"&|<>^\n\r") {
+		t.Fatalf("プロンプトに .cmd shim で問題になる文字が含まれている: %q", prompt)
+	}
+}
+
+func TestPickWindowsCandidate(t *testing.T) {
+	tests := []struct {
+		name, out, want string
+	}{
+		{"exe を最優先", "C:\\npm\\claude\r\nC:\\npm\\claude.cmd\r\nC:\\bin\\claude.exe\r\n", "C:\\bin\\claude.exe"},
+		{"拡張子なしの shim は除外し cmd を採用", "C:\\npm\\claude\r\nC:\\npm\\claude.cmd\r\n", "C:\\npm\\claude.cmd"},
+		{"拡張子なしだけなら空", "C:\\npm\\claude\r\n", ""},
+		{"空出力", "", ""},
+		{"大文字の拡張子", "C:\\bin\\CLAUDE.EXE\r\n", "C:\\bin\\CLAUDE.EXE"},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			if got := pickWindowsCandidate(tt.out); got != tt.want {
+				t.Fatalf("got %q want %q", got, tt.want)
+			}
+		})
+	}
+}

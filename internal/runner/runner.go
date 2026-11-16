@@ -28,6 +28,9 @@ var (
 	ErrCanceled = errors.New("claude の実行がキャンセルされました")
 )
 
+// prompt は claude -p に渡す指示。Windows の .cmd shim は引数の特殊文字（% " & | < > ^）を拒否するため、これらを含めない。
+const prompt = "claudemd-improve skill に従い、カレントディレクトリの input.json を処理して output.md と rationale.md を書いてください。"
+
 // Input は skill への入力（input.json）。
 type Input struct {
 	Digest          string `json:"digest"`
@@ -91,7 +94,6 @@ func (r *Runner) Run(ctx context.Context, in Input) (*Result, error) {
 	cctx, cancel := context.WithTimeout(ctx, timeout)
 	defer cancel()
 
-	prompt := "claudemd-improve skill に従い、カレントディレクトリの input.json を処理して output.md と rationale.md を書いてください。"
 	args := []string{"-p", prompt, "--allowedTools", AllowedTools, "--output-format", "json"}
 	if r.Model != "" {
 		args = append(args, "--model", r.Model)

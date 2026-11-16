@@ -88,16 +88,14 @@ func samePath(a, b string, fold bool) bool {
 func SamePath(a, b string) bool { return samePath(a, b, foldCase) }
 
 // underDir は path が dir の厳密に配下（dir 自身は含まない）にあるかを返す。
+// filepath.Rel は Windows では大文字小文字を無視する等 OS 依存なので、Clean 済みの文字列の接頭辞で判定する。
 func underDir(dir, path string, fold bool) bool {
-	dir, path = filepath.Clean(dir), filepath.Clean(path)
+	dir, path = filepath.Clean(dir), filepath.Clean(path) // ".." は Clean が解決する
 	if fold {
 		dir, path = strings.ToLower(dir), strings.ToLower(path)
 	}
-	rel, err := filepath.Rel(dir, path)
-	if err != nil || rel == "." || rel == ".." {
-		return false
-	}
-	return !strings.HasPrefix(rel, ".."+string(filepath.Separator))
+	prefix := strings.TrimRight(dir, string(filepath.Separator)) + string(filepath.Separator)
+	return len(path) > len(prefix) && strings.HasPrefix(path, prefix)
 }
 
 func allowed(found []Target, skillsDir, path string, fold bool) bool {

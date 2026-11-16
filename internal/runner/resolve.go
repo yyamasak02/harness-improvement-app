@@ -55,25 +55,13 @@ func DefaultShellLookup() string { return shellLookup(runtime.GOOS) }
 
 func shellLookup(goos string) string {
 	if goos == "windows" {
-		out, err := exec.Command("where", "claude").Output()
+		cmd := exec.Command("where", "claude")
+		hideWindow(cmd)
+		out, err := cmd.Output()
 		if err != nil {
 			return ""
 		}
-		// 複数ヒット時は .exe を優先（.cmd は引数のエスケープ制約があるため）
-		var first string
-		for _, l := range strings.Split(strings.ReplaceAll(string(out), "\r", ""), "\n") {
-			l = strings.TrimSpace(l)
-			if l == "" {
-				continue
-			}
-			if first == "" {
-				first = l
-			}
-			if strings.EqualFold(filepath.Ext(l), ".exe") {
-				return l
-			}
-		}
-		return first
+		return pickWindowsCandidate(string(out))
 	}
 	sh := os.Getenv("SHELL")
 	if sh == "" {
@@ -85,6 +73,25 @@ func shellLookup(goos string) string {
 	}
 	lines := strings.Split(strings.TrimSpace(string(out)), "\n")
 	return strings.TrimSpace(lines[len(lines)-1])
+}
+
+// pickWindowsCandidate は `where claude` の出力から実行可能なものを選ぶ。
+// .exe を優先し、次に .cmd/.bat/.com。npm が作る拡張子なしの shim（sh 用）は実行できないので除外する。
+func pickWindowsCandidate(out string) string {
+	var other string
+	for _, l := range strings.Split(strings.ReplaceAll(out, "\r", ""), "\n") {
+		l = strings.TrimSpace(l)
+		if l == "" || !hasExecExt(l) {
+			continue
+		}
+		if strings.EqualFold(filepath.Ext(l), ".exe") {
+			return l
+		}
+		if other == "" {
+			other = l
+		}
+	}
+	return other
 }
 
 // candidates は既知のインストール先（優先順）。
