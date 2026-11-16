@@ -24,9 +24,9 @@
 
 ## Phase 2: バインディング
 
-- [ ] T20 `app.go`：Settings / Reindex / Overview / ListProjects / ListSessions / GetSession / Search / ListTargets / ReadTarget / BuildDigest / GenerateProposal / ApplyProposal / ListBackups / Rollback / CheckClaude を公開する
-- [ ] T21 起動時に自動でインデックスを作り、進捗を Wails イベントで通知する
-- [ ] T22 E2E テスト（Go）：testdata + fake-claude で digest 生成 → 改善案 → 適用 → ロールバックまで通す
+- [x] T20 `app.go`：Settings / Reindex / Overview / ListProjects / ListSessions / GetSession / Search / ListTargets / ReadTarget / BuildDigest / GenerateProposal / ApplyProposal / ListBackups / Rollback / CheckClaude を公開する
+- [x] T21 起動時に自動でインデックスを作り、進捗を Wails イベントで通知する
+- [x] T22 E2E テスト（Go）：testdata + fake-claude で digest 生成 → 改善案 → 適用 → ロールバックまで通す
 
 ## Phase 3: フロントエンド
 

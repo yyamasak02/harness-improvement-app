@@ -1,4 +1,4 @@
-.PHONY: dev test build dmg verify
+.PHONY: dev test build dmg verify bindings
 WAILS ?= $(shell command -v wails || echo $(HOME)/go/bin/wails)
 
 dev:
@@ -18,3 +18,6 @@ build:
 dmg:
 	$(WAILS) build -platform darwin/universal -clean
 	hdiutil create -volname "harness-app" -srcfolder build/bin/harness-app.app -ov -format UDZO build/bin/harness-app.dmg
+
+bindings:
+	$(WAILS) generate module
