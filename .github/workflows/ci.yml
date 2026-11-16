@@ -59,7 +59,7 @@ jobs:
       - run: cd frontend && npm run test:coverage
 
   pr-policy:
-    name: pr-policy（タイトル・issue 参照・テスト更新）
+    name: pr-policy（タイトル・issue 参照・CHANGELOG・テスト更新）
     if: github.event_name == 'pull_request'
     runs-on: ubuntu-latest
     steps:
@@ -80,6 +80,15 @@ jobs:
           PR_BODY: ${{ github.event.pull_request.body }}
           PR_AUTHOR: ${{ github.event.pull_request.user.login }}
         run: bash scripts/check-pr-issue-link.sh
+      - name: feat/fix は CHANGELOG を更新する
+        env:
+          PR_TITLE: ${{ github.event.pull_request.title }}
+          PR_BODY: ${{ github.event.pull_request.body }}
+          PR_AUTHOR: ${{ github.event.pull_request.user.login }}
+          BASE: ${{ github.event.pull_request.base.ref }}
+        run: |
+          git fetch origin "$BASE"
+          bash scripts/check-changelog.sh "origin/$BASE"
       - name: 実装を変えたらテストも変える
         env:
           PR_BODY: ${{ github.event.pull_request.body }}

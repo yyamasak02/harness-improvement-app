@@ -143,6 +143,30 @@ out=$(STATUS_NO_GH=1 bash scripts/status.sh --brief 2>&1) && for sec in "== Git"
   case "$out" in *"$sec"*) echo "ok: status.sh に '$sec' がある" ;; *) echo "NG: status.sh に '$sec' が無い"; fail=1 ;; esac
 done
 
+# check-version / changelog-notes / check-changelog（リリース整備）
+cv="$tmp/cv"; mkdir -p "$cv/scripts" "$cv/frontend"; cp scripts/check-version.sh scripts/changelog-notes.sh "$cv/scripts/"
+printf '{"info":{"productVersion":"1.2.3"}}\n' > "$cv/wails.json"; printf '{"version":"1.2.3"}\n' > "$cv/frontend/package.json"
+printf '# Changelog\n\n## [Unreleased]\n\n## [1.2.3] - 2026-01-01\n\n### 追加\n- 機能 A\n\n## [1.2.2] - 2025-12-01\n- 旧\n' > "$cv/CHANGELOG.md"
+(cd "$cv" && bash scripts/check-version.sh v1.2.3 >/dev/null 2>&1) && echo "ok: 整合したバージョンとタグは通る" || { echo "NG: 正しいバージョンが拒否された"; fail=1; }
+(cd "$cv" && ! bash scripts/check-version.sh v1.2.4 >/dev/null 2>&1) && echo "ok: タグとバージョンの不一致を検出" || { echo "NG: タグ不一致を検出できない"; fail=1; }
+(cd "$cv" && ! bash scripts/check-version.sh 1.2.3 >/dev/null 2>&1) && echo "ok: v 無しのタグ形式を検出" || { echo "NG: タグ形式の誤りを検出できない"; fail=1; }
+printf '{"version":"1.2.0"}\n' > "$cv/frontend/package.json"
+(cd "$cv" && ! bash scripts/check-version.sh >/dev/null 2>&1) && echo "ok: wails.json と package.json の不一致を検出" || { echo "NG: バージョン不一致を検出できない"; fail=1; }
+printf '{"version":"1.2.3"}\n' > "$cv/frontend/package.json"; printf '{"info":{"productVersion":"1.2"}}\n' > "$cv/wails.json"
+(cd "$cv" && ! bash scripts/check-version.sh >/dev/null 2>&1) && echo "ok: SemVer でないバージョンを検出" || { echo "NG: SemVer 違反を検出できない"; fail=1; }
+printf '{"info":{"productVersion":"1.2.3"}}\n' > "$cv/wails.json"; sed -i.bak 's/^## \[1.2.3\].*$/## [9.9.9] - x/' "$cv/CHANGELOG.md"
+(cd "$cv" && ! bash scripts/check-version.sh v1.2.3 >/dev/null 2>&1) && echo "ok: CHANGELOG に節が無いタグを検出" || { echo "NG: CHANGELOG の節欠落を検出できない"; fail=1; }
+sed -i.bak 's/^## \[9.9.9\].*$/## [1.2.3] - 2026-01-01/' "$cv/CHANGELOG.md"
+notes=$(cd "$cv" && bash scripts/changelog-notes.sh 1.2.3)
+case "$notes" in *"機能 A"*) case "$notes" in *"旧"*) echo "NG: 次の節まで含めている"; fail=1 ;; *) echo "ok: changelog-notes は該当節だけを出す" ;; esac ;; *) echo "NG: changelog-notes が節を取れない"; fail=1 ;; esac
+cc="$tmp/cc"; mkdir -p "$cc/scripts"; cp scripts/check-changelog.sh "$cc/scripts/"
+(cd "$cc" && git init -q -b main && git config user.email t@example.com && git config user.name t && echo '# c' > CHANGELOG.md && echo a > a.txt && git add -A && git commit -qm "chore: base" \
+  && git switch -q -c f && echo b >> a.txt && git commit -qam "feat: x")
+(cd "$cc" && ! PR_TITLE="feat: x" bash scripts/check-changelog.sh main >/dev/null 2>&1) && echo "ok: feat で CHANGELOG 未更新を検出" || { echo "NG: CHANGELOG 未更新を検出できない"; fail=1; }
+(cd "$cc" && PR_TITLE="feat: x" PR_BODY="[no-changelog]: 内部のみ" bash scripts/check-changelog.sh main >/dev/null 2>&1) && echo "ok: [no-changelog] で免除" || { echo "NG: 免除が効かない"; fail=1; }
+(cd "$cc" && PR_TITLE="docs: x" bash scripts/check-changelog.sh main >/dev/null 2>&1) && echo "ok: docs は対象外" || { echo "NG: docs が対象になっている"; fail=1; }
+(cd "$cc" && echo '- 追加' >> CHANGELOG.md && git commit -qam "feat: y" && PR_TITLE="feat: x" bash scripts/check-changelog.sh main >/dev/null 2>&1) && echo "ok: CHANGELOG を更新すれば通る" || { echo "NG: 更新しても通らない"; fail=1; }
+
 # check-tests-changed: 一時リポジトリで検証
 repo="$tmp/repo"; mkdir -p "$repo/scripts" "$repo/internal/x"; cp scripts/check-tests-changed.sh "$repo/scripts/"
 (

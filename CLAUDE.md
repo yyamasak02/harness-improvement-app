@@ -5,8 +5,8 @@ Claude Code のハーネス（CLAUDE.md・rules・メモリ・skills）を、`~/
 
 - 仕様: @docs/spec.md
 - タスク: @docs/tasks.md
-- 詳細ルール: `.claude/rules/`（safety / go / frontend / git-workflow / issues-labels / quality / session）、レビュー基準は `docs/review-guidelines.md`
-- 手順の再現: `.claude/skills/`（`implement-task` / `quality-gate` / `fix-bug` / `verify` / `open-pr` / `create-issue` / `review-pr` / `resume`）。タスク実装は必ず `implement-task` に従う
+- 詳細ルール: `.claude/rules/`（safety / go / frontend / git-workflow / issues-labels / quality / session / release）、レビュー基準は `docs/review-guidelines.md`
+- 手順の再現: `.claude/skills/`（`implement-task` / `quality-gate` / `fix-bug` / `verify` / `open-pr` / `create-issue` / `review-pr` / `resume` / `release`）。タスク実装は必ず `implement-task` に従う
 
 ## セッション開始・再開時
 - **最初に `bash scripts/status.sh`**（SessionStart フックで要約が自動表示される）を確認し、`resume` skill でフェーズを判定して再開する。`docs/handoff.md` は参考で、現実（git・PR・issue）が優先。マージ・フェーズ変更・待ち状態の前に handoff を更新する（`.claude/rules/session.md`）。
@@ -29,6 +29,7 @@ Claude Code のハーネス（CLAUDE.md・rules・メモリ・skills）を、`~/
 - 実装を変えてテストを変えない（直さない・足さない）まま PR にしない。意味を失ったテストを放置しない。
 - リファクタ・テスト不足を見つけて黙って見送らない。今回やらないなら `type/tech-debt` / `type/test` の issue にする。
 - `main` に直接コミット・push しない（初期コミットを除く）。必ずブランチ → PR → squash マージ。
+- `feat` / `fix` の変更で `CHANGELOG.md` の `[Unreleased]` を更新しない。バージョンを `wails.json` 以外で勝手に変えない（出典は `wails.json`）。リリースタグの push・付け替え・削除をしない（`scripts/release.sh tag` でローカルに作り、push は人に依頼する）。
 - force push、`git reset --hard`、`git clean`、`rm -rf`、履歴改変、タグ push、`gh release` をしない（タグ・リリースはユーザーが行う）。
 - 未着手・保留の課題を口頭 TODO や握りつぶしにしない。必ず issue にする（`create-issue` skill、ラベルは `.claude/rules/issues-labels.md`）。GitHub 既定ラベルは使わない。
 - 修正・実装の前に関連 issue を探さない（`bash scripts/related-issues.sh`）、PR 本文で issue を参照しない。
