@@ -60,6 +60,13 @@ expect_eq "$(verdict "$(mj "$(mk owner 2026-01-02T00:00:00Z "$M_RC")" "$(mk owne
 expect_eq "$(verdict "$(mj "$(mk mallory 2026-01-01T00:00:00Z "$M_OK")")" $S1)" NONE "許可されていない投稿者のマーカーは無視"
 expect_eq "$(verdict "$(mj "$(mk owner 2026-01-01T00:00:00Z "書式の例: $M_OK"$'\n'"続き")")" $S1)" NONE "最終行でないマーカー（引用）は無視"
 
+# status.sh（再開用の状況把握）: gh が使えなくても落ちず、主要セクションを出す
+out=$(bash scripts/status.sh --brief 2>&1) && echo "ok: status.sh --brief が正常終了" || { echo "NG: status.sh --brief が失敗"; fail=1; }
+for sec in "== Git" "== docs/tasks.md" "== 次にすべきこと"; do
+  case "$out" in *"$sec"*) echo "ok: status.sh に '$sec' がある" ;; *) echo "NG: status.sh に '$sec' が無い"; fail=1 ;; esac
+done
+out=$(STATUS_NO_GH=1 bash scripts/status.sh 2>&1) && case "$out" in *"== Git"*) echo "ok: gh が無くても status.sh は動く" ;; *) echo "NG: gh 無しで出力なし"; fail=1 ;; esac || { echo "NG: gh 無しで status.sh が失敗"; fail=1; }
+
 # check-tests-changed: 一時リポジトリで検証
 repo="$tmp/repo"; mkdir -p "$repo/scripts" "$repo/internal/x"; cp scripts/check-tests-changed.sh "$repo/scripts/"
 (

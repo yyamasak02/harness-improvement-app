@@ -116,5 +116,18 @@
       "Bash(pre-commit uninstall*)",
       "Bash(gh pr merge*)"
     ]
+  },
+  "hooks": {
+    "SessionStart": [
+      {
+        "hooks": [
+          {
+            "type": "command",
+            "command": "bash scripts/status.sh --brief 2>/dev/null || true",
+            "timeout": 60
+          }
+        ]
+      }
+    ]
   }
 }
