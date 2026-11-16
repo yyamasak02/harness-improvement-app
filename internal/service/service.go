@@ -1,0 +1,314 @@
+// Package service はアプリのユースケースを束ねる。app.go はこれを呼ぶだけの薄いバインディング。
+package service
+
+import (
+	"context"
+	"errors"
+	"fmt"
+	"os"
+	"path/filepath"
+	"sync"
+	"time"
+
+	"harness-app/internal/applier"
+	"harness-app/internal/collector"
+	"harness-app/internal/config"
+	"harness-app/internal/digest"
+	"harness-app/internal/masking"
+	"harness-app/internal/runner"
+	"harness-app/internal/store"
+	"harness-app/internal/targets"
+)
+
+// Env は外部環境（全て注入可能。テストでは TempDir / testdata を渡す）。
+type Env struct {
+	Home      string // ホーム（claude バイナリ探索用）
+	ClaudeDir string // ~/.claude 相当（読み取り専用）
+	DataDir   string // アプリデータディレクトリ
+	// ShellLookup は claude 探索（nil なら既定）。
+	ShellLookup func() string
+	Now         func() time.Time
+}
+
+// Service はアプリ本体。
+type Service struct {
+	env Env
+	st  *store.Store
+	cfg config.Config
+
+	mu      sync.Mutex
+	cancel  context.CancelFunc
+	reindex sync.Mutex // Reindex の同時実行を直列化する
+}
+
+// New は設定を読み DB を開く。
+func New(env Env) (*Service, error) {
+	if env.ClaudeDir == "" || env.DataDir == "" {
+		return nil, errors.New("ClaudeDir と DataDir は必須です")
+	}
+	cfg, err := config.Load(env.DataDir)
+	if err != nil {
+		return nil, fmt.Errorf("設定の読み込み: %w", err)
+	}
+	if err := os.MkdirAll(env.DataDir, 0o755); err != nil {
+		return nil, fmt.Errorf("データディレクトリ作成: %w", err)
+	}
+	st, err := store.Open(filepath.Join(env.DataDir, "index.db"))
+	if err != nil {
+		return nil, err
+	}
+	return &Service{env: env, st: st, cfg: cfg}, nil
+}
+
+// Close は DB を閉じる。
+func (s *Service) Close() error { return s.st.Close() }
+
+// ClaudeDir は監視用に公開する。
+func (s *Service) ClaudeDir() string { return s.env.ClaudeDir }
+
+func (s *Service) now() time.Time {
+	if s.env.Now != nil {
+		return s.env.Now()
+	}
+	return time.Now()
+}
+
+// ---- 設定 ----
+
+// Settings は現在の設定。
+func (s *Service) Settings() config.Config { return s.cfg }
+
+// SaveSettings は設定を検証して保存する（不正なマスキング正規表現は拒否）。
+func (s *Service) SaveSettings(c config.Config) error {
+	if _, err := s.masker(c); err != nil {
+		return err
+	}
+	if c.TimeoutSeconds <= 0 {
+		c.TimeoutSeconds = 300
+	}
+	if err := config.Save(s.env.DataDir, c); err != nil {
+		return err
+	}
+	s.cfg = c
+	return nil
+}
+
+func (s *Service) masker(c config.Config) (*masking.Masker, error) {
+	var ex []masking.Extra
+	for _, p := range c.MaskPatterns {
+		ex = append(ex, masking.Extra{Name: p.Name, Regex: p.Regex})
+	}
+	return masking.New(ex)
+}
+
+// ---- インデックス ----
+
+// Reindex は差分取り込みする。rebuild=true なら DB を空にして再構築する。
+func (s *Service) Reindex(rebuild bool, progress func(done, total int)) (collector.Stats, error) {
+	s.reindex.Lock()
+	defer s.reindex.Unlock()
+	if rebuild {
+		if err := s.st.Reset(); err != nil {
+			return collector.Stats{}, err
+		}
+	}
+	return collector.Ingest(s.st, collector.Options{
+		ClaudeDir:          s.env.ClaudeDir,
+		CorrectionPatterns: s.cfg.CorrectionPatterns,
+		ExcludedProjects:   s.cfg.ExcludedProjects,
+		Progress:           progress,
+		Force:              rebuild,
+	})
+}
+
+// ---- claude ----
+
+// ClaudeStatus は claude バイナリの検出結果。
+type ClaudeStatus struct {
+	Found bool   `json:"found"`
+	Path  string `json:"path"`
+	Error string `json:"error"`
+}
+
+// CheckClaude は claude バイナリを解決する。
+func (s *Service) CheckClaude() ClaudeStatus {
+	p, err := runner.ResolveClaude(runner.ResolveOptions{Configured: s.cfg.ClaudePath, ShellLookup: s.env.ShellLookup, Home: s.env.Home})
+	if err != nil {
+		return ClaudeStatus{Error: err.Error()}
+	}
+	return ClaudeStatus{Found: true, Path: p}
+}
+
+// ---- ターゲットと書き込み許可 ----
+
+func (s *Service) cwds() ([]string, error) {
+	rows, err := s.st.DB().Query(`SELECT DISTINCT cwd FROM sessions WHERE cwd<>'' ORDER BY cwd`)
+	if err != nil {
+		return nil, fmt.Errorf("cwd の取得: %w", err)
+	}
+	defer rows.Close()
+	var out []string
+	for rows.Next() {
+		var c string
+		if err := rows.Scan(&c); err != nil {
+			return nil, fmt.Errorf("cwd の読み取り: %w", err)
+		}
+		out = append(out, c)
+	}
+	return out, rows.Err()
+}
+
+// ListTargets は改善対象の一覧（グローバル＋各プロジェクト）。
+func (s *Service) ListTargets() ([]targets.Target, error) {
+	c, err := s.cwds()
+	if err != nil {
+		return nil, err
+	}
+	return targets.Discover(s.env.ClaudeDir, c), nil
+}
+
+func (s *Service) skillsDir() string { return filepath.Join(s.env.ClaudeDir, "skills") }
+
+func (s *Service) allowed(path string) bool {
+	ts, err := s.ListTargets()
+	if err != nil {
+		return false
+	}
+	return targets.Allowed(ts, s.skillsDir(), path)
+}
+
+func (s *Service) applier() *applier.Applier {
+	return &applier.Applier{DataDir: s.env.DataDir, Allowed: s.allowed, Now: s.env.Now}
+}
+
+func (s *Service) findTarget(path string) (targets.Target, error) {
+	ts, err := s.ListTargets()
+	if err != nil {
+		return targets.Target{}, err
+	}
+	for _, t := range ts {
+		if filepath.Clean(t.Path) == filepath.Clean(path) {
+			return t, nil
+		}
+	}
+	return targets.Target{}, fmt.Errorf("%s: %w", path, applier.ErrNotAllowed)
+}
+
+// TargetContent は対象ファイルの内容とハッシュ。
+type TargetContent struct {
+	Target  targets.Target `json:"target"`
+	Content string         `json:"content"`
+	Hash    string         `json:"hash"`
+}
+
+// ReadTarget は発見済み対象だけを読む。
+func (s *Service) ReadTarget(path string) (TargetContent, error) {
+	t, err := s.findTarget(path)
+	if err != nil {
+		return TargetContent{}, err
+	}
+	b, err := os.ReadFile(t.Path)
+	if err != nil && !errors.Is(err, os.ErrNotExist) {
+		return TargetContent{}, fmt.Errorf("対象の読み込み: %w", err)
+	}
+	h, err := applier.HashFile(t.Path)
+	if err != nil {
+		return TargetContent{}, err
+	}
+	return TargetContent{Target: t, Content: string(b), Hash: h}, nil
+}
+
+// ---- digest / 改善案 ----
+
+// BuildDigest は masking 済みの digest を返す。
+func (s *Service) BuildDigest(project string, days int) (string, error) {
+	m, err := s.masker(s.cfg)
+	if err != nil {
+		return "", err
+	}
+	return digest.Build(s.st, m, digest.Options{Project: project, Days: days, Now: s.now()})
+}
+
+// ProposalRequest は改善案の生成要求。
+type ProposalRequest struct {
+	TargetPath  string `json:"targetPath"`
+	Project     string `json:"project"`
+	Days        int    `json:"days"`
+	Instruction string `json:"instruction"`
+}
+
+// Proposal は生成された改善案（保存はしない。適用は ApplyProposal）。
+type Proposal struct {
+	TargetPath string `json:"targetPath"`
+	BaseHash   string `json:"baseHash"`
+	Original   string `json:"original"`
+	Output     string `json:"output"`
+	Rationale  string `json:"rationale"`
+	Digest     string `json:"digest"`
+	JobID      string `json:"jobId"`
+}
+
+// GenerateProposal は digest を作り claude -p で改善案を生成する。ファイルは書き換えない。
+func (s *Service) GenerateProposal(ctx context.Context, req ProposalRequest) (*Proposal, error) {
+	tc, err := s.ReadTarget(req.TargetPath)
+	if err != nil {
+		return nil, err
+	}
+	d, err := s.BuildDigest(req.Project, req.Days)
+	if err != nil {
+		return nil, err
+	}
+	m, err := s.masker(s.cfg)
+	if err != nil {
+		return nil, err
+	}
+	bin, err := runner.ResolveClaude(runner.ResolveOptions{Configured: s.cfg.ClaudePath, ShellLookup: s.env.ShellLookup, Home: s.env.Home})
+	if err != nil {
+		return nil, err
+	}
+	r := &runner.Runner{ClaudePath: bin, WorkDir: filepath.Join(s.env.DataDir, "work"), Model: s.cfg.Model,
+		Timeout: time.Duration(s.cfg.TimeoutSeconds) * time.Second}
+
+	cctx, cancel := context.WithCancel(ctx)
+	s.mu.Lock()
+	s.cancel = cancel
+	s.mu.Unlock()
+	defer func() { cancel(); s.mu.Lock(); s.cancel = nil; s.mu.Unlock() }()
+
+	res, err := r.Run(cctx, runner.Input{
+		Digest:          d,
+		CurrentClaudeMd: m.Mask(tc.Content), // 対象ファイル本文も masking を通して渡す
+		Instruction:     m.Mask(req.Instruction),
+		TargetKind:      string(tc.Target.Kind),
+	})
+	if err != nil {
+		return nil, err
+	}
+	return &Proposal{TargetPath: tc.Target.Path, BaseHash: tc.Hash, Original: tc.Content, Output: res.Output,
+		Rationale: res.Rationale, Digest: d, JobID: res.JobID}, nil
+}
+
+// CancelGeneration は生成中のジョブをキャンセルする。
+func (s *Service) CancelGeneration() {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+	if s.cancel != nil {
+		s.cancel()
+	}
+}
+
+// ApplyProposal はユーザーが「適用」を押したときだけ呼ばれる。applier 経由で書き込む。
+func (s *Service) ApplyProposal(path, content, baseHash string) (applier.Manifest, error) {
+	return s.applier().Apply(applier.Request{Path: path, Content: content, ExpectedHash: baseHash})
+}
+
+// ---- 履歴 ----
+
+// ListBackups は変更履歴（新しい順）。
+func (s *Service) ListBackups() ([]applier.Entry, error) { return s.applier().History() }
+
+// GetBackup は履歴 1 件（前後の本文付き）。
+func (s *Service) GetBackup(id string) (applier.Entry, error) { return s.applier().Get(id) }
+
+// Rollback は履歴を元に戻す。
+func (s *Service) Rollback(id string) (applier.Manifest, error) { return s.applier().Rollback(id) }

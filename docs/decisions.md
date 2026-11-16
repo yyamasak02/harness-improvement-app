@@ -5,3 +5,4 @@
 - 2026-11-17 assistant の usage は message.id で重複排除（最後の値を採用）。user_msgs は tool_result・isMeta・システムタグを除く
 - 2026-11-17 applier はシンボリックリンクへの書き込みを拒否。失敗時は作成済みバックアップを削除。ロールバックは apply 履歴のみ対象
 - 2026-11-17 runner は Setpgid でプロセスグループごと kill（macOS/Linux 前提）。stdout/stderr は job.log に統合
+- 2026-11-17 ロジックは internal/service に集約（app.go は薄い層）。E2E は testdata を TempDir に複製し cwd を書き換えて実行（/home/demo 等に触れない）。Wails バインディングは wails generate module で生成し frontend/wailsjs をコミット
