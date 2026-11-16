@@ -36,10 +36,8 @@ Claude Code を使う → ログ・メモリが溜まる → AI が改善案を�
 
 ### Windows（10 以降）
 
-1. [Releases](../../releases) から次のどちらかをダウンロードします。
-   - `harness-app-amd64-installer.exe` … インストーラ（WebView2 ランタイムが無ければ自動で案内されます）
-   - `harness-app-windows-amd64.zip` … 展開して `harness-app.exe` を実行するだけのポータブル版（[WebView2 ランタイム](https://developer.microsoft.com/microsoft-edge/webview2/)が必要。Windows 11 には標準で入っています）
-2. **本アプリは署名していません。** 初回は SmartScreen が「Windows によって PC が保護されました」と表示します。**「詳細情報」→「実行」** を選んでください。zip の場合は、展開前にファイルのプロパティで「ブロックの解除」にチェックを入れると表示を避けられます。
+1. [Releases](../../releases) から `harness-app-amd64-installer.exe`（インストーラ）をダウンロードして実行します。WebView2 ランタイムが無ければ自動で案内されます。
+2. **本アプリは署名していません。** 初回は SmartScreen が「Windows によって PC が保護されました」と表示します。**「詳細情報」→「実行」** を選んでください。
 3. [Claude Code](https://claude.com/claude-code) をインストールしておきます。自動検出されない場合は「設定」でフルパスを指定してください（PowerShell で `where.exe claude` を実行すると分かります。`claude.exe` を指定してください）。
 
 ## 使い方
@@ -100,4 +98,4 @@ bash scripts/release.sh tag 0.1.0       # main・CI 成功・整合を検査し�
 git push origin v0.1.0                  # タグの push は人が行う
 ```
 
-タグを push すると GitHub Actions（`release.yml`）がバージョンと CHANGELOG の整合を検証し、macOS（`.dmg`）と Windows（`.zip`・インストーラ）をビルドして、CHANGELOG の該当節をノートとして Release に添付します（`-` を含むタグは pre-release）。
+タグを push すると GitHub Actions（`release.yml`）がバージョンと CHANGELOG の整合を検証し、macOS（`.dmg`）と Windows（インストーラ）をビルドして、CHANGELOG の該当節をノートとして Release に添付します（`-` を含むタグは pre-release）。

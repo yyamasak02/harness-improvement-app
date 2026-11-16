@@ -52,7 +52,7 @@ jobs:
           if-no-files-found: error
 
   windows:
-    name: Windows（zip・インストーラ）
+    name: Windows（インストーラ）
     needs: verify
     runs-on: windows-latest
     steps:
@@ -81,14 +81,11 @@ jobs:
         run: |
           export PATH="$PATH:/c/Program Files (x86)/NSIS"
           wails build -platform windows/amd64 -clean -nsis
-          powershell -NoProfile -Command "Compress-Archive -Path build/bin/harness-app.exe -DestinationPath build/bin/harness-app-windows-amd64.zip"
           ls -la build/bin
       - uses: actions/upload-artifact@v4
         with:
           name: dist-windows
-          path: |
-            build/bin/harness-app-windows-amd64.zip
-            build/bin/*installer.exe
+          path: build/bin/*installer.exe
           if-no-files-found: error
 
   publish:
@@ -105,7 +102,6 @@ jobs:
         run: |
           find artifacts -type f | sort
           test -f artifacts/dist-macos/harness-app.dmg
-          test -f artifacts/dist-windows/harness-app-windows-amd64.zip
           ls artifacts/dist-windows/*installer.exe
       - uses: softprops/action-gh-release@v2
         with:
@@ -113,5 +109,4 @@ jobs:
           prerelease: ${{ contains(github.ref_name, '-') }}   # v0.2.0-rc.1 のような名前は pre-release
           files: |
             artifacts/dist-macos/harness-app.dmg
-            artifacts/dist-windows/harness-app-windows-amd64.zip
             artifacts/dist-windows/*installer.exe

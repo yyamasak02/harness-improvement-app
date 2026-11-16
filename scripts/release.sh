@@ -63,7 +63,7 @@ $notes"
     echo "ローカルに注釈付きタグ $tag を作成しました（${head:0:7}）。"
     echo "push はあなたが実行してください（エージェントには権限がありません）:"
     echo "  git push origin $tag"
-    echo "push すると .github/workflows/release.yml が macOS（.dmg）と Windows（.zip・インストーラ）をビルドして Release に添付します。"
+    echo "push すると .github/workflows/release.yml が macOS（.dmg）と Windows（インストーラ）をビルドして Release に添付します。"
     ;;
   *) echo "使い方: $0 prepare|tag X.Y.Z"; exit 2 ;;
 esac

@@ -141,19 +141,16 @@ jobs:
       - run: go install github.com/wailsapp/wails/v2/cmd/wails@v2.10.2
       - run: cd frontend && npm ci
       - run: choco install nsis -y --no-progress
-      - name: wails build（exe + NSIS インストーラ + zip。署名なし）
+      - name: wails build（exe + NSIS インストーラ。署名なし）
         shell: bash   # 複数コマンドは bash で。pwsh は最後のコマンドの終了コードしか見ない
         run: |
           export PATH="$PATH:/c/Program Files (x86)/NSIS"
           wails build -platform windows/amd64 -clean -nsis
-          powershell -NoProfile -Command "Compress-Archive -Path build/bin/harness-app.exe -DestinationPath build/bin/harness-app-windows-amd64.zip"
           ls -la build/bin
       - uses: actions/upload-artifact@v4
         with:
           name: harness-app-windows
-          path: |
-            build/bin/harness-app-windows-amd64.zip
-            build/bin/*installer.exe
+          path: build/bin/*installer.exe
 
   dmg-smoke:
     name: dmg-smoke（make dmg）
