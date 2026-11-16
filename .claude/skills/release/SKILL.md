@@ -21,5 +21,5 @@ description: リリース（バージョン確定・CHANGELOG・タグ作成・R
 
 ## 4. push 後の確認（ユーザーが push したあと）
 - `gh run list --workflow Release --limit 1` → 完了まで待つ（実行 ID を固定して Monitor）
-- `gh release view vX.Y.Z` で、`harness-app.dmg`・`harness-app-windows-amd64.zip`・`*installer.exe` が添付され、ノートが CHANGELOG と一致していること
+- `gh release view vX.Y.Z` で、`harness-app.dmg`・`*installer.exe` が添付され、ノートが CHANGELOG と一致していること
 - 失敗したら原因を直して **PATCH 版**で出し直す（既存タグは変更しない）。`docs/handoff.md` を更新し、結果を関連 issue（#26 など）にコメントする。

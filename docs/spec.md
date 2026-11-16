@@ -21,7 +21,7 @@ Claude Code を使う → セッションログ・メモリが溜まる → そ�
 | 監視 | fsnotify（差分取り込み） |
 | AI 実行 | `claude -p` を `os/exec` でヘッドレス実行 |
 | テスト | Go: 標準 testing / フロント: Vitest |
-| 配布 | macOS: `wails build -platform darwin/universal` → `hdiutil` で .dmg。Windows: `wails build -platform windows/amd64` → zip（可能なら NSIS インストーラ）。いずれも署名・公証はしない |
+| 配布 | macOS: `wails build -platform darwin/universal` → `hdiutil` で .dmg。Windows: `wails build -platform windows/amd64` → NSIS インストーラ（Release に添付するのはインストーラのみ。zip は配布しない）。いずれも署名・公証はしない |
 
 ## 3. ディレクトリ構成
 
@@ -152,5 +152,5 @@ CREATE VIRTUAL TABLE messages_fts USING fts5(text, content='messages', content_r
 
 ### Windows 対応（#46）
 - [x] Windows でビルドでき、テストが通る（windows-latest の CI。exe は `windows-build-smoke` でビルド）
-- [~] Windows 配布物（zip / インストーラ）が Release に添付される（`release.yml` に実装。タグ push 時に実行されるため未実行）
+- [~] Windows 配布物（インストーラ）が Release に添付される（`release.yml` に実装。タグ push 時に実行されるため未実行）
 - [ ] Windows 実機で起動し、改善案の生成〜適用〜ロールバックができる（人の確認が必要）
