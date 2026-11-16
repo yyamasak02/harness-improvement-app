@@ -16,7 +16,7 @@ git diff --cached --quiet || git commit -q -m "$title
 
 Co-Authored-By: Claude Sonnet 5.5 <noreply@anthropic.com>"
 SKIP=harness-verify git push -u origin "$branch"   # verify --full は直前に実行済み
-if gh pr view >/dev/null 2>&1; then
+if gh pr view --json number >/dev/null 2>&1; then   # --json 無しは Projects (classic) の廃止警告で失敗する
   echo "既存の PR #$(gh pr view --json number --jq .number) に push しました。再レビューを実行してください（review-pr skill）。"
 else
   gh pr create --title "$title" --body "$body
