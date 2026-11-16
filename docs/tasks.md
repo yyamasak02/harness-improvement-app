@@ -48,7 +48,7 @@
 
 ## Phase 5: MVP 後（v0.2 以降）
 
-- [ ] T50 F4 メモリビューア
-- [ ] T51 F5 自己ナレッジ生成（`skill-generate`）
-- [ ] T52 F6 日次振り返り（`daily-report`、スケジューラ、launchd の plist 生成）
-- [ ] T53 F7 拡張機能一覧
+- [ ] T50 F4 メモリビューア（#21）
+- [ ] T51 F5 自己ナレッジ生成（`skill-generate`）（#22）
+- [ ] T52 F6 日次振り返り（`daily-report`、スケジューラ、launchd の plist 生成）（#23）
+- [ ] T53 F7 拡張機能一覧（#24）
