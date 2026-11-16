@@ -60,6 +60,89 @@ expect_eq "$(verdict "$(mj "$(mk owner 2026-01-02T00:00:00Z "$M_RC")" "$(mk owne
 expect_eq "$(verdict "$(mj "$(mk mallory 2026-01-01T00:00:00Z "$M_OK")")" $S1)" NONE "許可されていない投稿者のマーカーは無視"
 expect_eq "$(verdict "$(mj "$(mk owner 2026-01-01T00:00:00Z "書式の例: $M_OK"$'\n'"続き")")" $S1)" NONE "最終行でないマーカー（引用）は無視"
 
+# status.sh（再開用の状況把握）: 一時リポジトリ + gh のスタブで「次にすべきこと」の判定表を検証する
+sr="$tmp/sr"; mkdir -p "$sr/scripts" "$tmp/bin" "$tmp/origin.git"
+cp scripts/status.sh scripts/review-verdict.sh "$sr/scripts/"
+git init -q --bare "$tmp/origin.git"
+(cd "$sr" && git init -q -b main && git config user.email t@example.com && git config user.name t \
+  && echo a > a.txt && git add -A && git commit -qm "chore: base" && git remote add origin "$tmp/origin.git" \
+  && git push -q -u origin main && git switch -q -c feat/x && git push -q -u origin feat/x)
+HEAD_SHA=$(git -C "$sr" rev-parse HEAD)
+# gh スタブ: シナリオ（GH_SCENARIO）ごとに status.sh が呼ぶ gh の出力を返す
+cat > "$tmp/bin/gh" <<'STUB'
+#!/usr/bin/env bash
+args="$*"
+case "$GH_SCENARIO" in
+  authfail) echo "HTTP 401: Bad credentials" >&2; exit 1 ;;
+esac
+case "$args" in
+  "repo view --json owner --jq .owner.login") echo owner; exit 0 ;;
+  "pr view --json number --jq .number")
+    if [ "$GH_SCENARIO" = nopr ]; then echo "no pull requests found for branch \"feat/x\"" >&2; exit 1; fi
+    if [ "$GH_SCENARIO" = prerror ]; then echo "error connecting to api.github.com" >&2; exit 1; fi
+    echo 7; exit 0 ;;
+  "pr view 7 --json state --jq .state") [ "$GH_SCENARIO" = merged ] && echo MERGED || echo OPEN; exit 0 ;;
+  "pr view 7 --json title --jq .title") echo "テスト PR"; exit 0 ;;
+  "pr view 7 --json headRefOid --jq .headRefOid") echo "$GH_HEAD"; exit 0 ;;
+  "pr view 7 --json comments,reviews")
+    case "$GH_SCENARIO" in
+      approve) m="<!-- review-agent: verdict=APPROVE sha=$GH_HEAD -->" ;;
+      reqchg)  m="<!-- review-agent: verdict=REQUEST_CHANGES sha=$GH_HEAD -->" ;;
+      *) m="" ;;
+    esac
+    printf '{"comments":[{"author":{"login":"owner"},"createdAt":"2026-01-01T00:00:00Z","body":"%s"}],"reviews":[]}' "$m"; exit 0 ;;
+  "pr checks 7")
+    case "$GH_SCENARIO" in
+      cifail) printf 'lint\tfail\t1s\turl\ntest\tpass\t1s\turl\n' ;;
+      cipend) printf 'lint\tpass\t1s\turl\ntest\tpending\t0\turl\n' ;;
+      *) printf 'lint\tpass\t1s\turl\ntest\tpass\t1s\turl\n' ;;
+    esac; exit 0 ;;
+esac
+exit 0   # pr list / issue list などは空
+STUB
+chmod +x "$tmp/bin/gh"
+status_next() { # シナリオ名 -> 「次にすべきこと」の行
+  (cd "$sr" && PATH="$tmp/bin:$PATH" GH_SCENARIO="$1" GH_HEAD="$HEAD_SHA" bash scripts/status.sh --brief 2>&1) | sed -n '/次にすべきこと/,$p' | grep '→' | head -1
+}
+expect_next() { # シナリオ名 期待する部分文字列 説明
+  local got; got=$(status_next "$1")
+  case "$got" in *"$2"*) echo "ok: 次の行動の判定（$3）" ;; *) echo "NG: 次の行動の判定（$3）: got '$got'"; fail=1 ;; esac
+}
+expect_not_next() {
+  local got; got=$(status_next "$1")
+  case "$got" in *"$2"*) echo "NG: 次の行動の判定（$3）で '$2' を指示してはいけない: '$got'"; fail=1 ;; *) echo "ok: 次の行動の判定（$3）で '$2' を指示しない" ;; esac
+}
+expect_next nopr "PR が無い" "ブランチはあるが PR が無い"
+expect_next authfail "判定は不能" "gh が認証失敗"
+expect_not_next authfail "PR を作成" "gh が認証失敗"
+expect_next prerror "判定不能" "PR の有無を取得できない"
+expect_not_next prerror "PR を作成" "PR の有無を取得できない"
+expect_next cifail "CI が失敗" "CI 失敗"
+expect_next cipend "CI が実行中" "CI 実行中"
+expect_next none "独立レビューが無い" "head への独立レビューが無い"
+expect_next reqchg "REQUEST_CHANGES" "REQUEST_CHANGES"
+expect_next approve "merge-pr.sh" "APPROVE かつ CI 成功"
+expect_next merged "マージ済み" "PR がマージ済み"
+expect_not_next merged "merge-pr.sh" "PR がマージ済み"
+# 未コミットの変更・未 push のコミット（gh の状態より先に判定される）
+echo b > "$sr/b.txt"
+expect_next approve "未コミットの変更" "未コミットの変更がある"
+rm -f "$sr/b.txt"
+(cd "$sr" && echo c > c.txt && git add -A && git commit -qm "chore: c")
+expect_next approve "未 push" "未 push のコミットがある"
+# gh が無い・オフライン（push 済みのクリーンな状態で、gh の状態が判定不能になること）
+(cd "$sr" && git push -q)
+out=$(cd "$sr" && STATUS_NO_GH=1 bash scripts/status.sh 2>&1) && case "$out" in *"== Git"*"判定不能"*) echo "ok: gh が使えなくても動き、判定不能と示す" ;; *) echo "NG: gh 無しの出力が不正"; fail=1 ;; esac || { echo "NG: gh 無しで status.sh が失敗"; fail=1; }
+# timeout / gtimeout が無い環境（macOS 相当）でも動く
+mkdir -p "$tmp/notimeout"; for c in bash git sed awk grep wc tr head tail cat sort python3 date dirname env cut basename mkdir; do p=$(command -v $c) && ln -sf "$p" "$tmp/notimeout/$c"; done
+cp "$tmp/bin/gh" "$tmp/notimeout/gh"
+out=$(cd "$sr" && PATH="$tmp/notimeout" GH_SCENARIO=approve GH_HEAD="$HEAD_SHA" bash scripts/status.sh --brief 2>&1)
+case "$out" in *"独立レビューの判定（この head に対して）: APPROVE"*) echo "ok: timeout コマンドが無くても gh 情報を取得できる" ;; *) echo "NG: timeout が無いと gh 情報が取れない"; fail=1 ;; esac
+# 実リポジトリでも主要セクションが出る
+out=$(STATUS_NO_GH=1 bash scripts/status.sh --brief 2>&1) && for sec in "== Git" "== docs/tasks.md" "== 次にすべきこと"; do
+  case "$out" in *"$sec"*) echo "ok: status.sh に '$sec' がある" ;; *) echo "NG: status.sh に '$sec' が無い"; fail=1 ;; esac
+done
+
 # check-tests-changed: 一時リポジトリで検証
 repo="$tmp/repo"; mkdir -p "$repo/scripts" "$repo/internal/x"; cp scripts/check-tests-changed.sh "$repo/scripts/"
 (

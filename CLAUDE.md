@@ -5,8 +5,11 @@ Claude Code のハーネス（CLAUDE.md・rules・メモリ・skills）を、`~/
 
 - 仕様: @docs/spec.md
 - タスク: @docs/tasks.md
-- 詳細ルール: `.claude/rules/`（safety / go / frontend / git-workflow / issues-labels / quality）、レビュー基準は `docs/review-guidelines.md`
-- 手順の再現: `.claude/skills/`（`implement-task` / `quality-gate` / `fix-bug` / `verify` / `open-pr` / `create-issue` / `review-pr`）。タスク実装は必ず `implement-task` に従う
+- 詳細ルール: `.claude/rules/`（safety / go / frontend / git-workflow / issues-labels / quality / session）、レビュー基準は `docs/review-guidelines.md`
+- 手順の再現: `.claude/skills/`（`implement-task` / `quality-gate` / `fix-bug` / `verify` / `open-pr` / `create-issue` / `review-pr` / `resume`）。タスク実装は必ず `implement-task` に従う
+
+## セッション開始・再開時
+- **最初に `bash scripts/status.sh`**（SessionStart フックで要約が自動表示される）を確認し、`resume` skill でフェーズを判定して再開する。`docs/handoff.md` は参考で、現実（git・PR・issue）が優先。マージ・フェーズ変更・待ち状態の前に handoff を更新する（`.claude/rules/session.md`）。
 
 ## やってはいけないこと（絶対）
 
