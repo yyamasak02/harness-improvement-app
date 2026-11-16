@@ -92,4 +92,12 @@ make windows        # Windows 用 exe（他 OS からもクロスビルド可）
 
 ## リリース
 
-`v*` タグを push すると GitHub Actions が macOS（`.dmg`）と Windows（`.zip`・インストーラ）の成果物をビルドして Release に添付します。タグの push は手動で行います。
+バージョンの出典は `wails.json`、変更履歴は [CHANGELOG.md](CHANGELOG.md)（Keep a Changelog・SemVer）です。手順の詳細は [.claude/rules/release.md](.claude/rules/release.md) と `release` skill にあります。
+
+```sh
+bash scripts/release.sh prepare 0.1.0   # リリース用ブランチ作成・バージョン更新・CHANGELOG 確定 → PR → レビュー → マージ
+bash scripts/release.sh tag 0.1.0       # main・CI 成功・整合を検査し、ローカルに注釈付きタグ v0.1.0 を作る
+git push origin v0.1.0                  # タグの push は人が行う
+```
+
+タグを push すると GitHub Actions（`release.yml`）がバージョンと CHANGELOG の整合を検証し、macOS（`.dmg`）と Windows（`.zip`・インストーラ）をビルドして、CHANGELOG の該当節をノートとして Release に添付します（`-` を含むタグは pre-release）。

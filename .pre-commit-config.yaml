@@ -53,6 +53,12 @@ repos:
         language: system
         always_run: true
         pass_filenames: false
+      - id: check-version
+        name: バージョンの整合（wails.json・package.json・CHANGELOG）
+        entry: bash scripts/check-version.sh
+        language: system
+        files: '^(wails\.json|frontend/package\.json|CHANGELOG\.md)$'
+        pass_filenames: false
       - id: check-tests-changed-staged
         name: テスト更新の確認（警告）
         entry: bash scripts/check-tests-changed.sh staged

@@ -1,12 +1,33 @@
 name: Release
+# v* タグの push で起動する（タグの push は人が行う: scripts/release.sh tag X.Y.Z が案内する）。
+# 検証 → macOS / Windows のビルド（成果物はアーティファクト）→ 公開（1 ジョブで Release を作成し全成果物を添付）
 on:
   push:
     tags: ['v*']
 permissions:
-  contents: write
+  contents: read
+
 jobs:
+  verify:
+    name: タグとバージョン・CHANGELOG の整合を検証
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: check-version
+        run: bash scripts/check-version.sh "$GITHUB_REF_NAME"
+      - name: リリースノート（CHANGELOG の該当節）を作る
+        run: |
+          bash scripts/changelog-notes.sh "${GITHUB_REF_NAME#v}" > release-notes.md
+          test -s release-notes.md || { echo "CHANGELOG の ${GITHUB_REF_NAME#v} の節が空です"; exit 1; }
+      - uses: actions/upload-artifact@v4
+        with:
+          name: release-notes
+          path: release-notes.md
+          if-no-files-found: error
+
   dmg:
     name: macOS（.dmg）
+    needs: verify
     runs-on: macos-latest
     steps:
       - uses: actions/checkout@v4
@@ -21,17 +42,18 @@ jobs:
       - name: Wails CLI
         run: go install github.com/wailsapp/wails/v2/cmd/wails@v2.10.2
       - name: テスト
-        run: cd frontend && npm ci && npm run build && npm test && cd .. && go vet ./... && go test ./...
+        run: cd frontend && npm ci && npm run build && npm test && cd .. && go vet ./... && go test -count=1 ./...
       - name: .dmg をビルド（署名・公証なし）
         run: make dmg
-      - name: Release に添付
-        uses: softprops/action-gh-release@v2
+      - uses: actions/upload-artifact@v4
         with:
-          files: build/bin/harness-app.dmg
-          generate_release_notes: true
+          name: dist-macos
+          path: build/bin/harness-app.dmg
+          if-no-files-found: error
 
   windows:
     name: Windows（zip・インストーラ）
+    needs: verify
     runs-on: windows-latest
     steps:
       - uses: actions/checkout@v4
@@ -61,10 +83,35 @@ jobs:
           wails build -platform windows/amd64 -clean -nsis
           powershell -NoProfile -Command "Compress-Archive -Path build/bin/harness-app.exe -DestinationPath build/bin/harness-app-windows-amd64.zip"
           ls -la build/bin
-      - name: Release に添付
-        uses: softprops/action-gh-release@v2
+      - uses: actions/upload-artifact@v4
         with:
-          files: |
+          name: dist-windows
+          path: |
             build/bin/harness-app-windows-amd64.zip
             build/bin/*installer.exe
-          generate_release_notes: true
+          if-no-files-found: error
+
+  publish:
+    name: Release を作成して成果物を添付
+    needs: [dmg, windows]
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    steps:
+      - uses: actions/download-artifact@v4
+        with:
+          path: artifacts
+      - name: 成果物の確認
+        run: |
+          find artifacts -type f | sort
+          test -f artifacts/dist-macos/harness-app.dmg
+          test -f artifacts/dist-windows/harness-app-windows-amd64.zip
+          ls artifacts/dist-windows/*installer.exe
+      - uses: softprops/action-gh-release@v2
+        with:
+          body_path: artifacts/release-notes/release-notes.md
+          prerelease: ${{ contains(github.ref_name, '-') }}   # v0.2.0-rc.1 のような名前は pre-release
+          files: |
+            artifacts/dist-macos/harness-app.dmg
+            artifacts/dist-windows/harness-app-windows-amd64.zip
+            artifacts/dist-windows/*installer.exe

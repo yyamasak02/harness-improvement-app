@@ -13,7 +13,7 @@
 
 ## 次の一手
 1. `bash scripts/status.sh` で現状を確認する。
-2. リリースタグの整備（CHANGELOG・バージョン整合チェック・`release` skill・`scripts/release.sh`）。
+2. リリースタグの整備は完了（CHANGELOG・`scripts/check-version.sh`・`scripts/release.sh`・`release` skill）。実際のリリースは人の検証（#25 #52）と #47 の後に `release` skill で進める。
 3. 人の作業待ち（needs-human）: #25 macOS 実機確認 / #26 dmg 起動確認と v0.1.0 タグ push / #47 API キー登録とブランチ保護 / #52 Windows 実機確認 / #27 個人メールの扱い。
 
 ## 未解決・注意
