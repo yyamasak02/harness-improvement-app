@@ -127,8 +127,10 @@ for i in items:
     ls = [l["name"] for l in i["labels"]]
     pr = next((l.split("/", 1)[1] for l in ls if l.startswith("priority/")), "?")
     tags = [l.split("/", 1)[1] for l in ls if l in ("status/needs-human", "status/blocked") or l.startswith("release/")]
-    rows.append((pr, i["number"], i["title"], ",".join(tags)))
-for pr, n, t, tags in sorted(rows):
+    rel = next((l.split("/", 1)[1] for l in ls if l.startswith("release/")), "z")
+    rows.append((pr, 0 if rel == "v0.1" else 1, i["number"], i["title"], ",".join(tags)))
+# 優先度 → リリース（v0.1 を先）→ 番号の順
+for pr, _, n, t, tags in sorted(rows):
     print("%s\t#%d\t%s\t%s" % (pr, n, t, tags))
 ')
   if [ -z "$issues" ]; then echo "  なし（または取得できません）"; else

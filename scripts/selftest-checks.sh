@@ -98,6 +98,9 @@ case "$args" in
       *) printf 'lint\tpass\t1s\turl\ntest\tpass\t1s\turl\n' ;;
     esac; exit 0 ;;
 esac
+if [ "$GH_SCENARIO" = issues ] && [ "${args#issue list}" != "$args" ]; then
+  echo '[{"number":21,"title":"feat: v0.2","labels":[{"name":"priority/p2"},{"name":"release/v0.2"}]},{"number":51,"title":"refactor: v0.1","labels":[{"name":"priority/p2"},{"name":"release/v0.1"}]},{"number":25,"title":"chore: human","labels":[{"name":"priority/p1"},{"name":"status/needs-human"},{"name":"release/v0.1"}]}]'; exit 0
+fi
 exit 0   # pr list / issue list などは空
 STUB
 chmod +x "$tmp/bin/gh"
@@ -124,6 +127,11 @@ expect_next reqchg "REQUEST_CHANGES" "REQUEST_CHANGES"
 expect_next approve "merge-pr.sh" "APPROVE かつ CI 成功"
 expect_next merged "マージ済み" "PR がマージ済み"
 expect_not_next merged "merge-pr.sh" "PR がマージ済み"
+# main がクリーンなときの次の issue: needs-human を除き、優先度 → v0.1 を先 → 番号
+(cd "$sr" && git switch -q main)
+expect_next issues "#51" "候補は同優先度なら v0.1 を先（#21 より #51）"
+expect_not_next issues "#25" "needs-human の issue は候補にしない"
+(cd "$sr" && git switch -q feat/x)
 # 未コミットの変更・未 push のコミット（gh の状態より先に判定される）
 echo b > "$sr/b.txt"
 expect_next approve "未コミットの変更" "未コミットの変更がある"
