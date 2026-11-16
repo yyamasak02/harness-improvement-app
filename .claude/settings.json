@@ -107,7 +107,11 @@
       "Edit(~/.claude/**)",
       "Write(~/.claude/**)",
       "Read(~/.ssh/**)",
-      "Read(~/.aws/**)"
+      "Read(~/.aws/**)",
+      "Bash(git commit*--no-verify*)",
+      "Bash(git commit* -n *)",
+      "Bash(git push*--no-verify*)",
+      "Bash(pre-commit uninstall*)"
     ]
   }
 }

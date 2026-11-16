@@ -3,9 +3,16 @@ on:
   push:
     branches: [main]
   pull_request:
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+permissions:
+  contents: read
+
 jobs:
-  test:
-    runs-on: macos-latest
+  lint:
+    name: lint（pre-commit・ルール検査）
+    runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-go@v5
@@ -16,15 +23,80 @@ jobs:
           node-version: 20
           cache: npm
           cache-dependency-path: frontend/package-lock.json
-      - name: フロントのビルドとテスト（go:embed が dist を要求するため先に実行）
-        run: cd frontend && npm ci && npm run build && npm test
-      - name: Go の静的解析とテスト
-        run: go vet ./... && go test ./...
-      - name: カバレッジ基準（70%）
+      - run: go install honnef.co/go/tools/cmd/staticcheck@latest
+      - run: cd frontend && npm ci
+      - run: pip install pre-commit
+      - name: pre-commit（全ファイル）
+        run: pre-commit run --all-files --show-diff-on-failure
+      - name: 品質ゲート自体のテスト
+        run: bash scripts/selftest-checks.sh
+
+  test-go:
+    name: test-go（race・カバレッジ基準）
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-go@v5
+        with:
+          go-version-file: go.mod
+      - run: go vet ./...
+      - run: go test -race -count=1 ./...
+      - name: カバレッジ基準（collector・digest・masking・applier・runner が 70% 以上）
         run: bash scripts/coverage.sh
-  dmg-smoke:
+
+  test-frontend:
+    name: test-frontend（build・カバレッジ基準）
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: npm
+          cache-dependency-path: frontend/package-lock.json
+      - run: cd frontend && npm ci
+      - run: cd frontend && npm run build
+      - run: cd frontend && npm run test:coverage
+
+  pr-policy:
+    name: pr-policy（タイトル形式・テスト更新）
+    if: github.event_name == 'pull_request'
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - name: タイトルが Conventional 形式であること
+        env:
+          TITLE: ${{ github.event.pull_request.title }}
+        run: |
+          re='^(feat|fix|refactor|test|docs|chore|ci)(\([a-zA-Z0-9_,./-]+\))?: .+'
+          if [[ ! "$TITLE" =~ $re ]]; then
+            echo "PR タイトルは '<feat|fix|refactor|test|docs|chore|ci>(scope)?: 要約' の形式にしてください: $TITLE"
+            exit 1
+          fi
+      - name: 実装を変えたらテストも変える
+        env:
+          PR_BODY: ${{ github.event.pull_request.body }}
+          BASE: ${{ github.event.pull_request.base.ref }}
+        run: |
+          git fetch origin "$BASE"
+          bash scripts/check-tests-changed.sh range "origin/$BASE"
+
+  test-macos:
+    name: test-macos（darwin 上の Go テスト）
     runs-on: macos-latest
-    needs: test
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-go@v5
+        with:
+          go-version-file: go.mod
+      - run: go vet ./... && go test -count=1 ./...
+
+  dmg-smoke:
+    name: dmg-smoke（make dmg）
+    runs-on: macos-latest
+    needs: [test-go, test-frontend]
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-go@v5

@@ -1,0 +1,45 @@
+#!/usr/bin/env bash
+# CLAUDE.md の「やってはいけないこと」のうち機械的に検出できるものを静的に検査する。
+set -uo pipefail
+cd "$(dirname "$0")/.."
+fail=0
+report() { echo "NG: $1"; printf '%s\n' "$2" | sed 's/^/  /'; fail=1; }
+
+# 1. internal/ は実ホームを解決しない（パスは注入する。app.go だけが解決してよい）
+hits=$(grep -rnE 'os\.UserHomeDir|os\.Getenv\("HOME"\)|user\.Current\(' --include='*.go' internal || true)
+[ -z "$hits" ] || report "internal/ でホームディレクトリを解決しています（パスは注入すること）" "$hits"
+
+# 2. テストは実 ~/.claude を参照しない
+hits=$(grep -rnE '~/\.claude|\.claude/projects' --include='*_test.go' internal | grep -v 'testdata' || true)
+[ -z "$hits" ] || report "テストが ~/.claude を参照しています（testdata のみ使うこと）" "$hits"
+
+# 3. 実 claude をテストから呼ばない / claude を PATH 名で直接実行しない
+hits=$(grep -rnE 'exec\.Command(Context)?\([^)]*"claude"' --include='*.go' . | grep -v node_modules || true)
+[ -z "$hits" ] || report "claude を名前で直接実行しています（runner.ResolveClaude + 注入を使うこと）" "$hits"
+
+# 4. claude -p の許可ツールは Read,Write 固定
+hits=$(grep -rn 'allowedTools' --include='*.go' internal | grep -v '_test.go' | grep -v 'AllowedTools' || true)
+[ -z "$hits" ] || report "allowedTools をハードコードしています（runner.AllowedTools を使うこと）" "$hits"
+
+# 5. 書き込み系 API は許可されたパッケージ以外で使わない（書き込みは applier / fsutil 経由）
+hits=$(grep -rnE 'os\.(WriteFile|Create|Rename|Remove|RemoveAll)\(' --include='*.go' internal \
+  | grep -vE '_test\.go|internal/(applier|fsutil|runner|skills)/' || true)
+[ -z "$hits" ] || report "applier / fsutil / runner / skills 以外でファイル書き込み API を使っています" "$hits"
+
+# 6. testdata・ソースに本物らしい秘密情報を置かない（DUMMY を含むものは可）
+hits=$(grep -rnIE 'sk-ant-[A-Za-z0-9_-]{20,}|AKIA[0-9A-Z]{16}|gh[pousr]_[A-Za-z0-9]{30,}|github_pat_[A-Za-z0-9_]{30,}|xox[baprs]-[A-Za-z0-9-]{20,}' \
+  --exclude-dir=node_modules --exclude-dir=.git --exclude-dir=dist . | grep -vi 'dummy' || true)
+[ -z "$hits" ] || report "秘密情報らしき文字列があります（ダミーは DUMMY を含めること）" "$hits"
+
+# 7. 無効化されたテスト（.only / skip / 理由なしの t.Skip）を残さない
+hits=$(grep -rnE '\b(it|test|describe)\.(only|skip)\(|\b(fit|xit|xdescribe|fdescribe)\(' frontend/src || true)
+[ -z "$hits" ] || report "フロントのテストに only / skip が残っています" "$hits"
+hits=$(grep -rnE 't\.Skip(Now)?\(\)' --include='*_test.go' internal || true)
+[ -z "$hits" ] || report "理由なしの t.Skip（理由の文字列か issue 番号を書くこと）" "$hits"
+
+# 8. 混入させてはいけないファイル
+hits=$(git ls-files | grep -E 'Zone\.Identifier$|settings\.local\.json$|\.env$' || true)
+[ -z "$hits" ] || report "コミットしてはいけないファイルが追跡されています" "$hits"
+
+[ $fail -eq 0 ] && echo "check-rules OK"
+exit $fail

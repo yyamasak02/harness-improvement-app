@@ -9,7 +9,7 @@ func TestMask(t *testing.T) {
 	}
 	tests := []struct{ name, in, want string }{
 		{"anthropic", "key sk-ant-api03-ABC_def-1 end", "key [MASKED:anthropic-key] end"},
-		{"aws", "AKIAABCDEFGHIJKLMNOP", "[MASKED:aws-key]"},
+		{"aws", "AKIADUMMYDUMMY012345", "[MASKED:aws-key]"},
 		{"ghp", "ghp_abcdef123456", "[MASKED:github-token]"},
 		{"github_pat", "github_pat_11AAAA_bbbbbb", "[MASKED:github-token]"},
 		{"slack", "xoxb-12345-abcdef", "[MASKED:slack-token]"},

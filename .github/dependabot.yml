@@ -1,0 +1,20 @@
+version: 2
+updates:
+  - package-ecosystem: gomod
+    directory: /
+    schedule: {interval: weekly}
+    labels: [type/chore, area/service]
+    commit-message: {prefix: "chore(deps)"}
+    ignore:
+      # Wails は v2.10.2 に固定（追従方針は issue で管理）
+      - dependency-name: github.com/wailsapp/wails/v2
+  - package-ecosystem: npm
+    directory: /frontend
+    schedule: {interval: weekly}
+    labels: [type/chore, area/frontend]
+    commit-message: {prefix: "chore(deps)"}
+  - package-ecosystem: github-actions
+    directory: /
+    schedule: {interval: weekly}
+    labels: [type/chore, area/ci]
+    commit-message: {prefix: "chore(deps)"}

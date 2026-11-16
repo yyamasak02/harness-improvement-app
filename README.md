@@ -60,11 +60,16 @@ Claude Code を使う → ログ・メモリが溜まる → AI が改善案を�
 
 ## 開発
 
+初回は `make setup` で pre-commit のフック（commit / commit-msg / pre-push）を導入します。
+コミット時に gofmt・go vet・staticcheck・tsc・ルール検査・コミットメッセージ形式を、push 時に `scripts/verify.sh --full`（テスト・カバレッジ基準まで）を自動実行します。CI でも同じ検査と、`go test -race`・PR タイトル形式・「実装を変えたらテストも変える」を検査します。品質の方針は [.claude/rules/quality.md](.claude/rules/quality.md) を参照してください。
+
 必要なもの: Go、Node.js 20+、[Wails v2](https://wails.io)（`go install github.com/wailsapp/wails/v2/cmd/wails@v2.10.2`）。
 
 ```sh
 make dev            # wails dev
+make setup          # pre-commit フックの導入（初回のみ）
 make test           # go vet / go test / フロントの build と test
+make verify-full    # lint・ルール検査・カバレッジ基準まで（push 前・CI 相当）
 bash scripts/coverage.sh   # collector・digest・masking・applier・runner のカバレッジ 70% 以上を確認
 make bindings       # Go のメソッドを変えたら Wails バインディングを再生成
 make dmg            # macOS 専用: build/bin/harness-app.dmg を出力
