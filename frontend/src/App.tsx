@@ -1,8 +1,44 @@
+import {HashRouter, NavLink, Route, Routes} from 'react-router-dom'
+import Dashboard from './pages/Dashboard'
+import Sessions from './pages/Sessions'
+import Improve from './pages/Improve'
+import History from './pages/History'
+import Settings from './pages/Settings'
+
+const nav = [
+  {to: '/', label: '概要'},
+  {to: '/sessions', label: 'セッション'},
+  {to: '/improve', label: 'CLAUDE.md 改善'},
+  {to: '/history', label: '変更履歴'},
+  {to: '/settings', label: '設定'},
+]
+
 export default function App() {
   return (
-    <div className="p-6">
-      <h1 className="text-xl font-bold">harness-app</h1>
-      <p className="text-sm text-gray-500">Claude Code ハーネス改善ツール</p>
-    </div>
+    <HashRouter>
+      <div className="flex h-screen bg-gray-50 text-gray-900">
+        <aside className="w-52 shrink-0 border-r bg-white p-4">
+          <h1 className="mb-1 text-lg font-bold">harness-app</h1>
+          <p className="mb-4 text-xs text-gray-500">Claude Code ハーネス改善</p>
+          <nav className="flex flex-col gap-1" aria-label="メイン">
+            {nav.map((n) => (
+              <NavLink key={n.to} to={n.to} end={n.to === '/'}
+                className={({isActive}) => `rounded px-3 py-2 text-sm ${isActive ? 'bg-blue-600 text-white' : 'hover:bg-gray-100'}`}>
+                {n.label}
+              </NavLink>
+            ))}
+          </nav>
+        </aside>
+        <main className="flex-1 overflow-auto p-6">
+          <Routes>
+            <Route path="/" element={<Dashboard />} />
+            <Route path="/sessions" element={<Sessions />} />
+            <Route path="/improve" element={<Improve />} />
+            <Route path="/history" element={<History />} />
+            <Route path="/settings" element={<Settings />} />
+          </Routes>
+        </main>
+      </div>
+    </HashRouter>
   )
 }
