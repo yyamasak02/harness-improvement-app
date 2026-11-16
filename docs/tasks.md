@@ -44,7 +44,7 @@
 - [x] T41 `.github/workflows/ci.yml`：push 時に macos-latest で go test と npm test を実行
 - [x] T42 `.github/workflows/release.yml`：`v*` タグの push で .dmg をビルドし、GitHub Release に添付
 - [x] T43 README：機能、スクリーンショット欄、インストール（未署名のため右クリック→開く、または `xattr -dr com.apple.quarantine`）、使い方、データの保存場所、安全設計
-- [ ] T44 完了の定義（spec.md §9）を全項目確認し、`v0.1.0` タグの準備をする（タグの push はユーザーが行う）
+- [x] T44 完了の定義（spec.md §9）を全項目確認し、`v0.1.0` タグの準備をする（タグの push はユーザーが行う）
 
 ## Phase 5: MVP 後（v0.2 以降）
 

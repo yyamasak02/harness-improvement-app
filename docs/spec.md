@@ -128,10 +128,22 @@ CREATE VIRTUAL TABLE messages_fts USING fts5(text, content='messages', content_r
 
 ## 9. 完了の定義（v0.1）
 
-- [ ] MVP（F1・F2・F3・F8・F9）が `wails dev` で動き、テスト用データで一通りの操作ができる
-- [ ] `go vet ./...`・`go test ./...`・`npm run build`・`npm test` がすべて通る
-- [ ] collector・digest・masking・applier・runner のテストカバレッジが 70% 以上
-- [ ] フェイク claude を使った E2E テスト（digest 生成 → 改善案 → 適用 → ロールバック）が通る
-- [ ] `make dmg` で `build/bin/harness-app.dmg` ができ、起動できる
-- [ ] GitHub Actions（macos-latest）でタグ push 時に .dmg がビルドされ、Release に添付される
-- [ ] README にインストール手順（未署名アプリの開き方を含む）と使い方がある
+確認日: 2026-11-17（Linux/WSL 上のローカル + GitHub Actions macos-latest）
+
+- [~] MVP（F1・F2・F3・F8・F9）が `wails dev` で動き、テスト用データで一通りの操作ができる
+  - 実装済み。Go の E2E（service）と、mock API を使うフロントの画面テストで全操作を検証。
+  - **未検証**: 実機の `wails dev`（WebView）での手動操作。WSL には webkit が無く、macOS 実機が必要。
+- [x] `go vet ./...`・`go test ./...`・`npm run build`・`npm test` がすべて通る（ローカルと CI の両方）
+- [x] collector 84%・digest 83%・masking 94%・applier 82%・runner 79%（`bash scripts/coverage.sh`、CI で強制）
+- [x] フェイク claude を使った E2E（digest 生成 → 改善案 → 適用 → ロールバック）が通る（`internal/service` の `TestE2EProposalApplyRollback`）
+- [~] `make dmg` で `build/bin/harness-app.dmg` ができ、起動できる
+  - macos-latest の CI（dmg-smoke ジョブ）で `make dmg` 成功、universal バイナリと `hdiutil verify` を確認済み。
+  - **未検証**: .dmg からの実際の起動（macOS 実機での確認が必要）。
+- [~] GitHub Actions（macos-latest）でタグ push 時に .dmg がビルドされ、Release に添付される
+  - `release.yml` を作成。ビルド手順は dmg-smoke で検証済み。**タグ push はユーザーが行う**ため Release 添付は未実行。
+- [x] README にインストール手順（未署名アプリの開き方を含む）と使い方がある
+
+### v0.1.0 リリース手順（ユーザーが実行）
+
+1. 実機で `.dmg` を開いて起動し、上記の未検証項目を確認する。
+2. `git tag v0.1.0 && git push origin v0.1.0`
