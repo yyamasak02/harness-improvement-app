@@ -13,8 +13,8 @@
 
 - [x] T10 `internal/config`：設定の構造体、アプリデータディレクトリの解決、JSON の読み書き（temp → rename）
 - [x] T11 `internal/store`：SQLite のオープン、マイグレーション、FTS5 trigram の動作確認テスト
-- [ ] T12 `internal/collector`：jsonl を寛容にパースし、sessions / messages / model_usage を生成。訂正検出と、エラー・頻出コマンドの抽出
-- [ ] T13 `internal/collector`：差分取り込み（files テーブル）。fsnotify による監視（デバウンス付き）
+- [x] T12 `internal/collector`：jsonl を寛容にパースし、sessions / messages / model_usage を生成。訂正検出と、エラー・頻出コマンドの抽出
+- [x] T13 `internal/collector`：差分取り込み（files テーブル）。fsnotify による監視（デバウンス付き）
 - [x] T14 `internal/masking`：パターン群とユーザー追加パターン。テーブル駆動テスト
 - [x] T15 `internal/targets`：プロジェクトの cwd から CLAUDE.md / CLAUDE.local.md / rules を発見する。グローバルの CLAUDE.md も含める
 - [ ] T16 `internal/digest`：プロジェクト・期間を指定して Markdown の digest を生成（統計、訂正の抜粋、エラーのまとめ、頻出コマンド）。サイズ上限付き、masking 済み
