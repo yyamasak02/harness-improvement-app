@@ -21,7 +21,9 @@ Claude Code を使う → ログ・メモリが溜まる → AI が改善案を�
 
 <!-- スクリーンショット: docs/screenshots/ に追加してください -->
 
-## インストール（macOS）
+## インストール
+
+### macOS
 
 1. [Releases](../../releases) から `harness-app.dmg` をダウンロードして開き、`harness-app.app` を「アプリケーション」へドラッグします。
 2. **本アプリは署名・公証をしていません。** 初回は次のどちらかで開きます。
@@ -31,6 +33,14 @@ Claude Code を使う → ログ・メモリが溜まる → AI が改善案を�
      xattr -dr com.apple.quarantine /Applications/harness-app.app
      ```
 3. [Claude Code](https://claude.com/claude-code) がインストールされている必要があります。見つからない場合は「設定」でフルパスを指定してください（`which claude` で分かります）。
+
+### Windows（10 以降）
+
+1. [Releases](../../releases) から次のどちらかをダウンロードします。
+   - `harness-app-amd64-installer.exe` … インストーラ（WebView2 ランタイムが無ければ自動で案内されます）
+   - `harness-app-windows-amd64.zip` … 展開して `harness-app.exe` を実行するだけのポータブル版（[WebView2 ランタイム](https://developer.microsoft.com/microsoft-edge/webview2/)が必要。Windows 11 には標準で入っています）
+2. **本アプリは署名していません。** 初回は SmartScreen が「Windows によって PC が保護されました」と表示します。**「詳細情報」→「実行」** を選んでください。zip の場合は、展開前にファイルのプロパティで「ブロックの解除」にチェックを入れると表示を避けられます。
+3. [Claude Code](https://claude.com/claude-code) をインストールしておきます。自動検出されない場合は「設定」でフルパスを指定してください（PowerShell で `where.exe claude` を実行すると分かります。`claude.exe` を指定してください）。
 
 ## 使い方
 
@@ -42,9 +52,9 @@ Claude Code を使う → ログ・メモリが溜まる → AI が改善案を�
 
 ## データの保存場所
 
-| 内容 | 場所（macOS） |
+| 内容 | 場所（macOS。Windows は `%APPDATA%\harness-app\` 配下の同名） |
 |---|---|
-| 設定 | `~/Library/Application Support/harness-app/config.json` |
+| 設定 | `~/Library/Application Support/harness-app/config.json`（Windows: `%APPDATA%\harness-app\config.json`） |
 | 索引 DB（消しても再構築できます） | `~/Library/Application Support/harness-app/index.db` |
 | バックアップ・変更履歴 | `~/Library/Application Support/harness-app/backups/<時刻>-<ハッシュ>/` |
 | AI 実行のジョブ（入出力・ログ） | `~/Library/Application Support/harness-app/work/<job-id>/` |
@@ -63,7 +73,7 @@ Claude Code を使う → ログ・メモリが溜まる → AI が改善案を�
 初回は `make setup` で pre-commit のフック（commit / commit-msg / pre-push）を導入します。
 コミット時に gofmt・go vet・staticcheck・tsc・ルール検査・コミットメッセージ形式を、push 時に `scripts/verify.sh --full`（テスト・カバレッジ基準まで）を自動実行します。CI でも同じ検査と、`go test -race`・PR タイトル形式・「実装を変えたらテストも変える」を検査します。品質の方針は [.claude/rules/quality.md](.claude/rules/quality.md) を参照してください。
 
-必要なもの: Go、Node.js 20+、[Wails v2](https://wails.io)（`go install github.com/wailsapp/wails/v2/cmd/wails@v2.10.2`）。
+必要なもの: Go、Node.js 20+、[Wails v2](https://wails.io)（`go install github.com/wailsapp/wails/v2/cmd/wails@v2.10.2`。**CLI のバージョンは必ず v2.10.2 に揃える**：別版の CLI は `frontend/wailsjs` や `build/` の生成物を書き換えます）。
 
 ```sh
 make dev            # wails dev
@@ -73,6 +83,7 @@ make verify-full    # lint・ルール検査・カバレッジ基準まで（pus
 bash scripts/coverage.sh   # collector・digest・masking・applier・runner のカバレッジ 70% 以上を確認
 make bindings       # Go のメソッドを変えたら Wails バインディングを再生成
 make dmg            # macOS 専用: build/bin/harness-app.dmg を出力
+make windows        # Windows 用 exe（他 OS からもクロスビルド可）。インストーラは make windows-installer（NSIS が必要）
 ```
 
 - ブラウザ単体の UI 確認: `cd frontend && npm run dev`（Wails が無いときは mock API に切り替わります）。
@@ -81,4 +92,4 @@ make dmg            # macOS 専用: build/bin/harness-app.dmg を出力
 
 ## リリース
 
-`v*` タグを push すると GitHub Actions（macos-latest）が `.dmg` をビルドして Release に添付します。タグの push は手動で行います。
+`v*` タグを push すると GitHub Actions が macOS（`.dmg`）と Windows（`.zip`・インストーラ）の成果物をビルドして Release に添付します。タグの push は手動で行います。

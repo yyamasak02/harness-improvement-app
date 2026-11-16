@@ -8,3 +8,4 @@ coverage.out
 .claude/settings.local.json
 *.zip
 frontend/coverage/
+frontend/package.json.md5
