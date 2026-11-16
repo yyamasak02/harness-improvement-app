@@ -6,8 +6,11 @@
   "frontend:build": "npm run build",
   "frontend:dev:watcher": "npm run dev",
   "frontend:dev:serverUrl": "auto",
-  "author": {
-    "name": "yuhe-02",
-    "email": "domineter4649@gmail.com"
+  "info": {
+    "companyName": "harness-app",
+    "productName": "harness-app",
+    "productVersion": "0.1.0",
+    "copyright": "Copyright © 2026 harness-app",
+    "comments": "Claude Code のハーネスをセッションログから継続改善するローカルアプリ"
   }
 }
