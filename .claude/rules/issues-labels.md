@@ -31,3 +31,9 @@ GitHub 既定のラベル（bug / enhancement など）は使わない。**必�
 - PR は `type/*` と `area/*` を付ける（`.github/labeler.yml` が area を自動付与、type は PR タイトルの prefix から自動付与）。
 - PR タイトルは Conventional 形式: `feat|fix|refactor|test|docs|chore|ci(: |(scope): )要約`。
 - 対応する issue があれば本文に `Closes #N` を書く。
+
+## 着手前に関連 issue を探す（必須）
+- 修正・実装に入る**前**に `bash scripts/related-issues.sh [キーワード]` を実行し、変更領域（area ラベル）とブランチ名・キーワードに一致する open issue を確認する。
+- 該当する issue があれば PR 本文に `Closes #N`（完了条件を満たす）または `Refs #N`（部分対応）を書く。複数あれば全て書く。完了条件のチェックボックスも更新する。
+- 該当が無く、課題がある場合は先に `create-issue` で起票してから着手する。課題を伴わない変更（依存更新など）は本文に `[no-issue]: 理由` を書く。
+- 機械的な検査: `scripts/ship.sh` と CI の pr-policy が `scripts/check-pr-issue-link.sh` で参照の有無を検査する。

@@ -1,0 +1,45 @@
+name: Claude review
+# GitHub 上で独立レビューを実行する（docs/review-guidelines.md に従い、判定マーカー付きコメントを投稿する）。
+# 有効化には ANTHROPIC_API_KEY を Repository secrets に登録する（未登録の間はスキップされる）。
+on:
+  pull_request:
+    types: [opened, synchronize, reopened, ready_for_review]
+concurrency:
+  group: claude-review-${{ github.event.pull_request.number }}
+  cancel-in-progress: true
+permissions:
+  contents: read
+  pull-requests: write
+  issues: read
+  id-token: write
+jobs:
+  review:
+    # フォーク PR・ドラフト・dependabot では実行しない（secret が渡らない／不要）
+    if: >-
+      github.event.pull_request.head.repo.full_name == github.repository &&
+      github.event.pull_request.draft == false &&
+      github.actor != 'dependabot[bot]'
+    runs-on: ubuntu-latest
+    steps:
+      - name: API キーの有無を確認
+        id: key
+        env:
+          KEY: ${{ secrets.ANTHROPIC_API_KEY }}
+        run: |
+          if [ -n "$KEY" ]; then echo "present=true" >> "$GITHUB_OUTPUT"; else echo "ANTHROPIC_API_KEY が未登録のためスキップします"; fi
+      - uses: actions/checkout@v4
+        if: steps.key.outputs.present == 'true'
+        with:
+          fetch-depth: 0
+      - uses: anthropics/claude-code-action@v1
+        if: steps.key.outputs.present == 'true'
+        with:
+          anthropic_api_key: ${{ secrets.ANTHROPIC_API_KEY }}
+          prompt: |
+            REPO: ${{ github.repository }}
+            PR NUMBER: ${{ github.event.pull_request.number }}
+            あなたは独立レビュアーです。`.claude/agents/code-reviewer.md` の手順と `docs/review-guidelines.md` の基準に完全に従って、
+            この PR をレビューし、判定マーカー付きのコメントを `gh pr comment` で投稿してください。
+            コードの編集・コミット・マージはしないでください。
+          claude_args: >-
+            --allowedTools "Read,Grep,Glob,Bash(gh pr view:*),Bash(gh pr diff:*),Bash(gh pr comment:*),Bash(gh issue view:*),Bash(gh issue list:*),Bash(git diff:*),Bash(git log:*),Bash(bash scripts/related-issues.sh:*)"

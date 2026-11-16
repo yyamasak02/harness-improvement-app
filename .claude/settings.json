@@ -35,7 +35,6 @@
       "Bash(git restore *)",
       "Bash(git stash*)",
       "Bash(gh pr create*)",
-      "Bash(gh pr merge*)",
       "Bash(gh pr view*)",
       "Bash(gh pr list*)",
       "Bash(gh pr checks*)",
@@ -81,7 +80,10 @@
       "Bash(staticcheck *)",
       "Bash(git tag -l*)",
       "Bash(git tag -a *)",
-      "Bash(git tag --list*)"
+      "Bash(git tag --list*)",
+      "Bash(gh pr comment*)",
+      "Bash(gh pr review*)",
+      "Bash(gh pr ready*)"
     ],
     "deny": [
       "Bash(rm -rf *)",
@@ -111,7 +113,8 @@
       "Bash(git commit*--no-verify*)",
       "Bash(git commit* -n *)",
       "Bash(git push*--no-verify*)",
-      "Bash(pre-commit uninstall*)"
+      "Bash(pre-commit uninstall*)",
+      "Bash(gh pr merge*)"
     ]
   }
 }

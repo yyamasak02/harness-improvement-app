@@ -29,6 +29,32 @@ echo "update stuff" > "$tmp/m1"; echo "feat(ui): 画面を追加" > "$tmp/m2"
 expect_fail "Conventional 形式でないメッセージの検出" bash scripts/check-commit-msg.sh "$tmp/m1"
 bash scripts/check-commit-msg.sh "$tmp/m2" && echo "ok: 正しいメッセージは通る" || { echo "NG: 正しいメッセージが拒否された"; fail=1; }
 
+# check-pr-issue-link
+expect_fail "issue 参照のない PR 本文の検出" env PR_BODY="説明だけ" bash scripts/check-pr-issue-link.sh
+PR_BODY="Closes #12" bash scripts/check-pr-issue-link.sh >/dev/null 2>&1 && echo "ok: Closes #N を認識" || { echo "NG: Closes #N を認識できない"; fail=1; }
+PR_BODY="Refs #3" bash scripts/check-pr-issue-link.sh >/dev/null 2>&1 && echo "ok: Refs #N を認識" || { echo "NG: Refs #N を認識できない"; fail=1; }
+PR_BODY="[no-issue]: 依存更新のみ" bash scripts/check-pr-issue-link.sh >/dev/null 2>&1 && echo "ok: [no-issue] を認識" || { echo "NG: [no-issue] を認識できない"; fail=1; }
+expect_fail "単語の一部（prefix #3）を issue 参照と誤認しない" env PR_BODY="prefix #3 を修正" bash scripts/check-pr-issue-link.sh
+expect_fail "理由なしの [no-issue] の検出" env PR_BODY="[no-issue]:" bash scripts/check-pr-issue-link.sh
+PR_AUTHOR="dependabot[bot]" PR_BODY="" bash scripts/check-pr-issue-link.sh >/dev/null 2>&1 && echo "ok: dependabot は免除" || { echo "NG: dependabot が免除されない"; fail=1; }
+
+# review-verdict（独立レビューのマーカー解釈）
+S1=aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa; S2=bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb
+A=owner,github-actions
+mk() { # login createdAt body -> コメント JSON 要素
+  python3 -I -c 'import json,sys;print(json.dumps({"author":{"login":sys.argv[1]},"createdAt":sys.argv[2],"body":sys.argv[3]}))' "$@"; }
+mj() { printf '{"comments":[%s],"reviews":[]}' "$(IFS=,; echo "$*")"; }
+verdict() { printf '%s' "$1" | bash scripts/review-verdict.sh "$2" "$A"; }
+expect_eq() { [ "$1" = "$2" ] && echo "ok: $3" || { echo "NG: $3（got $1, want $2）"; fail=1; }; }
+M_OK="<!-- review-agent: verdict=APPROVE sha=$S1 -->"; M_RC="<!-- review-agent: verdict=REQUEST_CHANGES sha=$S1 -->"
+expect_eq "$(verdict "$(mj "$(mk owner 2026-01-01T00:00:00Z 'ただのコメント')")" $S1)" NONE "マーカー無しは NONE"
+expect_eq "$(verdict "$(mj "$(mk owner 2026-01-01T00:00:00Z "x"$'\n'"$M_OK")")" $S1)" APPROVE "APPROVE を認識"
+expect_eq "$(verdict "$(mj "$(mk owner 2026-01-01T00:00:00Z "$M_OK")")" $S2)" NONE "head が進んだら過去の承認は無効"
+expect_eq "$(verdict "$(mj "$(mk owner 2026-01-01T00:00:00Z "$M_OK")" "$(mk owner 2026-01-02T00:00:00Z "$M_RC")")" $S1)" REQUEST_CHANGES "時系列で最新の判定が優先される"
+expect_eq "$(verdict "$(mj "$(mk owner 2026-01-02T00:00:00Z "$M_RC")" "$(mk owner 2026-01-01T00:00:00Z "$M_OK")")" $S1)" REQUEST_CHANGES "配列の順ではなく日時で並べる"
+expect_eq "$(verdict "$(mj "$(mk mallory 2026-01-01T00:00:00Z "$M_OK")")" $S1)" NONE "許可されていない投稿者のマーカーは無視"
+expect_eq "$(verdict "$(mj "$(mk owner 2026-01-01T00:00:00Z "書式の例: $M_OK"$'\n'"続き")")" $S1)" NONE "最終行でないマーカー（引用）は無視"
+
 # check-tests-changed: 一時リポジトリで検証
 repo="$tmp/repo"; mkdir -p "$repo/scripts" "$repo/internal/x"; cp scripts/check-tests-changed.sh "$repo/scripts/"
 (

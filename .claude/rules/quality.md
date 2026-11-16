@@ -13,6 +13,8 @@ description: 品質担保・リファクタリング・テスト保守のルー�
 | CI | lint / test-go(-race) / test-frontend / test-macos / pr-policy / dmg-smoke | `.github/workflows/ci.yml` |
 | カバレッジ | Go: collector・digest・masking・applier・runner ≥ 70%。フロント: stmts ≥ 80 / branch ≥ 75 / lines ≥ 80 | `scripts/coverage.sh` / `frontend/vite.config.ts` |
 | ルール検査 | ホーム解決・実 `~/.claude` 参照・書き込み API の使用箇所・秘密らしき文字列・テスト無効化 | `scripts/check-rules.sh`（自己テスト: `scripts/selftest-checks.sh`） |
+| 独立レビュー | 全 PR を独立レビューエージェント（`.claude/agents/code-reviewer.md`、基準は `docs/review-guidelines.md`）がレビュー。承認は head コミットごと。`merge-pr.sh` が承認マーカーと CI 成功を検査 | `scripts/merge-pr.sh` / `review-pr` skill / `claude-review.yml` |
+| 関連 issue | 着手前に関連 issue を探し、PR 本文で参照（Closes/Refs #N または `[no-issue]`） | `scripts/related-issues.sh` / `check-pr-issue-link.sh` |
 | 週次点検 | govulncheck / npm audit | `.github/workflows/maintenance.yml` |
 
 ## 変更するときの義務
@@ -26,6 +28,10 @@ description: 品質担保・リファクタリング・テスト保守のルー�
 5. **仕様・ドキュメントを同期する。** 挙動を変えたら `docs/spec.md`・README・CHANGELOG の該当箇所を更新する。`docs/decisions.md` に判断を残す。
 6. **テストの書き方**: テーブル駆動。外部（claude・ホーム・時刻）は注入。`testdata/` のダミーのみ。時間依存は固定時刻を注入し、`sleep` に頼る場合は上限を短くして並列で壊れないこと。フレークを見つけたら直ちに issue（`type/test`）。
 7. **新しい禁止事項を見つけたら機械化する。** 人が気をつける運用にせず `scripts/check-rules.sh` に検査を足し、`scripts/selftest-checks.sh` に検出テストを足す。
+
+## レビューの扱い
+- 自己チェック（`quality-gate`）→ PR 作成 → **独立レビュー（`review-pr` skill）** → 指摘対応 → 再レビュー → `merge-pr.sh`。
+- レビューの指摘を無視・反論だけで通さない。不同意なら理由を PR コメントに書き、blocker/major は人間の判断を仰ぐ（`docs/blockers.md` と issue）。
 
 ## PR 前チェックリスト（`quality-gate` skill が実行）
 - [ ] `bash scripts/verify.sh --full`
