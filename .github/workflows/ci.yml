@@ -152,6 +152,30 @@ jobs:
           name: harness-app-windows
           path: build/bin/*installer.exe
 
+  linux-build-smoke:
+    name: linux-build-smoke（WSL・Linux 用バイナリ）
+    runs-on: ubuntu-latest
+    needs: [test-go, test-frontend]
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-go@v5
+        with:
+          go-version-file: go.mod
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: npm
+          cache-dependency-path: frontend/package-lock.json
+      - run: sudo apt-get update && sudo apt-get install -y --no-install-recommends libgtk-3-dev libwebkit2gtk-4.1-dev
+      - run: go install github.com/wailsapp/wails/v2/cmd/wails@v2.10.2
+      - run: cd frontend && npm ci
+      - name: make linux
+        run: make linux
+      - name: 成果物の確認
+        run: |
+          ls -la build/bin
+          test -x build/bin/harness-app
+
   dmg-smoke:
     name: dmg-smoke（make dmg）
     runs-on: macos-latest

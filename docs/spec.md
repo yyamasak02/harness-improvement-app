@@ -10,7 +10,7 @@ Claude Code を使う → セッションログ・メモリが溜まる → そ�
 
 | レイヤー | 採用 |
 |---|---|
-| デスクトップ | Wails v2（Go + WebView）。**macOS と Windows を対象**（Windows は WebView2 が必要。Windows 10 以降） |
+| デスクトップ | Wails v2（Go + WebView）。**macOS と Windows を対象**（Windows は WebView2 が必要。Windows 10 以降）。加えて **Linux（WSL2 の WSLg を含む）はソースからのビルドで対応**（GTK3 + WebKitGTK 4.1。Release には添付しない） |
 | バックエンド | Go 1.24+ |
 | フロントエンド | React + TypeScript + Vite |
 | UI | Tailwind CSS（コンポーネントは自作 or shadcn/ui） |
@@ -21,7 +21,7 @@ Claude Code を使う → セッションログ・メモリが溜まる → そ�
 | 監視 | fsnotify（差分取り込み） |
 | AI 実行 | `claude -p` を `os/exec` でヘッドレス実行 |
 | テスト | Go: 標準 testing / フロント: Vitest |
-| 配布 | macOS: `wails build -platform darwin/universal` → `hdiutil` で .dmg。Windows: `wails build -platform windows/amd64` → NSIS インストーラ（Release に添付するのはインストーラのみ。zip は配布しない）。いずれも署名・公証はしない |
+| 配布 | macOS: `wails build -platform darwin/universal` → `hdiutil` で .dmg。Windows: `wails build -platform windows/amd64` → NSIS インストーラ（Release に添付するのはインストーラのみ。zip は配布しない）。いずれも署名・公証はしない。Linux: `make linux`（`wails build -platform linux/amd64 -tags webkit2_41`） |
 
 ## 3. ディレクトリ構成
 

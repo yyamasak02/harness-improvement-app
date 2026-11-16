@@ -113,6 +113,7 @@ func candidates(goos, home, appData string) []string {
 		"/opt/homebrew/bin/claude",
 		"/usr/local/bin/claude",
 		filepath.Join(home, ".npm-global", "bin", "claude"),
+		"/usr/bin/claude", // Linux（パッケージ・WSL）
 	}
 }
 

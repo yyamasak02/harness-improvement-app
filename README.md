@@ -40,6 +40,22 @@ Claude Code を使う → ログ・メモリが溜まる → AI が改善案を�
 2. **本アプリは署名していません。** 初回は SmartScreen が「Windows によって PC が保護されました」と表示します。**「詳細情報」→「実行」** を選んでください。
 3. [Claude Code](https://claude.com/claude-code) をインストールしておきます。自動検出されない場合は「設定」でフルパスを指定してください（PowerShell で `where.exe claude` を実行すると分かります。`claude.exe` を指定してください）。
 
+### Linux / WSL（WSLg）
+
+Release には Linux 版を添付していません。ソースからビルドします（WSL2 + WSLg の Windows 11、または Linux デスクトップ）。
+
+```sh
+sudo apt install build-essential libgtk-3-dev libwebkit2gtk-4.1-dev   # Ubuntu 22.04 以降
+go install github.com/wailsapp/wails/v2/cmd/wails@v2.10.2
+make linux                                                           # build/bin/harness-app ができる
+./build/bin/harness-app
+```
+
+- WSL では、Windows 側ではなく **WSL 内の `~/.claude`**（Claude Code を WSL で使っている場合のログ・CLAUDE.md）が対象になります。`claude` も WSL 内のものを使います（見つからなければ「設定」でフルパス指定）。
+- WSLg が無い環境（Windows 10 など）ではウィンドウが開きません。Windows 版を使ってください。
+- Windows 版の Smart App Control の影響は受けません（Linux のバイナリなので）。
+- データの保存場所は `~/.config/harness-app/`（`XDG_CONFIG_HOME` があればその配下）です。フォルダを開く機能は `xdg-open` を使います（WSL では `sudo apt install xdg-utils wslu` などで開けるようにしてください）。
+
 ## 使い方
 
 1. 起動すると `~/.claude/projects/` を自動で取り込みます（差分のみ。以降はファイル変更を監視して追従します）。
@@ -81,6 +97,7 @@ make verify-full    # lint・ルール検査・カバレッジ基準まで（pus
 bash scripts/coverage.sh   # collector・digest・masking・applier・runner のカバレッジ 70% 以上を確認
 make bindings       # Go のメソッドを変えたら Wails バインディングを再生成
 make dmg            # macOS 専用: build/bin/harness-app.dmg を出力
+make linux          # Linux / WSL 用バイナリ（GTK3・WebKitGTK 4.1 が必要）
 make windows        # Windows 用 exe（他 OS からもクロスビルド可）。インストーラは make windows-installer（NSIS が必要）
 ```
 
