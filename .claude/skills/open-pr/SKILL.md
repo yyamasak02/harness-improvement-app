@@ -9,3 +9,6 @@ description: 現在のブランチを push し、gh で PR を作成して squas
 5. `gh pr merge --squash --delete-branch`
 6. `git switch main && git pull`
 force push・main 直 push は禁止。
+
+## ショートカット
+`bash scripts/ship.sh "<prefix>: <要約>" "<概要/タスクID/検証結果>"` が verify → commit → push → PR → squash マージ → main 更新までを実行する（推奨）。
