@@ -9,7 +9,7 @@ jobs:
   label:
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/labeler@v5
+      - uses: actions/labeler@v7
         continue-on-error: true   # フォークからの PR では権限が無い
         with:
           configuration-path: .github/labeler.yml
