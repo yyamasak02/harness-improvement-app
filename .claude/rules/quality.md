@@ -29,6 +29,11 @@ description: 品質担保・リファクタリング・テスト保守のルー�
 6. **テストの書き方**: テーブル駆動。外部（claude・ホーム・時刻）は注入。`testdata/` のダミーのみ。時間依存は固定時刻を注入し、`sleep` に頼る場合は上限を短くして並列で壊れないこと。フレークを見つけたら直ちに issue（`type/test`）。
 7. **新しい禁止事項を見つけたら機械化する。** 人が気をつける運用にせず `scripts/check-rules.sh` に検査を足し、`scripts/selftest-checks.sh` に検出テストを足す。
 
+## CI ワークフローを書くときの注意
+- **Windows ランナーの複数コマンドの `run:` は `shell: bash` にする。** 既定の pwsh は最後のネイティブコマンドの終了コードしか見ず、途中の失敗（テスト失敗など）が緑になる。pwsh を使うなら 1 コマンド 1 ステップにするか、各コマンド後に `if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }` を入れる。
+- 配布物を作るジョブ（release）は、同じテストを通してからビルドする。`go test` は `-count=1`。
+- ワークフローを変えたら、その PR の CI（または手動実行）で実際に動かして確認してから「完了」とする。
+
 ## レビューの扱い
 - 自己チェック（`quality-gate`）→ PR 作成 → **独立レビュー（`review-pr` skill）** → 指摘対応 → 再レビュー → `merge-pr.sh`。
 - レビューの指摘を無視・反論だけで通さない。不同意なら理由を PR コメントに書き、blocker/major は人間の判断を仰ぐ（`docs/blockers.md` と issue）。

@@ -151,6 +151,6 @@ CREATE VIRTUAL TABLE messages_fts USING fts5(text, content='messages', content_r
 2. `git tag v0.1.0 && git push origin v0.1.0`
 
 ### Windows 対応（#46）
-- [~] Windows でビルドでき、テストが通る（windows-latest の CI）
-- [ ] Windows 配布物（zip / インストーラ）が Release に添付される
+- [x] Windows でビルドでき、テストが通る（windows-latest の CI。exe は `windows-build-smoke` でビルド）
+- [~] Windows 配布物（zip / インストーラ）が Release に添付される（`release.yml` に実装。タグ push 時に実行されるため未実行）
 - [ ] Windows 実機で起動し、改善案の生成〜適用〜ロールバックができる（人の確認が必要）

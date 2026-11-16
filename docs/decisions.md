@@ -11,3 +11,4 @@
 - 2026-11-17 独立レビューの承認は、リポジトリオーナー・github-actions・claude の投稿で、本文の最終行がマーカー、sha が head に一致するもののみ有効（公開リポジトリで第三者が承認を偽装できないように）。ブランチ保護（#47）が入るまでは merge-pr.sh を通さない手動マージ自体は防げない
 - 2026-11-17 Windows 対応を必須とした（ユーザー判断、#46）。テスト用 claude を bash から Go 製（internal/testutil/fakeclaude）に置換して全 OS で共通化。パス比較は Windows のみ大文字小文字を無視。Unix 専用 API は *_unix.go に分離し check-rules で強制
 - 2026-11-17 Windows の `claude.cmd`（npm shim）は Go の exec が引数の特殊文字を拒否するため `claude.exe` を優先。プロンプトに特殊文字（% や " など）を入れない
+- 2026-11-17 go-webview2 は Wails v2.10.2 が想定する v1.0.19 に固定（v2.17 時代の go.mod 由来の v1.0.22 だと Windows ビルドが失敗した）。ローカルの Wails CLI も v2.10.2 に揃える（別版は生成物を書き換える）
