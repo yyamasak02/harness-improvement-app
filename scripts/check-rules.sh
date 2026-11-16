@@ -41,5 +41,8 @@ hits=$(grep -rnE 't\.Skip(Now)?\(\)' --include='*_test.go' internal || true)
 hits=$(git ls-files | grep -E 'Zone\.Identifier$|settings\.local\.json$|\.env$' || true)
 [ -z "$hits" ] || report "コミットしてはいけないファイルが追跡されています" "$hits"
 
+# 9. go:embed のプレースホルダーが追跡されていること（無いとクリーンな clone で go vet が失敗する）
+[ -n "$(git ls-files frontend/dist/.gitkeep)" ] || report "frontend/dist/.gitkeep が追跡されていません（main.go の go:embed が失敗します）" "git add -f frontend/dist/.gitkeep"
+
 [ $fail -eq 0 ] && echo "check-rules OK"
 exit $fail
