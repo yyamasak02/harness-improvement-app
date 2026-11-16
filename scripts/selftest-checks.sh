@@ -22,6 +22,11 @@ rm -f internal/zz_violation.go
 printf 'package internal\n\nimport "testing"\n\nfunc TestX(t *testing.T) { t.Skip() }\n' > internal/zz_violation_test.go
 expect_fail "理由なし t.Skip の検出" bash scripts/check-rules.sh
 rm -f internal/zz_violation_test.go
+printf 'package internal\n\nimport "syscall"\n\nvar _ = syscall.SIGKILL\n' > internal/zz_violation.go
+expect_fail "OS 非依存ファイルでの Unix 専用 syscall の検出" bash scripts/check-rules.sh
+printf 'package internal\n\nimport "os/exec"\n\nvar _ = exec.Command("xdg-open", "x")\n' > internal/zz_violation.go
+expect_fail "osutil 外での OS 依存コマンド起動の検出" bash scripts/check-rules.sh
+rm -f internal/zz_violation.go
 bash scripts/check-rules.sh >/dev/null 2>&1 && echo "ok: 違反なしでは成功" || { echo "NG: クリーンな状態で失敗"; fail=1; }
 
 # check-commit-msg

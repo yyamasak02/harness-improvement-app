@@ -11,8 +11,9 @@ staticcheck_run() {
 case "${1:-all}" in
   gofmt) gofmt_check ;;
   vet) go vet ./... ;;
+  vet-windows) GOOS=windows go vet ./... ;;   # Windows でもビルド（テスト含む）できること
   staticcheck) staticcheck_run ;;
   tsc) (cd frontend && npx tsc --noEmit) ;;
-  all) gofmt_check; go vet ./...; staticcheck_run; (cd frontend && npx tsc --noEmit) ;;
-  *) echo "usage: $0 gofmt|vet|staticcheck|tsc|all"; exit 2 ;;
+  all) gofmt_check; go vet ./...; GOOS=windows go vet ./...; staticcheck_run; (cd frontend && npx tsc --noEmit) ;;
+  *) echo "usage: $0 gofmt|vet|vet-windows|staticcheck|tsc|all"; exit 2 ;;
 esac

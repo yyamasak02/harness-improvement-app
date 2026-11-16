@@ -12,7 +12,6 @@ import (
 	"os/exec"
 	"path/filepath"
 	"strings"
-	"syscall"
 	"time"
 
 	"harness-app/internal/fsutil"
@@ -99,8 +98,7 @@ func (r *Runner) Run(ctx context.Context, in Input) (*Result, error) {
 	}
 	cmd := exec.CommandContext(cctx, r.ClaudePath, args...)
 	cmd.Dir = dir
-	cmd.SysProcAttr = &syscall.SysProcAttr{Setpgid: true}
-	cmd.Cancel = func() error { return syscall.Kill(-cmd.Process.Pid, syscall.SIGKILL) }
+	configureProc(cmd)
 	cmd.WaitDelay = 2 * time.Second
 	logf, err := os.Create(filepath.Join(dir, "job.log"))
 	if err != nil {

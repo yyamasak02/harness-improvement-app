@@ -2,6 +2,7 @@ package service
 
 import (
 	"context"
+	"encoding/json"
 	"errors"
 	"io/fs"
 	"os"
@@ -12,7 +13,13 @@ import (
 
 	"harness-app/internal/applier"
 	"harness-app/internal/config"
+	"harness-app/internal/testutil"
 )
+
+func jsonEscape(s string) string {
+	b, _ := json.Marshal(s)
+	return string(b[1 : len(b)-1])
+}
 
 type fixture struct {
 	svc       *Service
@@ -54,12 +61,9 @@ func newFixture(t *testing.T) *fixture {
 	f := &fixture{claudeDir: filepath.Join(root, "claude"), ws: filepath.Join(root, "ws", "app"), dataDir: filepath.Join(root, "data")}
 	copyTree(t, "../../testdata/workspace/app", f.ws, nil)
 	copyTree(t, "../../testdata/claude", f.claudeDir, func(s string) string {
-		return strings.ReplaceAll(s, "/home/demo/app", f.ws)
+		return strings.ReplaceAll(s, "/home/demo/app", jsonEscape(f.ws)) // Windows のパス区切り（\）を JSON 用にエスケープ
 	})
-	fakeClaude, err := filepath.Abs("../../scripts/fake-claude.sh")
-	if err != nil {
-		t.Fatal(err)
-	}
+	fakeClaude := testutil.FakeClaude(t)
 	now := time.Date(2026, 11, 10, 0, 0, 0, 0, time.UTC)
 	svc, err := New(Env{Home: root, ClaudeDir: f.claudeDir, DataDir: f.dataDir, Now: func() time.Time { return now },
 		ShellLookup: func() string { return "" }})

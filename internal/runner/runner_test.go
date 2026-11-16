@@ -5,18 +5,21 @@ import (
 	"errors"
 	"os"
 	"path/filepath"
+	"runtime"
 	"strings"
 	"testing"
 	"time"
+
+	"harness-app/internal/testutil"
 )
 
-func fake(t *testing.T) string {
-	t.Helper()
-	p, err := filepath.Abs("../../scripts/fake-claude.sh")
-	if err != nil {
-		t.Fatal(err)
-	}
-	return p
+func fake(t *testing.T) string { return testutil.FakeClaude(t) }
+
+// samePathReal はシンボリックリンク（macOS の /var → /private/var など）を解決して比較する。
+func samePathReal(a, b string) bool {
+	ra, err1 := filepath.EvalSymlinks(a)
+	rb, err2 := filepath.EvalSymlinks(b)
+	return err1 == nil && err2 == nil && ra == rb
 }
 
 func newRunner(t *testing.T) *Runner {
@@ -36,7 +39,17 @@ func TestRunOK(t *testing.T) {
 	}
 	args, _ := os.ReadFile(argsFile)
 	s := string(args)
-	for _, want := range []string{"cwd=" + res.JobDir, "arg=--allowedTools\narg=Read,Write", "arg=--output-format\narg=json", "arg=--model\narg=m1"} {
+	var gotCwd string
+	for _, l := range strings.Split(s, "\n") {
+		if strings.HasPrefix(l, "cwd=") {
+			gotCwd = strings.TrimPrefix(strings.TrimSuffix(l, "\r"), "cwd=")
+		}
+	}
+	if !samePathReal(gotCwd, res.JobDir) {
+		t.Errorf("cwd がジョブディレクトリでない: got %q want %q", gotCwd, res.JobDir)
+	}
+	s = strings.ReplaceAll(s, "\r\n", "\n")
+	for _, want := range []string{"arg=--allowedTools\narg=Read,Write", "arg=--output-format\narg=json", "arg=--model\narg=m1"} {
 		if !strings.Contains(s, want) {
 			t.Errorf("引数に %q が無い:\n%s", want, s)
 		}
@@ -102,15 +115,19 @@ func TestRunPreconditions(t *testing.T) {
 
 func TestResolveClaude(t *testing.T) {
 	home := t.TempDir()
+	ext := ""
+	if runtime.GOOS == "windows" {
+		ext = ".exe"
+	}
 	mk := func(p string) string {
 		_ = os.MkdirAll(filepath.Dir(p), 0o755)
 		_ = os.WriteFile(p, []byte("#!/bin/sh\n"), 0o755)
 		return p
 	}
 	none := func() string { return "" }
-	cfg := mk(filepath.Join(t.TempDir(), "myclaude"))
-	shellBin := mk(filepath.Join(t.TempDir(), "shclaude"))
-	local := mk(filepath.Join(home, ".local", "bin", "claude"))
+	cfg := mk(filepath.Join(t.TempDir(), "myclaude"+ext))
+	shellBin := mk(filepath.Join(t.TempDir(), "shclaude"+ext))
+	local := mk(filepath.Join(home, ".local", "bin", "claude"+ext))
 	tests := []struct {
 		name    string
 		o       ResolveOptions
@@ -118,7 +135,7 @@ func TestResolveClaude(t *testing.T) {
 		wantErr bool
 	}{
 		{"設定値が最優先", ResolveOptions{Configured: cfg, ShellLookup: func() string { return shellBin }, Home: home}, cfg, false},
-		{"設定値が不正ならエラー", ResolveOptions{Configured: "/nope", ShellLookup: none, Home: home}, "", true},
+		{"設定値が不正ならエラー", ResolveOptions{Configured: filepath.Join(home, "nope"+ext), ShellLookup: none, Home: home}, "", true},
 		{"シェル経由", ResolveOptions{ShellLookup: func() string { return shellBin }, Home: home}, shellBin, false},
 		{"既知の場所", ResolveOptions{ShellLookup: none, Home: home}, local, false},
 	}
@@ -134,4 +151,60 @@ func TestResolveClaude(t *testing.T) {
 	if _, err := ResolveClaude(ResolveOptions{ShellLookup: none, Home: t.TempDir()}); err != nil && !errors.Is(err, ErrClaudeNotFound) {
 		t.Fatal(err)
 	}
+}
+
+// OS ごとの探索規則は GOOS を注入して全 OS 上で検証する。
+func TestResolveClaudeByOS(t *testing.T) {
+	t.Run("windows: 拡張子で実行可否を判定し .exe を既知の場所から見つける", func(t *testing.T) {
+		home := t.TempDir()
+		exe := filepath.Join(home, ".local", "bin", "claude.exe")
+		_ = os.MkdirAll(filepath.Dir(exe), 0o755)
+		_ = os.WriteFile(exe, []byte("x"), 0o644) // Windows では実行ビットを見ない
+		got, err := ResolveClaude(ResolveOptions{GOOS: "windows", Home: home, ShellLookup: func() string { return "" }})
+		if err != nil || got != exe {
+			t.Fatalf("got %q err %v", got, err)
+		}
+	})
+	t.Run("windows: 実行拡張子の無いファイルは不可", func(t *testing.T) {
+		p := filepath.Join(t.TempDir(), "claude.txt")
+		_ = os.WriteFile(p, []byte("x"), 0o755)
+		if _, err := ResolveClaude(ResolveOptions{GOOS: "windows", Configured: p}); !errors.Is(err, ErrClaudeNotFound) {
+			t.Fatalf("err=%v", err)
+		}
+	})
+	t.Run("windows: npm の shim（.cmd）は AppData から見つかる", func(t *testing.T) {
+		home, appData := t.TempDir(), t.TempDir()
+		shim := filepath.Join(appData, "npm", "claude.cmd")
+		_ = os.MkdirAll(filepath.Dir(shim), 0o755)
+		_ = os.WriteFile(shim, []byte("x"), 0o644)
+		got, err := ResolveClaude(ResolveOptions{GOOS: "windows", Home: home, AppData: appData, ShellLookup: func() string { return "" }})
+		if err != nil || got != shim {
+			t.Fatalf("got %q err %v", got, err)
+		}
+	})
+	t.Run("候補の順序は .exe が .cmd より先", func(t *testing.T) {
+		c := candidates("windows", `C:\Users\u`, `C:\Users\u\AppData\Roaming`)
+		var exeIdx, cmdIdx = -1, -1
+		for i, p := range c {
+			if strings.HasSuffix(p, ".exe") && exeIdx < 0 {
+				exeIdx = i
+			}
+			if strings.HasSuffix(p, ".cmd") && cmdIdx < 0 {
+				cmdIdx = i
+			}
+		}
+		if exeIdx < 0 || cmdIdx < 0 || exeIdx > cmdIdx {
+			t.Fatalf("%v", c)
+		}
+	})
+	t.Run("unix: 実行ビットが無ければ不可", func(t *testing.T) {
+		p := filepath.Join(t.TempDir(), "claude")
+		_ = os.WriteFile(p, []byte("x"), 0o644)
+		if runtime.GOOS == "windows" {
+			t.Skip("Windows ではファイルの実行ビットを表現できない")
+		}
+		if _, err := ResolveClaude(ResolveOptions{GOOS: "linux", Configured: p}); !errors.Is(err, ErrClaudeNotFound) {
+			t.Fatalf("err=%v", err)
+		}
+	})
 }

@@ -6,6 +6,7 @@ import (
 	"os"
 	"os/exec"
 	"path/filepath"
+	"runtime"
 	"strings"
 )
 
@@ -15,17 +16,65 @@ var ErrClaudeNotFound = errors.New("claude コマンドが見つかりません�
 // ResolveOptions は claude 解決の入力。全て注入可能。
 type ResolveOptions struct {
 	Configured  string        // ① 設定値
-	ShellLookup func() string // ② `$SHELL -lc 'command -v claude'`（nil なら既定実装）
-	Home        string        // ③ 候補パスの基準（~ 相当）
+	ShellLookup func() string // ② macOS/Linux: `$SHELL -lc 'command -v claude'` / Windows: `where claude`（nil なら既定実装）
+	Home        string        // ③ 候補パスの基準（~ / %USERPROFILE% 相当）
+	AppData     string        // Windows の %APPDATA%（npm グローバルの shim 置き場）。空なら環境変数を使う
+	GOOS        string        // テスト用。空なら runtime.GOOS
 }
 
-func isExec(p string) bool {
-	st, err := os.Stat(p)
-	return err == nil && !st.IsDir() && st.Mode()&0o111 != 0
+func (o ResolveOptions) goos() string {
+	if o.GOOS != "" {
+		return o.GOOS
+	}
+	return runtime.GOOS
 }
 
-// DefaultShellLookup はログインシェル経由で claude を探す（GUI 起動で PATH が最小限でも見つけるため）。
-func DefaultShellLookup() string {
+// hasExecExt は Windows で実行可能とみなす拡張子かを返す。
+func hasExecExt(path string) bool {
+	switch strings.ToLower(filepath.Ext(path)) {
+	case ".exe", ".cmd", ".bat", ".com":
+		return true
+	}
+	return false
+}
+
+// isExecutable はファイルが実行可能かを返す。Windows は拡張子で、それ以外は実行ビットで判定する。
+func isExecutable(goos, path string) bool {
+	st, err := os.Stat(path)
+	if err != nil || st.IsDir() {
+		return false
+	}
+	if goos == "windows" {
+		return hasExecExt(path)
+	}
+	return st.Mode()&0o111 != 0
+}
+
+// DefaultShellLookup は GUI 起動で PATH が最小限でも claude を見つけるための既定探索。
+func DefaultShellLookup() string { return shellLookup(runtime.GOOS) }
+
+func shellLookup(goos string) string {
+	if goos == "windows" {
+		out, err := exec.Command("where", "claude").Output()
+		if err != nil {
+			return ""
+		}
+		// 複数ヒット時は .exe を優先（.cmd は引数のエスケープ制約があるため）
+		var first string
+		for _, l := range strings.Split(strings.ReplaceAll(string(out), "\r", ""), "\n") {
+			l = strings.TrimSpace(l)
+			if l == "" {
+				continue
+			}
+			if first == "" {
+				first = l
+			}
+			if strings.EqualFold(filepath.Ext(l), ".exe") {
+				return l
+			}
+		}
+		return first
+	}
 	sh := os.Getenv("SHELL")
 	if sh == "" {
 		return ""
@@ -38,30 +87,50 @@ func DefaultShellLookup() string {
 	return strings.TrimSpace(lines[len(lines)-1])
 }
 
-// ResolveClaude は ①設定値 ②ログインシェル ③既知の場所 の順で claude を探す。
+// candidates は既知のインストール先（優先順）。
+func candidates(goos, home, appData string) []string {
+	if goos == "windows" {
+		if appData == "" {
+			appData = filepath.Join(home, "AppData", "Roaming")
+		}
+		return []string{
+			filepath.Join(home, ".claude", "local", "claude.exe"),
+			filepath.Join(home, ".local", "bin", "claude.exe"),
+			filepath.Join(appData, "npm", "claude.cmd"),
+			filepath.Join(home, ".npm-global", "claude.cmd"),
+		}
+	}
+	return []string{
+		filepath.Join(home, ".claude", "local", "claude"),
+		filepath.Join(home, ".local", "bin", "claude"),
+		"/opt/homebrew/bin/claude",
+		"/usr/local/bin/claude",
+		filepath.Join(home, ".npm-global", "bin", "claude"),
+	}
+}
+
+// ResolveClaude は ①設定値 ②ログインシェル（Windows は where）③既知の場所 の順で claude を探す。
 func ResolveClaude(o ResolveOptions) (string, error) {
+	goos := o.goos()
 	if o.Configured != "" {
-		if isExec(o.Configured) {
+		if isExecutable(goos, o.Configured) {
 			return o.Configured, nil
 		}
 		return "", fmt.Errorf("設定された claude パス %q が実行できません: %w", o.Configured, ErrClaudeNotFound)
 	}
 	lookup := o.ShellLookup
 	if lookup == nil {
-		lookup = DefaultShellLookup
+		lookup = func() string { return shellLookup(goos) }
 	}
-	if p := lookup(); p != "" && isExec(p) {
+	if p := lookup(); p != "" && isExecutable(goos, p) {
 		return p, nil
 	}
-	cands := []string{
-		filepath.Join(o.Home, ".claude", "local", "claude"),
-		filepath.Join(o.Home, ".local", "bin", "claude"),
-		"/opt/homebrew/bin/claude",
-		"/usr/local/bin/claude",
-		filepath.Join(o.Home, ".npm-global", "bin", "claude"),
+	appData := o.AppData
+	if appData == "" && goos == "windows" {
+		appData = os.Getenv("APPDATA")
 	}
-	for _, c := range cands {
-		if isExec(c) {
+	for _, c := range candidates(goos, o.Home, appData) {
+		if isExecutable(goos, c) {
 			return c, nil
 		}
 	}

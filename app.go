@@ -4,9 +4,7 @@ import (
 	"context"
 	"fmt"
 	"os"
-	"os/exec"
 	"path/filepath"
-	"runtime"
 	"time"
 
 	wruntime "github.com/wailsapp/wails/v2/pkg/runtime"
@@ -14,6 +12,7 @@ import (
 	"harness-app/internal/applier"
 	"harness-app/internal/collector"
 	"harness-app/internal/config"
+	"harness-app/internal/osutil"
 	"harness-app/internal/service"
 	"harness-app/internal/store"
 	"harness-app/internal/targets"
@@ -225,9 +224,5 @@ func (a *App) OpenDataDir() error {
 	if err != nil {
 		return err
 	}
-	cmd := "xdg-open"
-	if runtime.GOOS == "darwin" {
-		cmd = "open"
-	}
-	return exec.Command(cmd, dir).Start()
+	return osutil.OpenPath(dir)
 }
