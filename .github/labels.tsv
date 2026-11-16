@@ -1,0 +1,30 @@
+# name<TAB>color<TAB>description  （ラベルの唯一の定義。変更したら scripts/sync-labels.sh を実行）
+type/feature	0e8a16	新機能・仕様にある機能の実装
+type/bug	d73a4a	バグ（期待と異なる動作）
+type/tech-debt	fbca04	リファクタリング・設計の負債・保守性の改善
+type/test	1d76db	テストの追加・修正・基盤整備
+type/docs	0075ca	ドキュメント・仕様・ルール
+type/chore	ededed	CI・ビルド・依存・リリースなどの雑務
+type/verification	c5def5	実機などで人が確認する検証タスク
+area/collector	bfd4f2	internal/collector（jsonl 取り込み・監視）
+area/store	bfd4f2	internal/store（SQLite・FTS）
+area/digest	bfd4f2	internal/digest
+area/masking	bfd4f2	internal/masking
+area/targets	bfd4f2	internal/targets
+area/applier	bfd4f2	internal/applier（書き込み・バックアップ）
+area/runner	bfd4f2	internal/runner・skills（claude -p 実行）
+area/service	bfd4f2	internal/service・app.go（バインディング）
+area/frontend	bfd4f2	frontend/（React UI）
+area/ci	bfd4f2	GitHub Actions・pre-commit・品質ゲート
+area/release	bfd4f2	バージョン・タグ・Release・配布
+area/harness	bfd4f2	CLAUDE.md・.claude/・開発ルール・スクリプト
+priority/p0	b60205	最優先（リリースを止める・データ破壊・秘密情報流出）
+priority/p1	d93f0b	高（次のリリースまでに必須）
+priority/p2	fbca04	中（通常のバックログ）
+priority/p3	c2e0c6	低（余裕があれば）
+status/ready	0e8a16	着手可能
+status/blocked	e11d21	他の課題・外部要因で停止中（理由をコメントに書く）
+status/needs-human	5319e7	人の作業・判断が必要（macOS 実機・権限・方針決定など）
+release/v0.1	ededed	v0.1 系で対応
+release/v0.2	ededed	v0.2 系で対応
+release/later	ededed	時期未定

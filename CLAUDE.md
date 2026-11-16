@@ -5,8 +5,8 @@ Claude Code のハーネス（CLAUDE.md・rules・メモリ・skills）を、`~/
 
 - 仕様: @docs/spec.md
 - タスク: @docs/tasks.md
-- 詳細ルール: `.claude/rules/`（safety / go / frontend / git-workflow）
-- 手順の再現: `.claude/skills/`（`implement-task` / `verify` / `open-pr`）。タスク実装は必ず `implement-task` に従う
+- 詳細ルール: `.claude/rules/`（safety / go / frontend / git-workflow / issues-labels）
+- 手順の再現: `.claude/skills/`（`implement-task` / `verify` / `open-pr` / `create-issue`）。タスク実装は必ず `implement-task` に従う
 
 ## やってはいけないこと（絶対）
 
@@ -24,6 +24,7 @@ Claude Code のハーネス（CLAUDE.md・rules・メモリ・skills）を、`~/
 - テスト・`go vet`・フロントビルドが失敗したままコミット／PR／マージしない。
 - `main` に直接コミット・push しない（初期コミットを除く）。必ずブランチ → PR → squash マージ。
 - force push、`git reset --hard`、`git clean`、`rm -rf`、履歴改変、タグ push、`gh release` をしない（タグ・リリースはユーザーが行う）。
+- 未着手・保留の課題を口頭 TODO や握りつぶしにしない。必ず issue にする（`create-issue` skill、ラベルは `.claude/rules/issues-labels.md`）。GitHub 既定ラベルは使わない。
 - 1PR に複数機能を混ぜない。タスク順（`docs/tasks.md`）を飛ばさない。
 - 仕様にない機能・依存を勝手に足さない。外部共有・クラウド同期・テレメトリを入れない。
 - CDN 依存（Monaco 等）を入れない。署名・公証をしない。
