@@ -1,0 +1,137 @@
+# harness-app 仕様書 v0.1
+
+## 1. 目的
+
+Claude Code を使う → セッションログ・メモリが溜まる → それを材料にハーネス（CLAUDE.md / rules / skills）の改善案を AI に出させる → 人間が diff を見て適用する、というループをローカルで回す。
+
+対象外：他者・他社との共有、Slack 等への外部投稿、クラウド同期。
+
+## 2. 技術スタック
+
+| レイヤー | 採用 |
+|---|---|
+| デスクトップ | Wails v2（Go + WebView）。macOS が主ターゲット |
+| バックエンド | Go 1.24+ |
+| フロントエンド | React + TypeScript + Vite |
+| UI | Tailwind CSS（コンポーネントは自作 or shadcn/ui） |
+| グラフ | Recharts |
+| diff 表示 | `diff`（jsdiff）で行 diff を計算し、自前で描画する。Monaco は CDN 依存を避けるため使わない |
+| Markdown | react-markdown |
+| DB | SQLite（`modernc.org/sqlite`、cgo 不要）。全文検索は FTS5（`tokenize='trigram'`、3文字未満は LIKE にフォールバック） |
+| 監視 | fsnotify（差分取り込み） |
+| AI 実行 | `claude -p` を `os/exec` でヘッドレス実行 |
+| テスト | Go: 標準 testing / フロント: Vitest |
+| 配布 | `wails build -platform darwin/universal` → `hdiutil` で .dmg。署名・公証はしない |
+
+## 3. ディレクトリ構成
+
+```
+harness-app/
+├── main.go / app.go          # Wails 起動とバインディング（薄く）
+├── internal/
+│   ├── config/               # 設定の読み書き（アプリデータディレクトリ）
+│   ├── collector/            # jsonl パース → SQLite 取り込み（読み取り専用）
+│   ├── store/                # SQLite スキーマ・クエリ
+│   ├── digest/               # 期間・プロジェクト指定で digest を生成
+│   ├── masking/              # 秘密情報のマスキング
+│   ├── targets/              # CLAUDE.md / rules の発見
+│   ├── runner/               # claude -p の実行、claude バイナリの解決
+│   ├── applier/              # バックアップ → temp → rename、ロールバック
+│   └── skills/               # 同梱 skill（embed）
+├── frontend/
+├── testdata/                 # ダミーの ~/.claude 構造
+├── scripts/fake-claude.sh    # テスト用のフェイク claude
+├── build/                    # Wails のビルド資材、アイコン
+├── Makefile
+└── .github/workflows/release.yml
+```
+
+## 4. データソース
+
+- `~/.claude/projects/<エンコード済みパス>/<session-id>.jsonl`：セッションログ。1行1 JSON。
+- `~/.claude/projects/<project>/memory/*.md`：プロジェクトメモリ（存在すれば）。
+- `~/.claude/CLAUDE.md`、`<cwd>/CLAUDE.md`、`<cwd>/CLAUDE.local.md`、`<cwd>/.claude/rules/*.md`：改善対象。`<cwd>` は jsonl の `cwd` フィールドから得る。
+- `~/.claude/settings.json`、`~/.claude.json`、`~/.claude/skills/`、`~/.claude/plugins/`：拡張機能の状態表示用（読み取りのみ）。
+
+### jsonl パースの方針
+
+- フォーマットは Claude Code のバージョンで変わるため、**寛容にパースする**。未知のフィールドは無視し、壊れた行はスキップして件数だけ数える。
+- 主に使うフィールド：`type`（user/assistant/summary/system）、`sessionId`、`timestamp`、`cwd`、`gitBranch`、`message.role`、`message.content`（文字列 or ブロック配列：`text` / `tool_use` / `tool_result`）、`message.model`、`message.usage`、`tool_result.is_error`、`isMeta`。
+- 実装前に、自分の環境の実ファイルを数件読んで構造を確認し、匿名化したサンプルを `testdata/` に置く。
+
+### 抽出するシグナル
+
+- **訂正発言**：tool_result ではない user のテキストのうち、訂正パターンに一致するもの（例：「違う」「そうじゃない」「じゃなくて」「やめて」「間違」「no,」「don't」「instead」「actually」）。パターンは設定で編集できるようにする。
+- **ツールエラー**：`is_error: true` の tool_result。ツール名と先頭行を記録する。
+- **頻出コマンド**：Bash の tool_use の `command` の先頭トークン。
+
+## 5. SQLite スキーマ（初版）
+
+```sql
+files(path TEXT PRIMARY KEY, size INTEGER, mtime_ns INTEGER, broken_lines INTEGER);
+sessions(id TEXT PRIMARY KEY, project TEXT, file_path TEXT, cwd TEXT, git_branch TEXT,
+         started_at TEXT, ended_at TEXT, user_msgs INT, assistant_msgs INT,
+         tool_errors INT, corrections INT,
+         input_tokens INT, output_tokens INT, cache_read INT, cache_create INT);
+model_usage(session_id TEXT, model TEXT, messages INT, input_tokens INT, output_tokens INT);
+messages(id INTEGER PRIMARY KEY, session_id TEXT, project TEXT, ts TEXT, role TEXT,
+         kind TEXT,   -- text | tool_use | tool_result
+         tool TEXT, text TEXT, is_error INT, is_correction INT);
+CREATE VIRTUAL TABLE messages_fts USING fts5(text, content='messages', content_rowid='id', tokenize='trigram');
+```
+
+- 取り込みは差分のみ：`files` の size/mtime が変わったファイルだけ、そのセッションを消してから入れ直す。
+- DB の場所はアプリデータディレクトリ（macOS: `~/Library/Application Support/harness-app/index.db`）。DB を消しても再構築できること。
+
+## 6. 機能
+
+### MVP
+
+| # | 画面 | 内容 |
+|---|---|---|
+| F1 | 概要ダッシュボード | 期間（7/30/90日）を選び、セッション数・メッセージ数・トークン量・訂正数・ツールエラー数の KPI、日別の活動グラフ、モデル別の使用量、プロジェクト別の分布、メモリファイル数を表示 |
+| F2 | セッションブラウザ | プロジェクト・期間で絞り込んだ一覧、全文検索、セッション詳細（時系列表示、訂正とエラーをハイライト） |
+| F3 | CLAUDE.md 改善 | ①対象を選ぶ（グローバル / プロジェクトの CLAUDE.md / CLAUDE.local.md / rules） ②期間・追加指示を入力 ③digest を生成してプレビュー（マスク済み） ④AI で改善案を生成 ⑤diff 表示、右側で手直しも可能 ⑥適用 or 破棄 |
+| F8 | 変更履歴 | アプリが書き込んだ全ファイルのバックアップ一覧、適用前後の diff、ロールバック |
+| F9 | 設定 | claude バイナリのパス（自動検出＋手動指定）、使用モデル、除外するプロジェクト、訂正パターン、マスキングの追加パターン、データディレクトリを開く、インデックスの再構築 |
+
+### MVP 後
+
+| # | 画面 | 内容 |
+|---|---|---|
+| F4 | メモリビューア | プロジェクトメモリの閲覧と編集（適用は applier 経由）、重複・古いメモリの検出 |
+| F5 | 自己ナレッジ生成 | メモリと期間を選び、skill セット（SKILL.md + knowledge）を生成 → プレビュー → `~/.claude/skills/<name>/` に適用 |
+| F6 | 日次振り返り | 指定時刻に当日分の日報と TODO を生成し、`<データディレクトリ>/reports/YYYY-MM-DD.md` に保存。アプリ起動中は内部スケジューラで実行し、オプションで launchd の plist を生成 |
+| F7 | 拡張機能 | MCP / plugins / skills / hooks の一覧と状態（読み取り専用） |
+
+## 7. AI 実行（runner）
+
+- 入出力はファイルで受け渡す：`<work>/<job-id>/input.json` → skill → `<work>/<job-id>/output.md`
+- `input.json`：`{ "digest": string, "currentClaudeMd": string, "instruction": string, "targetKind": "global|project|local|rule" }`
+- 同梱 skill（`internal/skills` に embed し、実行時に `<work>/<job-id>/.claude/skills/` へ展開する）：
+  - `claudemd-improve`：改善後の全文を `output.md` に書く。加えて変更理由を `rationale.md` に箇条書きで書く。既存の記述は理由なく消さない。重複は統合する。行数を増やしすぎない。
+  - `skill-generate`（F5）、`daily-report`（F6）
+- 実行コマンド：`claude -p "<指示>" --allowedTools Read,Write --output-format json [--model <model>]`、cwd は `<work>/<job-id>`。
+- タイムアウト（初期値5分）とキャンセルに対応する。stderr はジョブログに保存する。
+- **claude バイナリの解決**：Finder から起動した GUI アプリは PATH が最小限になるため、①設定値 ②`$SHELL -lc 'command -v claude'` ③`~/.claude/local/claude`、`~/.local/bin/claude`、`/opt/homebrew/bin/claude`、`/usr/local/bin/claude`、`~/.npm-global/bin/claude` の順で探す。見つからなければ設定画面に誘導する。
+
+## 8. 安全設計
+
+1. `~/.claude` とプロジェクトのファイルは、applier 以外から書き込まない。
+2. applier の手順：
+   - 適用前に対象ファイルの SHA-256 を、改善案を生成した時点の値と比べる。違っていれば中止し、再生成を促す。
+   - `<データディレクトリ>/backups/<timestamp>-<hash>/` に元ファイルと `manifest.json`（元パス、ハッシュ、日時、操作）を保存する。
+   - 同じディレクトリに temp ファイルを書き、fsync → `os.Rename`。
+   - 書き込みを許可するのは、targets が発見したパスと `~/.claude/skills/` 配下だけ（許可リスト方式）。
+3. ロールバックも applier 経由で行い、ロールバック自体もバックアップを取る。
+4. masking：`sk-ant-…`、`AKIA[0-9A-Z]{16}`、`ghp_` / `github_pat_`、`xox[baprs]-`、`Bearer …`、PEM 秘密鍵、メールアドレス、`(password|secret|token|api_key)\s*[:=]\s*\S+` を `[MASKED:<種別>]` に置き換える。ユーザーが追加パターンを設定できる。
+
+## 9. 完了の定義（v0.1）
+
+- [ ] MVP（F1・F2・F3・F8・F9）が `wails dev` で動き、テスト用データで一通りの操作ができる
+- [ ] `go vet ./...`・`go test ./...`・`npm run build`・`npm test` がすべて通る
+- [ ] collector・digest・masking・applier・runner のテストカバレッジが 70% 以上
+- [ ] フェイク claude を使った E2E テスト（digest 生成 → 改善案 → 適用 → ロールバック）が通る
+- [ ] `make dmg` で `build/bin/harness-app.dmg` ができ、起動できる
+- [ ] GitHub Actions（macos-latest）でタグ push 時に .dmg がビルドされ、Release に添付される
+- [ ] README にインストール手順（未署名アプリの開き方を含む）と使い方がある

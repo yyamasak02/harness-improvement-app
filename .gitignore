@@ -1,0 +1,8 @@
+node_modules/
+frontend/dist/
+build/bin/
+*.Identifier
+.DS_Store
+coverage.out
+.claude/settings.local.json
+*.zip
