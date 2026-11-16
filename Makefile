@@ -1,4 +1,4 @@
-.PHONY: dev test build dmg windows windows-installer verify bindings setup lint verify-full
+.PHONY: dev test build dmg linux windows windows-installer verify bindings setup lint verify-full
 WAILS ?= $(shell command -v wails || echo $(HOME)/go/bin/wails)
 
 dev:
@@ -21,6 +21,10 @@ windows:
 # Windows 用インストーラ（NSIS の makensis が必要。Windows では `choco install nsis`）。
 windows-installer:
 	$(WAILS) build -platform windows/amd64 -clean -nsis
+
+# Linux（WSL の WSLg を含む）用。GTK3 と WebKitGTK 4.1 の開発パッケージが要る（README 参照）。
+linux:
+	$(WAILS) build -platform linux/amd64 -clean -tags webkit2_41
 
 # macOS 専用。署名・公証はしない。
 dmg:

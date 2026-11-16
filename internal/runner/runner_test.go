@@ -197,6 +197,36 @@ func TestResolveClaudeByOS(t *testing.T) {
 			t.Fatalf("%v", c)
 		}
 	})
+	t.Run("linux: 候補に ~/.local/bin と /usr/bin を含み、実行ビットで判定する", func(t *testing.T) {
+		if runtime.GOOS == "windows" {
+			t.Skip("実行ビットは Windows に無い")
+		}
+		home := t.TempDir()
+		c := candidates("linux", home, "")
+		want := map[string]bool{filepath.Join(home, ".local", "bin", "claude"): false, "/usr/bin/claude": false}
+		for _, p := range c {
+			if _, ok := want[p]; ok {
+				want[p] = true
+			}
+		}
+		for p, ok := range want {
+			if !ok {
+				t.Fatalf("候補に %s が無い: %v", p, c)
+			}
+		}
+		bin := filepath.Join(home, ".local", "bin")
+		if err := os.MkdirAll(bin, 0o755); err != nil {
+			t.Fatal(err)
+		}
+		exe := filepath.Join(bin, "claude")
+		if err := os.WriteFile(exe, []byte("#!/bin/sh\n"), 0o755); err != nil {
+			t.Fatal(err)
+		}
+		got, err := ResolveClaude(ResolveOptions{GOOS: "linux", Home: home, ShellLookup: func() string { return "" }})
+		if err != nil || got != exe {
+			t.Fatalf("got %q err %v", got, err)
+		}
+	})
 	t.Run("unix: 実行ビットが無ければ不可", func(t *testing.T) {
 		p := filepath.Join(t.TempDir(), "claude")
 		_ = os.WriteFile(p, []byte("x"), 0o644)

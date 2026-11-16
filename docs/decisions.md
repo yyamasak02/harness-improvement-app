@@ -12,3 +12,4 @@
 - 2026-11-17 Windows 対応を必須とした（ユーザー判断、#46）。テスト用 claude を bash から Go 製（internal/testutil/fakeclaude）に置換して全 OS で共通化。パス比較は Windows のみ大文字小文字を無視。Unix 専用 API は *_unix.go に分離し check-rules で強制
 - 2026-11-17 Windows の `claude.cmd`（npm shim）は Go の exec が引数の特殊文字を拒否するため `claude.exe` を優先。プロンプトに特殊文字（% や " など）を入れない
 - 2026-11-17 go-webview2 は Wails v2.10.2 が想定する v1.0.19 に固定（v2.17 時代の go.mod 由来の v1.0.22 だと Windows ビルドが失敗した）。ローカルの Wails CLI も v2.10.2 に揃える（別版は生成物を書き換える）
+- 2026-11-17 WSL 対応は「Linux 版を WSL 内（WSLg）で動かす」方式（ユーザー判断）。WebKitGTK 4.1（`-tags webkit2_41`）を使い、Release には添付せず `make linux` でビルド。CI は linux-build-smoke でビルド確認のみ（GUI 起動は未検証）
