@@ -9,7 +9,7 @@ branch=$(git rev-parse --abbrev-ref HEAD)
 bash scripts/verify.sh --full
 export PR_BODY="$body"   # pre-push の check-tests-changed が [no-test-needed] を読めるように
 git add -A
-git commit -q -m "$title
+git diff --cached --quiet || git commit -q -m "$title
 
 Co-Authored-By: Claude Sonnet 5.5 <noreply@anthropic.com>"
 SKIP=harness-verify git push -u origin "$branch"   # verify --full は直前に実行済み
