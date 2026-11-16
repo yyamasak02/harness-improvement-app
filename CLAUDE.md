@@ -1,47 +1,44 @@
 # harness-app
 
-Claude Code のハーネス（CLAUDE.md・rules・メモリ・skills）を、`~/.claude` に溜まったセッションログから継続改善するための **ローカル完結デスクトップアプリ**。
-外部共有機能は持たない。外部通信は `claude -p` の実行時のみ。
+Claude Code のハーネス（CLAUDE.md・rules・メモリ・skills）を、`~/.claude` のセッションログから継続改善する **ローカル完結デスクトップアプリ**（Wails v2 / Go / React+TS）。
+外部通信は `claude -p` の実行時のみ。外部共有機能は持たない。
 
 - 仕様: @docs/spec.md
 - タスク: @docs/tasks.md
+- 詳細ルール: `.claude/rules/`（safety / go / frontend / git-workflow）
+- 手順の再現: `.claude/skills/`（`implement-task` / `verify` / `open-pr`）。タスク実装は必ず `implement-task` に従う
 
-## 進め方（自律実行ルール）
+## やってはいけないこと（絶対）
 
-- `docs/tasks.md` の未完了タスクを **上から順に** 実装する。1タスク完了ごとにチェックを付け、コミットして次へ進む。
-- 確認のために手を止めない。判断に迷う細部は、安全側の選択をして `docs/decisions.md` に1行記録して進める。
-- 止まってよいのは次の場合だけ：
-  - 仕様と矛盾する変更が必要なとき
-  - `~/.claude` への書き込みが必要になったとき（テストでも禁止）
-  - 同じエラーを3回直せなかったとき → `docs/blockers.md` に状況を書いて次のタスクへ進む
-- 全タスク完了後、「完了の定義」を満たしているか確認して終了する。
+### 安全
+- `~/.claude` や実ホームを **書き込まない**。テストでも禁止。書き込みは `internal/applier` 経由のみ。
+- 実 `~/.claude` / ホームを読むテストを書かない。パスは必ず注入し、`testdata/` のみ使う。
+- ファイルを直接 `os.WriteFile` で上書きしない（バックアップ → 同ディレクトリ temp → fsync → `os.Rename`）。
+- AI 出力を自動保存・自動適用しない。diff プレビューと人間の「適用」を必ず経由する。
+- digest を `internal/masking` を通さず AI に渡さない。
+- `claude -p` に `Read,Write` 以外のツールを許可しない。cwd をジョブディレクトリ以外にしない。
+- 実 `claude` をテストから呼ばない（`scripts/fake-claude.sh` を使う）。
+- 秘密情報・トークン・実セッションログの内容を `testdata/`・コミット・PR 本文に入れない（匿名化必須）。
+
+### 開発プロセス
+- テスト・`go vet`・フロントビルドが失敗したままコミット／PR／マージしない。
+- `main` に直接コミット・push しない（初期コミットを除く）。必ずブランチ → PR → squash マージ。
+- force push、`git reset --hard`、`git clean`、`rm -rf`、履歴改変、タグ push、`gh release` をしない（タグ・リリースはユーザーが行う）。
+- 1PR に複数機能を混ぜない。タスク順（`docs/tasks.md`）を飛ばさない。
+- 仕様にない機能・依存を勝手に足さない。外部共有・クラウド同期・テレメトリを入れない。
+- CDN 依存（Monaco 等）を入れない。署名・公証をしない。
+- 同じエラーを 3 回直せなければ粘らず `docs/blockers.md` に記録して次へ。
+- `.claude/settings.json` の deny を緩めない。
+
+## 自律実行ルール
+- 確認で止まらない。迷う細部は安全側を選び `docs/decisions.md` に 1 行追記。
+- 止まってよいのは: 仕様と矛盾する変更が必要／`~/.claude` への書き込みが必要になった時のみ。
+- 機能（PR）単位で `gh pr create` → CI/ローカル検証通過 → `gh pr merge --squash --delete-branch` まで自分で進める。
+- 全タスク後は `docs/spec.md` §9 の完了の定義を 1 項目ずつ検証して終了する。環境上できない項目（macOS 専用）は未検証と明記する。
 
 ## コマンド
+- 開発: `wails dev` / Go: `go test ./...`・`go vet ./...` / フロント: `cd frontend && npm run build && npm test` / 配布: `make dmg`
+- コミット前の検証は `verify` skill（`scripts/verify.sh`）で一括実行。
 
-- 開発起動: `wails dev`
-- Go テスト: `go test ./...`
-- 静的解析: `go vet ./...`
-- フロント: `cd frontend && npm run build && npm test`
-- 配布ビルド: `make dmg`（`build/bin/harness-app.dmg` を出力）
-
-## コミット前に必ず通すもの
-
-1. `go vet ./... && go test ./...`
-2. `cd frontend && npm run build && npm test`
-3. 失敗したまま次のタスクに進まない
-
-## 絶対ルール（安全設計）
-
-- **`~/.claude` は読み取り専用。** 書き込むのはユーザーが UI で「適用」を押したときの `internal/applier` 経由だけ。
-- テストは `testdata/` のダミーデータのみを使う。実際の `~/.claude` やホームディレクトリを読むテストは書かない（パスは必ず注入できるようにする）。
-- ファイルの書き込みは必ず「バックアップ → 同じディレクトリの temp ファイル → `os.Rename`」の順で行う。
-- AI の出力は自動で保存しない。必ず diff プレビューを経由する。
-- AI に渡す digest は必ず `internal/masking` を通す。
-- `claude -p` を呼ぶときは `--allowedTools Read,Write`、cwd はアプリの作業ディレクトリに固定する。
-
-## コード規約
-
-- Go: 標準のレイアウト。ロジックは `internal/` に置き、`app.go` は薄いバインディング層に留める。エラーは `fmt.Errorf("...: %w", err)` でラップする。
-- テーブル駆動テストを使う。外部プロセス（`claude`）はフェイクのスクリプトに差し替えてテストする。
-- フロント: TypeScript strict。Wails バインディングは `frontend/src/api.ts` に集約し、ブラウザ単体（`npm run dev`）では mock 実装に切り替わるようにする。
-- UI 文言は日本語。
+## 規約
+- UI 文言は日本語。コミットメッセージは日本語＋プレフィックス（feat/fix/chore/test/docs）。
