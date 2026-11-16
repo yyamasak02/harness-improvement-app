@@ -9,8 +9,13 @@ brief=0; [ "${1:-}" = "--brief" ] && brief=1
 
 have_gh=0
 [ -z "${STATUS_NO_GH:-}" ] && command -v gh >/dev/null 2>&1 && have_gh=1   # STATUS_NO_GH=1 でオフライン動作（テスト用）
-# gh の呼び出しは 15 秒でタイムアウトし、失敗しても空を返す（--json を付けないと Projects (classic) の警告で失敗する）
-g() { if [ $have_gh -eq 1 ]; then timeout 15 gh "$@" 2>/dev/null || true; fi; }
+# gh の呼び出しは可能なら 15 秒でタイムアウトする（macOS には timeout が無いので gtimeout / 無しにフォールバック）。
+# 失敗は握りつぶして空を返す。「失敗」と「該当なし」を区別したい呼び出しは gh_rc を使う。
+# （--json を付けない gh pr view は Projects (classic) の警告で失敗する）
+TO=""; command -v timeout >/dev/null 2>&1 && TO="timeout 15"; [ -z "$TO" ] && command -v gtimeout >/dev/null 2>&1 && TO="gtimeout 15"
+g() { if [ $have_gh -eq 1 ]; then $TO gh "$@" 2>/dev/null || true; fi; }
+# gh_rc: 標準出力+標準エラーを GH_OUT に、終了コードを GH_RC に入れる
+gh_rc() { GH_OUT=$($TO gh "$@" 2>&1); GH_RC=$?; }
 section() { printf '\n== %s\n' "$1"; }
 
 branch=$(git rev-parse --abbrev-ref HEAD 2>/dev/null || echo "?")
@@ -38,50 +43,79 @@ else
 fi
 [ $brief -eq 1 ] || { echo "直近のコミット:"; git log --oneline -5 2>/dev/null | sed 's/^/  /'; }
 
+# ---- GitHub への接続確認（取得失敗と「該当なし」を混同しないため）----
+gh_ok=0; owner=""
+if [ $have_gh -eq 1 ]; then
+  gh_rc repo view --json owner --jq .owner.login
+  if [ "$GH_RC" -eq 0 ] && [ -n "$GH_OUT" ]; then gh_ok=1; owner="$GH_OUT"; else
+    section "GitHub"
+    echo "GitHub の状態を取得できません（未認証・オフライン・レート制限など）: $(echo "$GH_OUT" | head -1)"
+    decide "GitHub の状態を取得できない → PR・CI・レビューの判定は不能。git の状態だけで判断し、ユーザーに gh の認証（gh auth status）を確認してもらう。PR を作る・マージする判断はしない"
+  fi
+else
+  section "GitHub"; echo "gh が使えません（未インストール、または STATUS_NO_GH 指定）。PR・issue の情報は表示できません"
+  decide "gh が使えない → git の状態だけで判断する。PR・CI・レビューは判定不能"
+fi
+
 # ---- 現在のブランチの PR ----
-if [ "$branch" != "main" ] && [ $have_gh -eq 1 ]; then
+if [ "$branch" != "main" ] && [ $gh_ok -eq 1 ]; then
   section "現在のブランチの PR"
-  pr=$(g pr view --json number --jq .number)
-  if [ -z "$pr" ]; then
+  gh_rc pr view --json number --jq .number
+  pr=""
+  if [ "$GH_RC" -eq 0 ] && [ -n "$GH_OUT" ]; then pr="$GH_OUT"
+  elif echo "$GH_OUT" | grep -qi "no pull requests found"; then pr="none"
+  else
+    echo "PR の有無を取得できません: $(echo "$GH_OUT" | head -1)"
+    decide "PR の状態を取得できない → 判定不能。しばらくして再実行するか、gh pr list で手動確認する（PR を重複作成しない）"
+  fi
+  if [ "$pr" = "none" ]; then
     echo "PR なし"
     [ -n "$dirty" ] || decide "ブランチはあるが PR が無い → scripts/ship.sh で PR を作成する（その前に quality-gate と関連 issue の確認）"
-  else
-    g pr view "$pr" --json number,title,state,headRefOid --jq '"#\(.number) \(.title) [\(.state)]"'
-    head=$(g pr view "$pr" --json headRefOid --jq .headRefOid)
-    verdict=$(g pr view "$pr" --json comments,reviews | bash scripts/review-verdict.sh "${head:-none}" "$(g repo view --json owner --jq .owner.login),github-actions,claude" 2>/dev/null || echo NONE)
-    [ -n "$verdict" ] || verdict=NONE
-    echo "head: ${head:0:7} / 独立レビューの判定（この head に対して）: $verdict"
-    checks=$(g pr checks "$pr")
-    if [ -n "$checks" ]; then
-      fails=$(echo "$checks" | awk -F'\t' '$2=="fail"' | wc -l | tr -d ' ')
-      pend=$(echo "$checks" | awk -F'\t' '$2=="pending"' | wc -l | tr -d ' ')
-      pass=$(echo "$checks" | awk -F'\t' '$2=="pass"' | wc -l | tr -d ' ')
-      echo "CI: 成功 $pass / 失敗 $fails / 実行中 $pend"
-      [ $brief -eq 1 ] || echo "$checks" | awk -F'\t' '$2=="fail"{print "  失敗: "$1}'
+  elif [ -n "$pr" ]; then
+    state=$(g pr view "$pr" --json state --jq .state); title=$(g pr view "$pr" --json title --jq .title)
+    echo "#$pr $title [$state]"
+    if [ "$state" = "MERGED" ]; then
+      decide "PR #$pr はマージ済み → git switch main && git pull し、不要なブランチを削除する。docs/handoff.md を更新する"
+    elif [ "$state" = "CLOSED" ]; then
+      decide "PR #$pr はクローズ済み（未マージ）→ 理由を確認（gh pr view $pr --comments）。再開するなら新しい PR を作る"
     else
-      fails=0; pend=0; echo "CI: 情報なし"
-    fi
-    if [ "${fails:-0}" -gt 0 ]; then
-      decide "PR #$pr の CI が失敗 → 失敗ジョブのログを読んで原因を直す（gh run view <run-id> --log-failed。実行完了後に取得可）"
-    elif [ "${pend:-0}" -gt 0 ]; then
-      decide "PR #$pr の CI が実行中 → 完了を待つ（レビューは CI が確定してから）"
-    elif [ "$verdict" = "NONE" ]; then
-      decide "PR #$pr に現在の head への独立レビューが無い → review-pr skill でレビューを依頼する"
-    elif [ "$verdict" = "REQUEST_CHANGES" ]; then
-      decide "PR #$pr は REQUEST_CHANGES → 最新のレビューコメント（gh pr view $pr --comments）の blocker/major を直し、再レビューを受ける"
-    elif [ "$verdict" = "APPROVE" ]; then
-      decide "PR #$pr は APPROVE かつ CI 成功 → bash scripts/merge-pr.sh $pr でマージする"
+      head=$(g pr view "$pr" --json headRefOid --jq .headRefOid)
+      verdict=$(g pr view "$pr" --json comments,reviews | bash scripts/review-verdict.sh "${head:-none}" "$owner,github-actions,claude" 2>/dev/null || echo NONE)
+      [ -n "$verdict" ] || verdict=NONE
+      echo "head: ${head:0:7} / 独立レビューの判定（この head に対して）: $verdict"
+      checks=$(g pr checks "$pr")
+      if [ -n "$checks" ]; then
+        fails=$(echo "$checks" | awk -F'\t' '$2=="fail"' | wc -l | tr -d ' ')
+        pend=$(echo "$checks" | awk -F'\t' '$2=="pending"' | wc -l | tr -d ' ')
+        pass=$(echo "$checks" | awk -F'\t' '$2=="pass"' | wc -l | tr -d ' ')
+        echo "CI: 成功 $pass / 失敗 $fails / 実行中 $pend"
+        [ $brief -eq 1 ] || echo "$checks" | awk -F'\t' '$2=="fail"{print "  失敗: "$1}'
+      else
+        fails=0; pend=0; echo "CI: 情報なし"
+      fi
+      if [ "${fails:-0}" -gt 0 ]; then
+        decide "PR #$pr の CI が失敗 → 失敗ジョブのログを読んで原因を直す（gh run view <run-id> --log-failed。実行完了後に取得可）"
+      elif [ "${pend:-0}" -gt 0 ]; then
+        decide "PR #$pr の CI が実行中 → 完了を待つ（レビューは CI が確定してから）"
+      elif [ "$verdict" = "NONE" ]; then
+        decide "PR #$pr に現在の head への独立レビューが無い → review-pr skill でレビューを依頼する"
+      elif [ "$verdict" = "REQUEST_CHANGES" ]; then
+        decide "PR #$pr は REQUEST_CHANGES → 最新のレビューコメント（gh pr view $pr --comments）の blocker/major を直し、再レビューを受ける"
+      elif [ "$verdict" = "APPROVE" ]; then
+        decide "PR #$pr は APPROVE かつ CI 成功 → bash scripts/merge-pr.sh $pr でマージする"
+      fi
     fi
   fi
 fi
 
 # ---- 全 open PR ----
-if [ $have_gh -eq 1 ]; then
+if [ $gh_ok -eq 1 ]; then
   section "open な PR"
   prs=$(g pr list --state open --json number,title,headRefName --jq '.[]|"#\(.number) \(.title) (\(.headRefName))"')
   [ -n "$prs" ] && echo "$prs" | sed 's/^/  /' || echo "  なし"
 
   section "open な issue（優先度順）"
+  command -v python3 >/dev/null 2>&1 || echo "  （python3 が無いため issue 一覧を整形できません）"
   issues=$(g issue list --state open --limit 100 --json number,title,labels | python3 -I -c '
 import json, sys
 try:
