@@ -1,8 +1,17 @@
 import {defineConfig} from 'vitest/config'
 import react from '@vitejs/plugin-react'
+import {writeFileSync} from 'node:fs'
+import {resolve} from 'node:path'
+
+// ビルドは dist を空にするが、main.go の go:embed が dist の存在を要求する。
+// クリーンな clone で `go vet` が通るよう、プレースホルダーを毎回作り直す。
+const keepDist = () => ({
+  name: 'keep-dist-gitkeep',
+  closeBundle() { writeFileSync(resolve(__dirname, 'dist/.gitkeep'), '') },
+})
 
 export default defineConfig({
-  plugins: [react()],
+  plugins: [react(), keepDist()],
   test: {
     environment: 'jsdom',
     setupFiles: ['./src/test-setup.ts'],
