@@ -9,3 +9,5 @@
 - 2026-11-17 wails.json の author（テンプレートが個人メールを埋めていた）を削除。過去コミットには残っているためユーザーに通知。dmg ビルド/起動確認は macOS 実機が必要で未検証（CI/release で検証する）
 - 2026-11-17 build/darwin/Info*.plist は v2.17 CLI が生成した safeBundleID を使っており、固定した Wails v2.10.2 では解決できないため {{.Name}} に置換（CI の dmg-smoke で検出）
 - 2026-11-17 独立レビューの承認は、リポジトリオーナー・github-actions・claude の投稿で、本文の最終行がマーカー、sha が head に一致するもののみ有効（公開リポジトリで第三者が承認を偽装できないように）。ブランチ保護（#47）が入るまでは merge-pr.sh を通さない手動マージ自体は防げない
+- 2026-11-17 Windows 対応を必須とした（ユーザー判断、#46）。テスト用 claude を bash から Go 製（internal/testutil/fakeclaude）に置換して全 OS で共通化。パス比較は Windows のみ大文字小文字を無視。Unix 専用 API は *_unix.go に分離し check-rules で強制
+- 2026-11-17 Windows の `claude.cmd`（npm shim）は Go の exec が引数の特殊文字を拒否するため `claude.exe` を優先。プロンプトに特殊文字（% や " など）を入れない

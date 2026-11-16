@@ -29,6 +29,12 @@ repos:
         language: system
         types: [go]
         pass_filenames: false
+      - id: go-vet-windows
+        name: go vet（GOOS=windows）
+        entry: bash scripts/lint.sh vet-windows
+        language: system
+        types: [go]
+        pass_filenames: false
       - id: staticcheck
         name: staticcheck
         entry: bash scripts/lint.sh staticcheck

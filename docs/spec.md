@@ -10,7 +10,7 @@ Claude Code を使う → セッションログ・メモリが溜まる → そ�
 
 | レイヤー | 採用 |
 |---|---|
-| デスクトップ | Wails v2（Go + WebView）。macOS が主ターゲット |
+| デスクトップ | Wails v2（Go + WebView）。**macOS と Windows を対象**（Windows は WebView2 が必要。Windows 10 以降） |
 | バックエンド | Go 1.24+ |
 | フロントエンド | React + TypeScript + Vite |
 | UI | Tailwind CSS（コンポーネントは自作 or shadcn/ui） |
@@ -21,7 +21,7 @@ Claude Code を使う → セッションログ・メモリが溜まる → そ�
 | 監視 | fsnotify（差分取り込み） |
 | AI 実行 | `claude -p` を `os/exec` でヘッドレス実行 |
 | テスト | Go: 標準 testing / フロント: Vitest |
-| 配布 | `wails build -platform darwin/universal` → `hdiutil` で .dmg。署名・公証はしない |
+| 配布 | macOS: `wails build -platform darwin/universal` → `hdiutil` で .dmg。Windows: `wails build -platform windows/amd64` → zip（可能なら NSIS インストーラ）。いずれも署名・公証はしない |
 
 ## 3. ディレクトリ構成
 
@@ -40,7 +40,7 @@ harness-app/
 │   └── skills/               # 同梱 skill（embed）
 ├── frontend/
 ├── testdata/                 # ダミーの ~/.claude 構造
-├── scripts/fake-claude.sh    # テスト用のフェイク claude
+├── internal/testutil/        # テスト用ヘルパー。fakeclaude/ は Go 製のフェイク claude（Windows でも動く）
 ├── build/                    # Wails のビルド資材、アイコン
 ├── Makefile
 └── .github/workflows/release.yml
@@ -48,6 +48,7 @@ harness-app/
 
 ## 4. データソース
 
+- Windows では `~/.claude` は `%USERPROFILE%\.claude`、アプリデータは `%APPDATA%\harness-app`、jsonl の `cwd` は `C:\...` 形式。パスの比較は Windows では大文字小文字を区別しない。
 - `~/.claude/projects/<エンコード済みパス>/<session-id>.jsonl`：セッションログ。1行1 JSON。
 - `~/.claude/projects/<project>/memory/*.md`：プロジェクトメモリ（存在すれば）。
 - `~/.claude/CLAUDE.md`、`<cwd>/CLAUDE.md`、`<cwd>/CLAUDE.local.md`、`<cwd>/.claude/rules/*.md`：改善対象。`<cwd>` は jsonl の `cwd` フィールドから得る。
@@ -113,7 +114,8 @@ CREATE VIRTUAL TABLE messages_fts USING fts5(text, content='messages', content_r
   - `skill-generate`（F5）、`daily-report`（F6）
 - 実行コマンド：`claude -p "<指示>" --allowedTools Read,Write --output-format json [--model <model>]`、cwd は `<work>/<job-id>`。
 - タイムアウト（初期値5分）とキャンセルに対応する。stderr はジョブログに保存する。
-- **claude バイナリの解決**：Finder から起動した GUI アプリは PATH が最小限になるため、①設定値 ②`$SHELL -lc 'command -v claude'` ③`~/.claude/local/claude`、`~/.local/bin/claude`、`/opt/homebrew/bin/claude`、`/usr/local/bin/claude`、`~/.npm-global/bin/claude` の順で探す。見つからなければ設定画面に誘導する。
+- **claude バイナリの解決**：GUI アプリは PATH が最小限になるため、①設定値 ②macOS: `$SHELL -lc 'command -v claude'` / Windows: `where claude`（`.exe` を優先） ③既知の場所（macOS: `~/.claude/local/claude`、`~/.local/bin/claude`、`/opt/homebrew/bin/claude`、`/usr/local/bin/claude`、`~/.npm-global/bin/claude` / Windows: `%USERPROFILE%\.claude\local\claude.exe`、`%USERPROFILE%\.local\bin\claude.exe`、`%APPDATA%\npm\claude.cmd`、`%USERPROFILE%\.npm-global\claude.cmd`）の順で探す。実行可否は Windows では拡張子（`.exe` `.cmd` `.bat` `.com`）、それ以外は実行ビットで判定する。見つからなければ設定画面に誘導する。
+- タイムアウト・キャンセル時は、macOS ではプロセスグループ、Windows では `taskkill /T` でプロセスツリーごと終了する。
 
 ## 8. 安全設計
 
@@ -147,3 +149,8 @@ CREATE VIRTUAL TABLE messages_fts USING fts5(text, content='messages', content_r
 
 1. 実機で `.dmg` を開いて起動し、上記の未検証項目を確認する。
 2. `git tag v0.1.0 && git push origin v0.1.0`
+
+### Windows 対応（#46）
+- [~] Windows でビルドでき、テストが通る（windows-latest の CI）
+- [ ] Windows 配布物（zip / インストーラ）が Release に添付される
+- [ ] Windows 実機で起動し、改善案の生成〜適用〜ロールバックができる（人の確認が必要）

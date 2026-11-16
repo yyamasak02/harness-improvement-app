@@ -41,7 +41,7 @@ func TestLoadBroken(t *testing.T) {
 
 func TestDataDir(t *testing.T) {
 	d, err := DataDir("/x")
-	if err != nil || d != "/x/harness-app" {
+	if err != nil || d != filepath.Join("/x", "harness-app") {
 		t.Fatalf("%q %v", d, err)
 	}
 }

@@ -4,6 +4,7 @@ import (
 	"errors"
 	"os"
 	"path/filepath"
+	"runtime"
 	"testing"
 	"time"
 )
@@ -49,8 +50,10 @@ func TestApplyAndRollback(t *testing.T) {
 	if read(t, target) != "new" {
 		t.Fatal("適用されていない")
 	}
-	if st, _ := os.Stat(target); st.Mode().Perm() != 0o640 {
-		t.Fatalf("パーミッションが保持されていない: %v", st.Mode())
+	if runtime.GOOS != "windows" { // Windows には Unix のパーミッションビットが無い
+		if st, _ := os.Stat(target); st.Mode().Perm() != 0o640 {
+			t.Fatalf("パーミッションが保持されていない: %v", st.Mode())
+		}
 	}
 	e, _ := a.Get(m.ID)
 	if e.Before != "old" || e.After != "new" || e.OldHash != h || e.NewHash != HashBytes([]byte("new")) {
@@ -98,7 +101,9 @@ func TestRejects(t *testing.T) {
 	link := filepath.Join(root, "link.md")
 	_ = os.WriteFile(target, []byte("old"), 0o644)
 	_ = os.WriteFile(other, []byte("o"), 0o644)
-	_ = os.Symlink(other, link)
+	if err := os.Symlink(other, link); err != nil {
+		t.Skip("シンボリックリンクを作成できない環境（Windows の権限不足など）: " + err.Error())
+	}
 	a, _ := newApplier(t, target, link)
 	h, _ := HashFile(target)
 	tests := []struct {
@@ -134,8 +139,8 @@ func TestNilAllowedDeniesAll(t *testing.T) {
 }
 
 func TestWriteFailureLeavesOriginalAndNoBackup(t *testing.T) {
-	if os.Geteuid() == 0 {
-		t.Skip("root では権限エラーを再現できない")
+	if runtime.GOOS == "windows" || os.Geteuid() == 0 {
+		t.Skip("ディレクトリの読み取り専用による書き込み失敗を再現できない環境（Windows / root）")
 	}
 	root := t.TempDir()
 	dir := filepath.Join(root, "ro")

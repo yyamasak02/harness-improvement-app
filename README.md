@@ -76,7 +76,7 @@ make dmg            # macOS 専用: build/bin/harness-app.dmg を出力
 ```
 
 - ブラウザ単体の UI 確認: `cd frontend && npm run dev`（Wails が無いときは mock API に切り替わります）。
-- テストは `testdata/` のダミーデータだけを使い、実際の `~/.claude` には触れません。`claude` はフェイク（`scripts/fake-claude.sh`）に差し替えます。
+- テストは `testdata/` のダミーデータだけを使い、実際の `~/.claude` には触れません。`claude` はフェイク（`internal/testutil/fakeclaude`、Go 製でテスト時にビルド）に差し替えます。
 - 仕様は [docs/spec.md](docs/spec.md)、タスクは [docs/tasks.md](docs/tasks.md)、開発ルールは [CLAUDE.md](CLAUDE.md) と `.claude/` を参照してください。
 
 ## リリース

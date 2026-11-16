@@ -4,7 +4,9 @@ package targets
 import (
 	"os"
 	"path/filepath"
+	"runtime"
 	"sort"
+	"strings"
 )
 
 // Kind は対象の種別。
@@ -71,23 +73,41 @@ func Discover(claudeDir string, cwds []string) []Target {
 	return out
 }
 
-// Allowed は path が書き込み許可リスト（発見済み対象、または skillsDir 配下）に含まれるかを返す。
-func Allowed(found []Target, skillsDir, path string) bool {
-	clean := filepath.Clean(path)
-	for _, t := range found {
-		if filepath.Clean(t.Path) == clean {
-			return true
-		}
+// foldCase は大文字小文字を区別しない OS（Windows）かどうか。
+var foldCase = runtime.GOOS == "windows"
+
+func samePath(a, b string, fold bool) bool {
+	a, b = filepath.Clean(a), filepath.Clean(b)
+	if fold {
+		return strings.EqualFold(a, b)
 	}
-	if skillsDir != "" {
-		rel, err := filepath.Rel(filepath.Clean(skillsDir), clean)
-		if err == nil && rel != "." && rel != ".." && !startsWithDotDot(rel) {
-			return true
-		}
-	}
-	return false
+	return a == b
 }
 
-func startsWithDotDot(rel string) bool {
-	return len(rel) >= 3 && rel[:3] == ".."+string(filepath.Separator)
+// SamePath は 2 つのパスが同じ場所を指すか（OS の大文字小文字規則に従う）を返す。
+func SamePath(a, b string) bool { return samePath(a, b, foldCase) }
+
+// underDir は path が dir の厳密に配下（dir 自身は含まない）にあるかを返す。
+// filepath.Rel は Windows では大文字小文字を無視する等 OS 依存なので、Clean 済みの文字列の接頭辞で判定する。
+func underDir(dir, path string, fold bool) bool {
+	dir, path = filepath.Clean(dir), filepath.Clean(path) // ".." は Clean が解決する
+	if fold {
+		dir, path = strings.ToLower(dir), strings.ToLower(path)
+	}
+	prefix := strings.TrimRight(dir, string(filepath.Separator)) + string(filepath.Separator)
+	return len(path) > len(prefix) && strings.HasPrefix(path, prefix)
+}
+
+func allowed(found []Target, skillsDir, path string, fold bool) bool {
+	for _, t := range found {
+		if samePath(t.Path, path, fold) {
+			return true
+		}
+	}
+	return skillsDir != "" && underDir(skillsDir, path, fold)
+}
+
+// Allowed は path が書き込み許可リスト（発見済み対象、または skillsDir 配下）に含まれるかを返す。
+func Allowed(found []Target, skillsDir, path string) bool {
+	return allowed(found, skillsDir, path, foldCase)
 }

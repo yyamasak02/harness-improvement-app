@@ -19,7 +19,7 @@ area/applier:
       - any-glob-to-any-file: [internal/applier/**, internal/fsutil/**]
 area/runner:
   - changed-files:
-      - any-glob-to-any-file: [internal/runner/**, internal/skills/**, scripts/fake-claude.sh]
+      - any-glob-to-any-file: [internal/runner/**, internal/skills/**, internal/testutil/**]
 area/service:
   - changed-files:
       - any-glob-to-any-file: [internal/service/**, internal/config/**, app.go, main.go]

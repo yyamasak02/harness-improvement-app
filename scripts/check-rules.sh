@@ -14,7 +14,7 @@ hits=$(grep -rnE '~/\.claude|\.claude/projects' --include='*_test.go' internal |
 [ -z "$hits" ] || report "テストが ~/.claude を参照しています（testdata のみ使うこと）" "$hits"
 
 # 3. 実 claude をテストから呼ばない / claude を PATH 名で直接実行しない
-hits=$(grep -rnE 'exec\.Command(Context)?\([^)]*"claude"' --include='*.go' . | grep -v node_modules || true)
+hits=$(grep -rnE 'exec\.Command\("claude"|exec\.CommandContext\([^,]+, *"claude"' --include='*.go' . | grep -v node_modules || true)
 [ -z "$hits" ] || report "claude を名前で直接実行しています（runner.ResolveClaude + 注入を使うこと）" "$hits"
 
 # 4. claude -p の許可ツールは Read,Write 固定
@@ -23,7 +23,7 @@ hits=$(grep -rn 'allowedTools' --include='*.go' internal | grep -v '_test.go' | 
 
 # 5. 書き込み系 API は許可されたパッケージ以外で使わない（書き込みは applier / fsutil 経由）
 hits=$(grep -rnE 'os\.(WriteFile|Create|Rename|Remove|RemoveAll)\(' --include='*.go' internal \
-  | grep -vE '_test\.go|internal/(applier|fsutil|runner|skills)/' || true)
+  | grep -vE '_test\.go|internal/(applier|fsutil|runner|skills|testutil)/' || true)
 [ -z "$hits" ] || report "applier / fsutil / runner / skills 以外でファイル書き込み API を使っています" "$hits"
 
 # 6. testdata・ソースに本物らしい秘密情報を置かない（DUMMY を含むものは可）
@@ -41,7 +41,17 @@ hits=$(grep -rnE 't\.Skip(Now)?\(\)' --include='*_test.go' internal || true)
 hits=$(git ls-files | grep -E 'Zone\.Identifier$|settings\.local\.json$|\.env$' || true)
 [ -z "$hits" ] || report "コミットしてはいけないファイルが追跡されています" "$hits"
 
-# 9. go:embed のプレースホルダーが追跡されていること（無いとクリーンな clone で go vet が失敗する）
+# 9. Unix 専用 API は `_unix.go`（build タグ付き）に閉じ込める（Windows でビルドできなくなるため）
+hits=$(grep -rnE 'syscall\.(Setpgid|Kill|Getpgid|Getuid|Umask|Mkfifo|SIGKILL|SIGTERM|SIGHUP)' --include='*.go' . \
+  | grep -vE '_unix\.go|_windows\.go|node_modules' || true)
+[ -z "$hits" ] || report "Unix 専用の syscall を OS 非依存のファイルで使っています（*_unix.go / *_windows.go に分けること）" "$hits"
+
+# 10. OS 依存のコマンド起動は internal/osutil か internal/runner に集約する
+hits=$(grep -rnE 'exec\.Command(Context)?\([^)]*"(open|xdg-open|explorer|cmd|powershell|sh|bash)"' --include='*.go' internal app.go \
+  | grep -vE '_test\.go|internal/(osutil|runner|testutil)/' || true)
+[ -z "$hits" ] || report "OS 依存のコマンドを osutil / runner の外で起動しています" "$hits"
+
+# 11. go:embed のプレースホルダーが追跡されていること（無いとクリーンな clone で go vet が失敗する）
 [ -n "$(git ls-files frontend/dist/.gitkeep)" ] || report "frontend/dist/.gitkeep が追跡されていません（main.go の go:embed が失敗します）" "git add -f frontend/dist/.gitkeep"
 
 [ $fail -eq 0 ] && echo "check-rules OK"

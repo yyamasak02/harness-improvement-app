@@ -187,7 +187,7 @@ func (s *Service) findTarget(path string) (targets.Target, error) {
 		return targets.Target{}, err
 	}
 	for _, t := range ts {
-		if filepath.Clean(t.Path) == filepath.Clean(path) {
+		if targets.SamePath(t.Path, path) {
 			return t, nil
 		}
 	}

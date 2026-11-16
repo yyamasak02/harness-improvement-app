@@ -3,6 +3,7 @@ import Markdown from 'react-markdown'
 import {api} from '../api'
 import {Card, ErrorBox, Loading} from '../components'
 import DiffView from '../DiffView'
+import {isUnder} from '../paths'
 import {useAsync} from '../hooks'
 import type {Manifest, Proposal, Target, TargetContent} from '../types'
 
@@ -27,7 +28,7 @@ export default function Improve() {
   const target: Target | undefined = targets.data?.find((t) => t.path === path)
   const project = useMemo(() => {
     if (!target || target.kind === 'global') return ''
-    const hit = projects.data?.find((p) => p.cwd && target.path.startsWith(p.cwd + '/'))
+    const hit = projects.data?.find((p) => isUnder(target.path, p.cwd))
     return hit?.project ?? ''
   }, [target, projects.data])
 

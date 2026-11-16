@@ -17,7 +17,7 @@ Claude Code のハーネス（CLAUDE.md・rules・メモリ・skills）を、`~/
 - AI 出力を自動保存・自動適用しない。diff プレビューと人間の「適用」を必ず経由する。
 - digest を `internal/masking` を通さず AI に渡さない。
 - `claude -p` に `Read,Write` 以外のツールを許可しない。cwd をジョブディレクトリ以外にしない。
-- 実 `claude` をテストから呼ばない（`scripts/fake-claude.sh` を使う）。
+- 実 `claude` をテストから呼ばない（`internal/testutil` の `FakeClaude` を使う。Go 製なので Windows でも動く）。
 - 秘密情報・トークン・実セッションログの内容を `testdata/`・コミット・PR 本文に入れない（匿名化必須）。
 
 ### 開発プロセス

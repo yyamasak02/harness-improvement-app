@@ -177,26 +177,46 @@ func TestSignals(t *testing.T) {
 	}
 }
 
+// eventually は cond が真になるまで最大 d 待つ（固定 sleep に頼らない）。
+func eventually(d time.Duration, cond func() bool) bool {
+	deadline := time.Now().Add(d)
+	for time.Now().Before(deadline) {
+		if cond() {
+			return true
+		}
+		time.Sleep(10 * time.Millisecond)
+	}
+	return cond()
+}
+
 func TestWatchDebounce(t *testing.T) {
 	dir := t.TempDir()
 	proj := filepath.Join(dir, "projects", "p")
 	_ = os.MkdirAll(proj, 0o755)
+	const debounce = 300 * time.Millisecond // 遅い CI（-race・Windows）でも連続書き込みが窓に収まる余裕
 	var n atomic.Int32
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
-	if err := Watch(ctx, dir, 100*time.Millisecond, func() { n.Add(1) }); err != nil {
+	if err := Watch(ctx, dir, debounce, func() { n.Add(1) }); err != nil {
 		t.Fatal(err)
 	}
 	f := filepath.Join(proj, "a.jsonl")
-	for i := 0; i < 5; i++ {
+	for i := 0; i < 5; i++ { // 待たずに連続で書く
 		_ = os.WriteFile(f, []byte{byte('a' + i)}, 0o644)
-		time.Sleep(10 * time.Millisecond)
 	}
 	// 新規サブディレクトリも監視対象になる
 	_ = os.MkdirAll(filepath.Join(dir, "projects", "q"), 0o755)
-	time.Sleep(400 * time.Millisecond)
+	if !eventually(5*time.Second, func() bool { return n.Load() >= 1 }) {
+		t.Fatal("変更が通知されなかった")
+	}
+	time.Sleep(2 * debounce) // 余分な通知が来ないこと
 	if n.Load() != 1 {
-		t.Fatalf("デバウンスで 1 回のはず: %d", n.Load())
+		t.Fatalf("連続した変更は 1 回にまとまるはず: %d", n.Load())
+	}
+	// 窓を過ぎた後の変更は別の通知になる
+	_ = os.WriteFile(f, []byte("later"), 0o644)
+	if !eventually(5*time.Second, func() bool { return n.Load() == 2 }) {
+		t.Fatalf("2 回目の通知が来ない: %d", n.Load())
 	}
 	if err := Watch(ctx, filepath.Join(dir, "nope"), time.Second, func() {}); err == nil {
 		t.Fatal("存在しないディレクトリはエラー")
