@@ -1,0 +1,37 @@
+# 変更パスから area/ ラベルを自動付与する（定義: .github/labels.tsv / 規則: .claude/rules/issues-labels.md）
+area/collector:
+  - changed-files:
+      - any-glob-to-any-file: internal/collector/**
+area/store:
+  - changed-files:
+      - any-glob-to-any-file: internal/store/**
+area/digest:
+  - changed-files:
+      - any-glob-to-any-file: internal/digest/**
+area/masking:
+  - changed-files:
+      - any-glob-to-any-file: internal/masking/**
+area/targets:
+  - changed-files:
+      - any-glob-to-any-file: internal/targets/**
+area/applier:
+  - changed-files:
+      - any-glob-to-any-file: [internal/applier/**, internal/fsutil/**]
+area/runner:
+  - changed-files:
+      - any-glob-to-any-file: [internal/runner/**, internal/skills/**, scripts/fake-claude.sh]
+area/service:
+  - changed-files:
+      - any-glob-to-any-file: [internal/service/**, internal/config/**, app.go, main.go]
+area/frontend:
+  - changed-files:
+      - any-glob-to-any-file: frontend/**
+area/ci:
+  - changed-files:
+      - any-glob-to-any-file: [.github/workflows/**, .pre-commit-config.yaml, .github/dependabot.yml, scripts/check-*.sh, scripts/lint.sh, scripts/selftest-checks.sh]
+area/release:
+  - changed-files:
+      - any-glob-to-any-file: [CHANGELOG.md, scripts/release.sh, wails.json, Makefile, build/**, .github/workflows/release.yml]
+area/harness:
+  - changed-files:
+      - any-glob-to-any-file: [CLAUDE.md, .claude/**, docs/**, scripts/verify.sh, scripts/ship.sh, scripts/sync-labels.sh, .github/labels.tsv, .github/ISSUE_TEMPLATE/**, README.md]

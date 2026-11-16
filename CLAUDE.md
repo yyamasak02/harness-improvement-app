@@ -5,8 +5,8 @@ Claude Code のハーネス（CLAUDE.md・rules・メモリ・skills）を、`~/
 
 - 仕様: @docs/spec.md
 - タスク: @docs/tasks.md
-- 詳細ルール: `.claude/rules/`（safety / go / frontend / git-workflow / issues-labels）
-- 手順の再現: `.claude/skills/`（`implement-task` / `verify` / `open-pr` / `create-issue`）。タスク実装は必ず `implement-task` に従う
+- 詳細ルール: `.claude/rules/`（safety / go / frontend / git-workflow / issues-labels / quality）
+- 手順の再現: `.claude/skills/`（`implement-task` / `quality-gate` / `fix-bug` / `verify` / `open-pr` / `create-issue`）。タスク実装は必ず `implement-task` に従う
 
 ## やってはいけないこと（絶対）
 
@@ -22,6 +22,9 @@ Claude Code のハーネス（CLAUDE.md・rules・メモリ・skills）を、`~/
 
 ### 開発プロセス
 - テスト・`go vet`・フロントビルドが失敗したままコミット／PR／マージしない。
+- `git commit/push --no-verify` で pre-commit を迂回しない。テストの `skip` / `.only`、期待値の緩和、カバレッジ閾値の引き下げで通さない。
+- 実装を変えてテストを変えない（直さない・足さない）まま PR にしない。意味を失ったテストを放置しない。
+- リファクタ・テスト不足を見つけて黙って見送らない。今回やらないなら `type/tech-debt` / `type/test` の issue にする。
 - `main` に直接コミット・push しない（初期コミットを除く）。必ずブランチ → PR → squash マージ。
 - force push、`git reset --hard`、`git clean`、`rm -rf`、履歴改変、タグ push、`gh release` をしない（タグ・リリースはユーザーが行う）。
 - 未着手・保留の課題を口頭 TODO や握りつぶしにしない。必ず issue にする（`create-issue` skill、ラベルは `.claude/rules/issues-labels.md`）。GitHub 既定ラベルは使わない。
@@ -39,7 +42,8 @@ Claude Code のハーネス（CLAUDE.md・rules・メモリ・skills）を、`~/
 
 ## コマンド
 - 開発: `wails dev` / Go: `go test ./...`・`go vet ./...` / フロント: `cd frontend && npm run build && npm test` / 配布: `make dmg`
-- コミット前の検証は `verify` skill（`scripts/verify.sh`）で一括実行。
+- コミット前: `verify` skill（`scripts/verify.sh`）。push・PR 前: `bash scripts/verify.sh --full`（lint・ルール検査・カバレッジ基準）と `quality-gate` skill。
+- 初回は `make setup`（pre-commit のフックを 3 ステージ導入）。
 
 ## 規約
 - UI 文言は日本語。コミットメッセージは日本語＋プレフィックス（feat/fix/chore/test/docs）。

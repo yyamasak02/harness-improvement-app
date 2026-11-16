@@ -1,0 +1,74 @@
+# 導入: `make setup`（= pre-commit install の 3 ステージ）。全件実行: `pre-commit run --all-files`
+# 一時的に飛ばす場合は SKIP=<hook-id> 。`--no-verify` は使わない（CLAUDE.md で禁止）。
+default_install_hook_types: [pre-commit, commit-msg, pre-push]
+exclude: '^(frontend/wailsjs/|frontend/package-lock\.json$|build/|testdata/.*\.jsonl$)'
+repos:
+  - repo: https://github.com/pre-commit/pre-commit-hooks
+    rev: v5.0.0
+    hooks:
+      - id: trailing-whitespace
+      - id: end-of-file-fixer
+      - id: check-yaml
+      - id: check-json
+      - id: check-merge-conflict
+      - id: check-added-large-files
+        args: [--maxkb=1024]
+      - id: detect-private-key
+        exclude: '^internal/masking/masking_test\.go$'
+  - repo: local
+    hooks:
+      - id: gofmt
+        name: gofmt
+        entry: bash scripts/lint.sh gofmt
+        language: system
+        types: [go]
+        pass_filenames: false
+      - id: go-vet
+        name: go vet
+        entry: bash scripts/lint.sh vet
+        language: system
+        types: [go]
+        pass_filenames: false
+      - id: staticcheck
+        name: staticcheck
+        entry: bash scripts/lint.sh staticcheck
+        language: system
+        types: [go]
+        pass_filenames: false
+      - id: tsc
+        name: tsc (strict)
+        entry: bash scripts/lint.sh tsc
+        language: system
+        files: '^frontend/src/.*\.(ts|tsx)$'
+        pass_filenames: false
+      - id: check-rules
+        name: プロジェクトルール検査（安全設計・禁止事項）
+        entry: bash scripts/check-rules.sh
+        language: system
+        always_run: true
+        pass_filenames: false
+      - id: check-tests-changed-staged
+        name: テスト更新の確認（警告）
+        entry: bash scripts/check-tests-changed.sh staged
+        language: system
+        always_run: true
+        pass_filenames: false
+      - id: commit-msg-format
+        name: コミットメッセージ形式
+        entry: bash scripts/check-commit-msg.sh
+        language: system
+        stages: [commit-msg]
+      - id: check-tests-changed-range
+        name: 実装を変えたらテストも変える（push 前）
+        entry: bash scripts/check-tests-changed.sh range origin/main
+        language: system
+        stages: [pre-push]
+        always_run: true
+        pass_filenames: false
+      - id: harness-verify
+        name: verify --full（push 前）
+        entry: bash scripts/verify.sh --full
+        language: system
+        stages: [pre-push]
+        always_run: true
+        pass_filenames: false

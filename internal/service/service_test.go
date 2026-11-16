@@ -47,7 +47,7 @@ func copyTree(t *testing.T, src, dst string, rewrite func(string) string) {
 }
 
 // newFixture は testdata を TempDir に複製し、jsonl の cwd を TempDir 内に書き換える。
-// 実 ~/.claude や /home/demo には一切触れない。
+// 実ホームの .claude や /home/demo には一切触れない。
 func newFixture(t *testing.T) *fixture {
 	t.Helper()
 	root := t.TempDir()

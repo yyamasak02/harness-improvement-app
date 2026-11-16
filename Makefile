@@ -1,4 +1,4 @@
-.PHONY: dev test build dmg verify bindings
+.PHONY: dev test build dmg verify bindings setup lint verify-full
 WAILS ?= $(shell command -v wails || echo $(HOME)/go/bin/wails)
 
 dev:
@@ -21,3 +21,12 @@ dmg:
 
 bindings:
 	$(WAILS) generate module
+
+setup:
+	pre-commit install --install-hooks
+
+lint:
+	bash scripts/lint.sh all
+
+verify-full:
+	bash scripts/verify.sh --full
