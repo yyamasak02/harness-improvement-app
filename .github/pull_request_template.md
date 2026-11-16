@@ -4,6 +4,7 @@
 ## 概要
 
 ## 関連 issue
+<!-- 着手前に `bash scripts/related-issues.sh` で探す。完了なら `Closes #N`、部分対応なら `Refs #N`。無ければ下の行を `[no-issue]: 理由` にする（CI の pr-policy が検査） -->
 Closes #
 
 ## 品質チェック（該当しない項目は理由を書く）
@@ -12,6 +13,7 @@ Closes #
 - [ ] 触った周辺のリファクタリングを検討した（`simplify` / `quality-gate` skill）。今回やらない分は issue（`type/tech-debt`）にした → #
 - [ ] 仕様・README・docs・CHANGELOG の更新が必要か確認した
 - [ ] `bash scripts/verify.sh --full` が通る
+- [ ] 独立レビュー（`review-pr` skill）を受け、head コミットへの APPROVE を得てから `scripts/merge-pr.sh` でマージする
 - [ ] 安全設計（`~/.claude` 読み取り専用・applier 経由・masking・`claude -p` の制約）に反していない
 
 <!-- 挙動が変わらない純粋なリファクタリングでテストを変えない場合のみ、下の行を残して理由を書く（CI の pr-policy が読みます）:
