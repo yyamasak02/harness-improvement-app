@@ -23,7 +23,7 @@ PROTECTED = [
     r"(^|/)\.claude/rules/security\.md$",
     r"(^|/)\.claude/agents/",
     r"(^|/)scripts/hooks/",
-    r"(^|/)scripts/(gh-post|gh-read|check-privacy|privacy_scan|injection_scan|merge-pr|review-verdict|record-approval|check-approvals)\.(sh|py)$",
+    r"(^|/)scripts/(gh-post|gh-read|check-privacy|privacy_scan|injection_scan|merge-pr|review-verdict|record-approval|check-approvals|check-harness|check_harness)\.(sh|py)$",
     r"(^|/)docs/approval-log\.md$",
     r"harness-approvals",
     r"(^|/)\.github/workflows/claude-review\.yml$",

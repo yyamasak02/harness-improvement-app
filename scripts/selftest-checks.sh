@@ -186,6 +186,25 @@ mkdir -p scripts/__pycache__ && printf 'x' > scripts/__pycache__/zz_selftest.cpy
 expect_fail "追跡された .pyc の検出" bash scripts/check-rules.sh
 git rm -q --cached -f scripts/__pycache__/zz_selftest.cpython-312.pyc >/dev/null 2>&1; rm -rf scripts/__pycache__
 
+# 安全装置の実環境診断（check-harness）: 正常は通り、無効・旧版・壊れた状態は検出する（フックが旧版になった事故の再発防止）
+mutate() { # 名前 python 式（cfg を書き換える）
+  python3 -I -c 'import json,sys; cfg=json.load(open(".claude/settings.json")); exec(sys.argv[2]); json.dump(cfg, open(sys.argv[1], "w"), ensure_ascii=False)' "$tmp/hs-$1.json" "$2"
+}
+python3 -I scripts/check_harness.py >/dev/null 2>&1 && echo "ok: 実環境の settings.json は診断に通る（フックが main の版で動作）" || { echo "NG: 実環境の診断が失敗する"; python3 -I scripts/check_harness.py | head -5; fail=1; }
+mutate nohooks 'cfg["hooks"].pop("PreToolUse"); cfg["hooks"].pop("PostToolUse")'
+hout=$(python3 -I scripts/check_harness.py --settings "$tmp/hs-nohooks.json" 2>&1); case "$hout" in *"設定されていません"*) echo "ok: フック未設定を検出" ;; *) echo "NG: フック未設定を検出できない"; fail=1 ;; esac
+mutate direct 'cfg["hooks"]["PreToolUse"][0]["hooks"][0]["command"] = "python3 -I \"$CLAUDE_PROJECT_DIR/scripts/hooks/pre_tool_guard.py\""'
+hout=$(python3 -I scripts/check_harness.py --settings "$tmp/hs-direct.json" 2>&1); case "$hout" in *"を使う形ではなく"*) echo "ok: ブランチのファイルを直接実行する旧形式を検出" ;; *) echo "NG: 旧形式を検出できない"; fail=1 ;; esac
+mutate missing 'c = cfg["hooks"]["PreToolUse"][0]["hooks"][0]["command"]; cfg["hooks"]["PreToolUse"][0]["hooks"][0]["command"] = c.replace("pre_tool_guard.py", "no_such_guard_pre_tool_guard.py")'
+python3 -I scripts/check_harness.py --settings "$tmp/hs-missing.json" >/dev/null 2>&1 && { echo "NG: 存在しないフックスクリプトを検出できない"; fail=1; } || echo "ok: 存在しない・動かないフックを検出"
+mutate nodeny 'cfg["permissions"]["deny"] = [d for d in cfg["permissions"]["deny"] if d != "Bash(gh pr merge*)"]'
+hout=$(python3 -I scripts/check_harness.py --settings "$tmp/hs-nodeny.json" 2>&1); case "$hout" in *"必須の deny"*) echo "ok: 必須の deny の欠落を検出" ;; *) echo "NG: deny の欠落を検出できない"; fail=1 ;; esac
+mutate failopen 'c = cfg["hooks"]["PreToolUse"][0]["hooks"][0]["command"]; cfg["hooks"]["PreToolUse"][0]["hooks"][0]["command"] = c.replace("sys.exit(2)", "sys.exit(0)")'
+hout=$(python3 -I scripts/check_harness.py --settings "$tmp/hs-failopen.json" 2>&1); case "$hout" in *"ツールを止めません"*) echo "ok: 起動失敗時に素通りする（fail-open）設定を検出" ;; *) echo "NG: fail-open を検出できない"; fail=1 ;; esac
+for f in scripts/check-harness.sh scripts/check_harness.py; do
+  case "$(printf '{"tool_name":"Write","tool_input":{"file_path":"/w/%s","content":"x"}}' "$f" | HARNESS_APPROVAL_DIR="$tmp/hsa" python3 -I scripts/hooks/pre_tool_guard.py)" in *'"deny"'*) echo "ok: $f は境界ファイル（評価なしの変更は拒否）" ;; *) echo "NG: $f が保護されていない"; fail=1 ;; esac
+done
+
 # release-guide（Release ノート先頭のダウンロード案内）: インストーラ名の案内と、release.yml の添付物が食い違わないこと
 g=$(bash scripts/release-guide.sh)
 for want in "harness-app.dmg" "harness-app-amd64-installer.exe" "Source code"; do
