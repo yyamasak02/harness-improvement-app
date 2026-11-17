@@ -32,9 +32,14 @@ PROT_RX = [re.compile(p, re.I) for p in PROTECTED]
 # 壊れたイベント（JSON として読めない）の生テキストを走査する用。境界ファイルの名前が含まれていれば安全側で拒否する
 RAW_RX = [re.compile(p.replace("(^|/)", "").replace("$", "")) for p in PROTECTED]
 # 保護ファイルを書き換えうる Bash の形
-WRITE_HINT = re.compile(r"(\bsed\s+-[a-z]*i|\btee\b|\bmv\b|\bcp\b|\brm\b|\bgit\s+(checkout|restore|apply|stash)\b|\bperl\s+-[a-z]*i|\bpython3?\b|\bnode\b|\bchmod\b|\btruncate\b|\bdd\b|\bln\b|\b(?:ba|z)?sh\s+-c\b|\beval\b|\bxargs\b|\binstall\b)")
+WRITE_HINT = re.compile(r"(\bsed\s+-[a-z]*i|\btee\b|\bmv\b|\bcp\b|\brm\b|\bgit\s+(checkout|restore|apply|stash)\b|\bperl\s+-[a-z]*i|\bpython3?\b|\bnode\b|\bchmod\b|\btruncate\b|\bdd\b|\bln\b|\binstall\b)")
+# 引用符の中に隠せるので、引用符の中も含めた全文で見るもの
+DYNAMIC_HINT = re.compile(r"\b(?:ba|z)?sh\s+-c\b|\beval\b")
+# 境界のスクリプトを「実行するだけ」の形（書き換えではない）: python3 [オプション] scripts/…py [安全な引数]
+# （改行は含めない: 改行の後ろに別のコマンドを続けられるため。空白はスペースとタブのみ）
+EXEC_ONLY = re.compile(r"^[ \t]*python3?(?:[ \t]+-[A-Za-z]+)*[ \t]+(\S*scripts/(?:hooks/)?[A-Za-z0-9_.-]+\.py)((?:[ \t]+[A-Za-z0-9_./=:-]+)*)[ \t]*\Z")
 REDIRECT = re.compile(r">>?\s*(\S+)")
-FD_REDIRECT = re.compile(r"\d*>&\d*|&>>?\s*\S+|>\s*/dev/null")
+FD_REDIRECT = re.compile(r"\d*>&\d*|&>>?\s*\S+|>\s*/dev/null|<\s*/dev/null")
 # コマンドの先頭（行頭・; & | ( ` の直後・sudo/xargs の後）にある git だけを見る。文書やコミットメッセージの中の説明文では反応しない
 _HEAD = r"(?:^|[;&|(`\n]\s*)(?:(?:sudo|xargs|env)\s+)*"
 _GIT = _HEAD + r"git(?:\s+-\S+(?:\s+[^-\s]\S*)?)*\s+"   # git -C dir などのオプションを読み飛ばす
@@ -108,6 +113,24 @@ def _safe_record_call(cmd):
     return bool(RECORD_CMD.match(cmd))
 
 
+# 説明文を渡すフラグ（コミットメッセージ・タイトル・本文）の直後の引用符だけを、書き換え判定から外す
+MESSAGE_FLAG_QUOTED = re.compile(r"((?:\s-m|\s--message|\s--title|\s--body)(?:=|\s+))(\"[^\"]*\"|'[^']*')")
+
+
+def _strip_safe_quotes(cmd):
+    """コミットメッセージなど（-m / --message / --title / --body の直後の引用符）の中の語を、書き換え判定から外す。
+    コマンド名や引数を引用符で囲んで隠す形（"cp" …）は外さない。実行されうる形も外さない:
+    バックスラッシュを含むコマンド、改行・$( ` ${ を含む引用符の中は、そのまま判定に残す。"""
+    if "\\" in cmd:
+        return cmd
+
+    def repl(m):
+        q = m.group(2)
+        return m.group(1) + (q if ("\n" in q or "$(" in q or "`" in q or "${" in q) else " ")
+
+    return MESSAGE_FLAG_QUOTED.sub(repl, cmd)
+
+
 def decide(ev):
     name = ev.get("tool_name", "")
     ti = ev.get("tool_input") or {}
@@ -126,10 +149,16 @@ def decide(ev):
         if _safe_record_call(cmd):
             return None, ""
         plain = FD_REDIRECT.sub(" ", cmd)   # 2>&1 や > /dev/null は書き込みではない
-        toks = [t for t in re.split(r"[\s'\"=:]+", plain) if t]
+        toks = [t for t in re.split(r"[\s'\"=:;|&<>(),`$]+", plain) if t]   # 括弧・記号の直後に付いたパスも見つける
         prot = [t for t in toks if is_protected(t)]
         redirected = [m.group(1).strip("'\"") for m in REDIRECT.finditer(plain) if is_protected(m.group(1).strip("'\""))]
-        if (prot and WRITE_HINT.search(plain)) or redirected:
+        # コミットメッセージなどの中の語は書き換えとみなさない。引用符の文字自体は取り除く（'sed' -i のように隠す形も見つける）
+        hint_text = re.sub(r"['\"]", "", _strip_safe_quotes(plain))
+        m = EXEC_ONLY.match(plain)
+        # 引数は = : , でも分けて境界パスを探す（--out=<境界パス> を見逃さない）。改行を含むコマンドは「実行するだけ」とみなさない
+        exec_only = bool(m) and "\n" not in plain and not any(is_protected(p) for t in m.group(2).split() for p in re.split(r"[=:,]", t))
+        writes = (WRITE_HINT.search(hint_text) and not exec_only) or DYNAMIC_HINT.search(plain)
+        if (prot and writes) or redirected:
             path = (redirected or prot)[0]
             why = (ti.get("description") or "").strip() or "（実行の目的の記載なし。目的を description に書いて再実行してください）"
             return "deny", ("【Bash では境界ファイルを書き換えられません】\n■ なぜ実行しようとしたか: %s\n■ 実行内容（コマンド）: %s\n■ 触ろうとしたファイル: %s\n"

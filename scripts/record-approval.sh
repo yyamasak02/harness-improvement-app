@@ -33,5 +33,6 @@ if [ ! -f "$log" ]; then
   printf '# 境界ファイルの変更の承認記録\n\n第一承認者（別エージェント change-approver）の評価の台帳。`scripts/record-approval.sh` が追記する（手で編集しない）。\n人の最終承認は、PR のレビューとマージで行う。\n\n| 日時（UTC） | 対象 | 判定 | 影響 | 要約 |\n|---|---|---|---|---|\n' > "$log"
 fi
 oneline=$(printf '%s' "$summary" | tr '\n\r' '  ' | sed 's/|/／/g')
-printf '| %s | %s | %s | %s | %s |\n' "$(date -u +%Y-%m-%dT%H:%M)" "$(python3 -I -c 'import sys; sys.path.insert(0, "scripts/hooks"); import approval_lib as A; print(A.norm(sys.argv[1]))' "$path")" "$verdict" "$risk" "$oneline" >> "$log"
+sha12=$(python3 -I -c 'import sys; sys.path.insert(0, "scripts/hooks"); import approval_lib as A; print(A.sha(open(sys.argv[1], encoding="utf-8", errors="replace").read())[:12])' "$proposed")
+printf '| %s | %s | %s | %s | %s |\n' "$(date -u +%Y-%m-%dT%H:%M)" "$(python3 -I -c 'import sys; sys.path.insert(0, "scripts/hooks"); import approval_lib as A; print(A.norm(sys.argv[1]))' "$path")" "$verdict" "$risk · sha:$sha12" "$oneline" >> "$log"
 echo "台帳に追記しました: $log（PR に含めてコミットしてください）"

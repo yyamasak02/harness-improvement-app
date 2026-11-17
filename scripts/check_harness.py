@@ -18,7 +18,13 @@ import tempfile
 REQUIRED_DENY = [
     "Bash(rm -rf *)", "Bash(sudo *)", "Bash(git push --force*)", "Bash(git reset --hard*)", "Bash(gh pr merge*)",
     "Bash(gh issue view*)", "Bash(gh pr diff*)", "Bash(git remote add*)", "Bash(curl *)", "Bash(gh api *)",
+    "Bash(git branch -f*)", "Bash(git update-ref*)",
 ]
+# 検査の仕組みが CI・pre-commit から消されていないか（ファイルごとに必要な文字列）
+REQUIRED_WIRING = {
+    ".github/workflows/ci.yml": ["check-approvals.sh", "check-harness.sh", "check-privacy.sh", "selftest-checks.sh"],
+    ".pre-commit-config.yaml": ["check-approvals-range", "check-harness-push", "check-harness-checkout", "check-privacy-range", "check-privacy-staged"],
+}
 HOOKS = {"PreToolUse": "pre_tool_guard.py", "PostToolUse": "post_tool_guard.py"}
 
 
@@ -75,6 +81,17 @@ def main():
     missing = [d for d in REQUIRED_DENY if d not in deny]
     if missing:
         problems.append("必須の deny が settings.json にありません: %s" % " / ".join(missing))
+
+    # 2.5) 検査の仕組みが CI・pre-commit に配線されたままか
+    for rel, words in REQUIRED_WIRING.items():
+        try:
+            body = open(os.path.join(repo, rel), encoding="utf-8").read()
+        except OSError:
+            problems.append("%s を読めません（検査の配線を確認できません）" % rel)
+            continue
+        gone = [w for w in words if w not in body]
+        if gone:
+            problems.append("%s から検査の配線が消えています: %s" % (rel, " / ".join(gone)))
 
     # 3) 実際に動かす
     with tempfile.TemporaryDirectory() as appr:
