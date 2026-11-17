@@ -42,4 +42,4 @@ jobs:
             この PR をレビューし、判定マーカー付きのコメントを `bash scripts/gh-post.sh pr comment` で投稿してください（`gh pr comment` の直接実行は禁止）。
             コードの編集・コミット・マージはしないでください。
           claude_args: >-
-            --allowedTools "Read,Grep,Glob,Bash(gh pr view:*),Bash(gh pr diff:*),Bash(bash scripts/gh-post.sh:*),Bash(gh issue view:*),Bash(gh issue list:*),Bash(git diff:*),Bash(git log:*),Bash(bash scripts/related-issues.sh:*)"
+            --allowedTools "Read,Grep,Glob,Bash(bash scripts/gh-read.sh:*),Bash(bash scripts/gh-post.sh:*),Bash(git diff:*),Bash(git log:*),Bash(bash scripts/related-issues.sh:*)"

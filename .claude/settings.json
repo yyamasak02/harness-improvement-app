@@ -35,9 +35,7 @@
       "Bash(git restore *)",
       "Bash(git stash*)",
       "Bash(gh pr view*)",
-      "Bash(gh pr list*)",
       "Bash(gh pr checks*)",
-      "Bash(gh pr diff*)",
       "Bash(gh pr status*)",
       "Bash(gh run list*)",
       "Bash(gh run view*)",
@@ -63,8 +61,6 @@
       "WebFetch(domain:github.com)",
       "WebFetch(domain:wails.io)",
       "WebFetch(domain:pkg.go.dev)",
-      "Bash(gh issue list*)",
-      "Bash(gh issue view*)",
       "Bash(gh issue close*)",
       "Bash(gh label create*)",
       "Bash(gh label list*)",
@@ -144,7 +140,30 @@
       "Bash(gh * pr close*)",
       "Bash(gh * api *)",
       "Bash(gh * release *)",
-      "Bash(gh * pr merge*)"
+      "Bash(gh * pr merge*)",
+      "Bash(gh issue view*)",
+      "Bash(gh * issue view*)",
+      "Bash(gh pr diff*)",
+      "Bash(gh * pr diff*)",
+      "Bash(gh pr view*comments*)",
+      "Bash(gh * pr view*comments*)",
+      "Bash(gh pr view*reviews*)",
+      "Bash(gh issue list*)",
+      "Bash(gh pr list*)",
+      "Bash(gh * issue list*)",
+      "Bash(gh * pr list*)",
+      "Bash(git remote add*)",
+      "Bash(git remote set-url*)",
+      "Bash(gh pr view*-c*)",
+      "Bash(gh * pr view*-c*)",
+      "Bash(gh pr view*omments*)",
+      "Bash(gh * pr view*omments*)",
+      "Bash(gh pr view*iews*)",
+      "Bash(gh * pr view*iews*)",
+      "Bash(gh pr view*body*)",
+      "Bash(gh * pr view*body*)",
+      "Bash(gh pr view*title*)",
+      "Bash(gh * pr view*title*)"
     ]
   },
   "hooks": {
@@ -165,6 +184,30 @@
           {
             "type": "command",
             "command": "echo 【規則】ユーザーの要求は実装に入る前に必ず GitHub issue にする。create-issue skill を使い、複数の依頼は 1 件ずつ別 issue、起票した番号を返信で伝え、PR 本文で Closes/Refs する。質問への回答のみなら不要。"
+          }
+        ]
+      }
+    ],
+    "PreToolUse": [
+      {
+        "matcher": "Edit|Write|MultiEdit|NotebookEdit|Bash",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "python3 -I \"$CLAUDE_PROJECT_DIR/scripts/hooks/pre_tool_guard.py\"",
+            "timeout": 10
+          }
+        ]
+      }
+    ],
+    "PostToolUse": [
+      {
+        "matcher": "WebFetch|WebSearch|Bash|mcp__.*",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "python3 -I \"$CLAUDE_PROJECT_DIR/scripts/hooks/post_tool_guard.py\"",
+            "timeout": 10
           }
         ]
       }
