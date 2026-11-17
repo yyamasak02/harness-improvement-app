@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# PR 本文が issue を参照していること（Closes/Fixes/Resolves/Refs #N）、または `[no-issue]: 理由` を持つことを検査する。
+# PR 本文が issue を参照していること（Closes/Fixes/Resolves/Refs #N）、または区分付きの `[no-issue]: <依存更新|誤字修正|生成物の更新|リリース準備>: 理由` を持つことを検査する。
 #   環境変数: PR_BODY（必須）、PR_AUTHOR（dependabot[bot] は免除）
 set -euo pipefail
 body="${PR_BODY:-}"

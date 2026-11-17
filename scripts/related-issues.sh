@@ -47,4 +47,4 @@ kw="$*"
 if [ -n "$kw" ] && [ "$kw" != "main" ]; then
   echo "-- キーワード検索: $kw"; gh issue list --state open --search "$kw" --limit 20 --json number,title,labels --jq "$JQ" | show
 fi
-echo "（関連があれば PR 本文に 'Closes #N' か 'Refs #N' を書く。無ければ '[no-issue]: 理由'。無い課題は create-issue で起票）"
+echo "（関連があれば PR 本文に 'Closes #N' か 'Refs #N' を書く。無い課題・ユーザーの依頼は create-issue で起票。例外のみ '[no-issue]: 依存更新|誤字修正|生成物の更新|リリース準備: 理由'）"
