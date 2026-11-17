@@ -111,24 +111,38 @@ fi
 # ---- 全 open PR ----
 if [ $gh_ok -eq 1 ]; then
   section "open な PR"
-  prs=$(g pr list --state open --json number,title,headRefName --jq '.[]|"#\(.number) \(.title) (\(.headRefName))"')
-  [ -n "$prs" ] && echo "$prs" | sed 's/^/  /' || echo "  なし"
-
-  section "open な issue（優先度順）"
-  command -v python3 >/dev/null 2>&1 || echo "  （python3 が無いため issue 一覧を整形できません）"
-  issues=$(g issue list --state open --limit 100 --json number,title,labels | python3 -I -c '
-import json, sys
+  # 外部の投稿者のタイトルはモデルの文脈に流さない（プロンプトインジェクション対策）。信頼するのはリポジトリ所有者・bot・claude のみ
+  TRUSTED="$owner,app/dependabot,app/github-actions,claude"; export TRUSTED
+  prs=$(g pr list --state open --json number,title,headRefName,author | python3 -I -c '
+import json, os, sys
 try:
     items = json.load(sys.stdin)
 except ValueError:
     sys.exit(0)
+ok = set(os.environ["TRUSTED"].split(","))
+for i in items:
+    t = i["title"] if (i.get("author") or {}).get("login") in ok else "（外部投稿者のためタイトル非表示）"
+    print("#%d %s (%s)" % (i["number"], t, i["headRefName"]))
+')
+  [ -n "$prs" ] && echo "$prs" | sed 's/^/  /' || echo "  なし"
+
+  section "open な issue（優先度順）"
+  command -v python3 >/dev/null 2>&1 || echo "  （python3 が無いため issue 一覧を整形できません）"
+  issues=$(g issue list --state open --limit 100 --json number,title,labels,author | python3 -I -c '
+import json, os, sys
+try:
+    items = json.load(sys.stdin)
+except ValueError:
+    sys.exit(0)
+trusted = set(os.environ["TRUSTED"].split(","))
 rows = []
 for i in items:
     ls = [l["name"] for l in i["labels"]]
     pr = next((l.split("/", 1)[1] for l in ls if l.startswith("priority/")), "?")
     tags = [l.split("/", 1)[1] for l in ls if l in ("status/needs-human", "status/blocked") or l.startswith("release/")]
     rel = next((l.split("/", 1)[1] for l in ls if l.startswith("release/")), "z")
-    rows.append((pr, 0 if rel == "v0.1" else 1, i["number"], i["title"], ",".join(tags)))
+    title = i["title"] if (i.get("author") or {}).get("login") in trusted else "（外部投稿者のためタイトル非表示）"
+    rows.append((pr, 0 if rel == "v0.1" else 1, i["number"], title, ",".join(tags)))
 # 優先度 → リリース（v0.1 を先）→ 番号の順
 for pr, _, n, t, tags in sorted(rows):
     print("%s\t#%d\t%s\t%s" % (pr, n, t, tags))

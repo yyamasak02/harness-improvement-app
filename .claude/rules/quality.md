@@ -14,6 +14,7 @@ description: 品質担保・リファクタリング・テスト保守のルー�
 | カバレッジ | Go: collector・digest・masking・applier・runner ≥ 70%。フロント: stmts ≥ 80 / branch ≥ 75 / lines ≥ 80 | `scripts/coverage.sh` / `frontend/vite.config.ts` |
 | ルール検査 | ホーム解決・実 `~/.claude` 参照・書き込み API の使用箇所・秘密らしき文字列・テスト無効化 | `scripts/check-rules.sh`（自己テスト: `scripts/selftest-checks.sh`） |
 | 独立レビュー | 全 PR を独立レビューエージェント（`.claude/agents/code-reviewer.md`、基準は `docs/review-guidelines.md`）がレビュー。承認は head コミットごと。`merge-pr.sh` が承認マーカーと CI 成功を検査 | `scripts/merge-pr.sh` / `review-pr` skill / `claude-review.yml` |
+| 個人情報の流出防止 | コミット差分・メッセージ・作者メールを検査（pre-commit / pre-push / CI）。GitHub への投稿は `gh-post.sh` で本文を検査 | `scripts/check-privacy.sh` / `gh-post.sh` / `.claude/rules/security.md` |
 | 関連 issue | 着手前に関連 issue を探し、PR 本文で参照（Closes/Refs #N 。依頼由来の変更は必ず issue 化。例外は区分付き `[no-issue]`） | `scripts/related-issues.sh` / `check-pr-issue-link.sh` |
 | 週次点検 | govulncheck / npm audit | `.github/workflows/maintenance.yml` |
 
