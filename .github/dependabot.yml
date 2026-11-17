@@ -1,20 +1,41 @@
 version: 2
+# 取り扱い方針（#56）:
+#  - 更新はグルーピングして PR の数を抑える（actions は 1 本、npm の開発依存の minor/patch は 1 本、Go の minor/patch は 1 本）
+#  - major 更新は個別の PR にする（互換性確認が必要。typescript / vitest / jsdom などは CI・カバレッジ閾値・型エラーを確認して取り込む）
+#  - Wails は v2.10.2 に固定（追従方針は issue #29）
+#  - 同時に開く PR は最大 5 本
 updates:
   - package-ecosystem: gomod
     directory: /
     schedule: {interval: weekly}
+    open-pull-requests-limit: 5
     labels: [type/chore, area/service]
     commit-message: {prefix: "chore(deps)"}
+    groups:
+      go-minor-patch:
+        update-types: [minor, patch]
     ignore:
       # Wails は v2.10.2 に固定（追従方針は issue で管理）
       - dependency-name: github.com/wailsapp/wails/v2
   - package-ecosystem: npm
     directory: /frontend
     schedule: {interval: weekly}
+    open-pull-requests-limit: 5
     labels: [type/chore, area/frontend]
     commit-message: {prefix: "chore(deps)"}
+    groups:
+      npm-dev-minor-patch:
+        dependency-type: development
+        update-types: [minor, patch]
+      npm-prod-minor-patch:
+        dependency-type: production
+        update-types: [minor, patch]
   - package-ecosystem: github-actions
     directory: /
     schedule: {interval: weekly}
+    open-pull-requests-limit: 5
     labels: [type/chore, area/ci]
     commit-message: {prefix: "chore(deps)"}
+    groups:
+      actions:
+        patterns: ["*"]
