@@ -9,6 +9,7 @@ import (
 	"strings"
 	"testing"
 	"time"
+	"unicode"
 
 	"harness-app/internal/testutil"
 )
@@ -243,6 +244,11 @@ func TestPromptIsSafeForCmdShim(t *testing.T) {
 	if strings.ContainsAny(prompt, "%\"&|<>^\n\r") {
 		t.Fatalf("プロンプトに .cmd shim で問題になる文字が含まれている: %q", prompt)
 	}
+	for _, r := range prompt {
+		if r > unicode.MaxASCII {
+			t.Fatalf("プロンプトに非 ASCII 文字 %q が含まれている（.cmd shim のコードページで文字化けしうる）: %q", r, prompt)
+		}
+	}
 }
 
 func TestPickWindowsCandidate(t *testing.T) {
@@ -262,4 +268,10 @@ func TestPickWindowsCandidate(t *testing.T) {
 			}
 		})
 	}
+}
+
+func TestMain(m *testing.M) {
+	code := m.Run()
+	testutil.Cleanup() // フェイク claude の一時ディレクトリを消す
+	os.Exit(code)
 }

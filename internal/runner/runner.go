@@ -28,8 +28,9 @@ var (
 	ErrCanceled = errors.New("claude の実行がキャンセルされました")
 )
 
-// prompt は claude -p に渡す指示。Windows の .cmd shim は引数の特殊文字（% " & | < > ^）を拒否するため、これらを含めない。
-const prompt = "claudemd-improve skill に従い、カレントディレクトリの input.json を処理して output.md と rationale.md を書いてください。"
+// prompt は claude -p に渡す指示。Windows の .cmd shim は、引数の特殊文字（% " & | < > ^）を拒否し、
+// 日本語など非 ASCII はコードページで文字化けしうる。そのため ASCII のみ・特殊文字なしにする（skill 名とファイル名で足りる）。
+const prompt = "Follow the claudemd-improve skill: process input.json in the current directory and write output.md and rationale.md."
 
 // Input は skill への入力（input.json）。
 type Input struct {

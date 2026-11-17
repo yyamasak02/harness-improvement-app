@@ -305,3 +305,9 @@ func TestNewValidation(t *testing.T) {
 		t.Fatal("必須パラメータなしはエラー")
 	}
 }
+
+func TestMain(m *testing.M) {
+	code := m.Run()
+	testutil.Cleanup() // フェイク claude の一時ディレクトリを消す
+	os.Exit(code)
+}
