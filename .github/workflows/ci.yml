@@ -89,6 +89,12 @@ jobs:
           git fetch origin "$BASE"
           printf '%s\n%s\n' "$PR_TITLE" "$PR_BODY" | bash scripts/check-privacy.sh text
           bash scripts/check-privacy.sh range "origin/$BASE"
+      - name: 境界ファイルの変更に、第一承認者（別エージェント）の評価の記録があること
+        env:
+          BASE: ${{ github.event.pull_request.base.ref }}
+        run: |
+          git fetch origin "$BASE"
+          bash scripts/check-approvals.sh range "origin/$BASE"
       - name: feat/fix は CHANGELOG を更新する
         env:
           PR_TITLE: ${{ github.event.pull_request.title }}

@@ -190,21 +190,113 @@ out=$(printf '{"tool_name":"WebFetch","tool_response":{"result":"ふつうのペ
 out=$(printf '{"tool_name":"Read","tool_response":{"result":"%s"}}' "$inj" | python3 -I scripts/hooks/post_tool_guard.py)
 [ -z "$out" ] && echo "ok: リポジトリ内ファイルの Read は対象外" || { echo "NG: Read に警告した"; fail=1; }
 hook_ask() { printf '%s' "$1" | python3 -I scripts/hooks/pre_tool_guard.py; }
+# 第一承認者（別エージェント）の評価の記録は、一時ディレクトリに作る（実際の .git には書かない）
+export HARNESS_APPROVAL_DIR="$tmp/approvals"; mkdir -p "$HARNESS_APPROVAL_DIR"
+approve() { # path verdict risk summary content [created_epoch]   ※ content は評価した変更後の全文（ハッシュに結び付く）
+  python3 -I -c 'import sys; sys.path.insert(0, "scripts/hooks"); import approval_lib as A; A.write_record(sys.argv[1], sys.argv[2], sys.argv[3], sys.argv[4], content_sha=A.sha(sys.argv[5]), now=int(sys.argv[6]) if len(sys.argv) > 6 else None)' "$@"
+}
+write_json() { python3 -I -c 'import json,sys; print(json.dumps({"tool_name":"Write","tool_input":{"file_path":sys.argv[1],"content":sys.argv[2]}}))' "$1" "$2"; }
 for f in ".claude/settings.json" ".claude/settings.local.json" ".claude/rules/security.md" ".claude/agents/code-reviewer.md" "scripts/hooks/pre_tool_guard.py" "scripts/gh-post.sh" "scripts/check-privacy.sh" "scripts/merge-pr.sh"; do
-  case "$(hook_ask "{\"tool_name\":\"Edit\",\"tool_input\":{\"file_path\":\"/w/$f\"}}")" in *'"ask"'*) echo "ok: $f の編集は人の確認（ask）に回る" ;; *) echo "NG: $f の編集が確認に回らない"; fail=1 ;; esac
+  approve "$f" APPROVE neutral "テスト用の評価" "NEWBODY"
+  case "$(hook_ask "$(write_json "/w/$f" NEWBODY)")" in *'"ask"'*) echo "ok: $f の編集は（評価があれば）人の確認（ask）に回る" ;; *) echo "NG: $f の編集が確認に回らない"; fail=1 ;; esac
 done
 case "$(hook_ask '{"tool_name":"Write","tool_input":{"file_path":"/w/internal/service/service.go"}}')" in "") echo "ok: 通常のファイルの編集は確認不要" ;; *) echo "NG: 通常のファイルが確認対象"; fail=1 ;; esac
-case "$(hook_ask '{"tool_name":"Bash","tool_input":{"command":"sed -i s/a/b/ .claude/settings.json"}}')" in *'"ask"'*) echo "ok: Bash による設定ファイルの書き換えは確認に回る" ;; *) echo "NG: Bash の書き換えが確認に回らない"; fail=1 ;; esac
+case "$(hook_ask '{"tool_name":"Bash","tool_input":{"command":"sed -i s/a/b/ .claude/settings.json"}}')" in *'"deny"'*) echo "ok: Bash による設定ファイルの書き換えは拒否される（Edit / Write を使う）" ;; *) echo "NG: Bash の書き換えが拒否されない"; fail=1 ;; esac
 case "$(hook_ask '{"tool_name":"Bash","tool_input":{"command":"cat .claude/settings.json"}}')" in "") echo "ok: 設定ファイルの読み取りは確認不要" ;; *) echo "NG: 読み取りが確認対象"; fail=1 ;; esac
 rcmd="git remote set-""url origin https://example.net/x.git"
 case "$(hook_ask "{\"tool_name\":\"Bash\",\"tool_input\":{\"command\":\"$rcmd\"}}")" in *'"deny"'*) echo "ok: 送信先（git remote）の差し替えは拒否" ;; *) echo "NG: git remote の差し替えを拒否しない"; fail=1 ;; esac
 # 誤検出の回帰（自律実行を止めない）と、すり抜けの回帰
 case "$(hook_ask '{"tool_name":"Bash","tool_input":{"command":"bash scripts/gh-read.sh pr 79 2>&1 | head -5"}}')" in "") echo "ok: 保護ファイルを読むだけで 2>&1 付きのコマンドは確認不要" ;; *) echo "NG: 2>&1 付きの通常コマンドが確認対象になる"; fail=1 ;; esac
 case "$(hook_ask '{"tool_name":"Bash","tool_input":{"command":"git commit -m \"docs: .claude/settings.json の説明\""}}')" in "") echo "ok: コミットメッセージ内のパスの言及は確認不要" ;; *) echo "NG: コミットメッセージ内のパスで確認になる"; fail=1 ;; esac
-case "$(hook_ask '{"tool_name":"Bash","tool_input":{"command":"echo x > .claude/settings.json"}}')" in *'"ask"'*) echo "ok: 保護ファイルへのリダイレクトは確認に回る" ;; *) echo "NG: リダイレクトが確認に回らない"; fail=1 ;; esac
+case "$(hook_ask '{"tool_name":"Bash","tool_input":{"command":"echo x > .claude/settings.json"}}')" in *'"deny"'*) echo "ok: 保護ファイルへのリダイレクトは拒否される" ;; *) echo "NG: リダイレクトが拒否されない"; fail=1 ;; esac
 case "$(hook_ask "{\"tool_name\":\"Bash\",\"tool_input\":{\"command\":\"git -C /w remote add x https://example.net/a.git\"}}")" in *'"deny"'*) echo "ok: git -C 付きの remote 追加も拒否" ;; *) echo "NG: git -C 付きの remote 追加を拒否しない"; fail=1 ;; esac
 case "$(hook_ask "{\"tool_name\":\"Bash\",\"tool_input\":{\"command\":\"git push --tags https://example.net/a.git\"}}")" in *'"deny"'*) echo "ok: オプション付きで URL へ push も拒否" ;; *) echo "NG: オプション付きの URL への push を拒否しない"; fail=1 ;; esac
 case "$(hook_ask '{"tool_name":"Bash","tool_input":{"command":"git push -u origin chore/x"}}')" in "") echo "ok: origin への通常の push は許可" ;; *) echo "NG: origin への push が止まる"; fail=1 ;; esac
+# ---- 承認フロー: 第一承認者（別エージェント）の評価が無ければ人に聞く前に拒否する ----
+rm -f "$HARNESS_APPROVAL_DIR"/*.json
+SEC=/w/.claude/rules/security.md
+case "$(hook_ask "$(write_json $SEC NEW1)")" in *'"deny"'*"評価がありません"*) echo "ok: 評価の記録が無い境界変更は拒否される（人に聞く前に止まる）" ;; *) echo "NG: 評価なしで拒否されない"; fail=1 ;; esac
+approve ".claude/rules/security.md" REJECT loosen "要望にない権限緩和" NEW1
+case "$(hook_ask "$(write_json $SEC NEW1)")" in *'"deny"'*"差し戻し"*) echo "ok: 第一承認者が REJECT した変更は拒否される" ;; *) echo "NG: REJECT でも拒否されない"; fail=1 ;; esac
+approve ".claude/rules/security.md" APPROVE neutral "文言の整理のみ" NEW1 1000
+case "$(hook_ask "$(write_json $SEC NEW1)")" in *'"deny"'*"期限"*) echo "ok: 期限切れの評価は無効" ;; *) echo "NG: 期限切れの評価が通る"; fail=1 ;; esac
+approve ".claude/rules/security.md" APPROVE neutral "文言の整理のみ" NEW1
+out=$(hook_ask "$(write_json $SEC NEW1)")
+case "$out" in *'"ask"'*"承認依頼"*"なぜ実行するか"*"文言の整理のみ"*"実行内容"*"影響"*"第一承認者"*) echo "ok: APPROVE のとき、要約・影響・第一承認者の評価を整理した確認画面になる" ;; *) echo "NG: 確認画面の内容が不足: $out"; fail=1 ;; esac
+case "$(hook_ask "$(write_json $SEC NEW2_DIFFERENT)")" in *'"deny"'*"一致しません"*) echo "ok: 評価した内容と違う変更は拒否される（評価の使い回しを防ぐ）" ;; *) echo "NG: 内容が違っても評価が通る"; fail=1 ;; esac
+# 評価の記録が壊れていても、フックが落ちて素通りしない（fail-closed）
+printf '{"path":"x","verdict":"APPROVE","created":"yesterday","summary":"s","content_sha":"x"}' > "$HARNESS_APPROVAL_DIR/$(python3 -I -c 'import sys; sys.path.insert(0,"scripts/hooks"); import approval_lib as A; print(A.key(".claude/rules/security.md"))').json"
+case "$(hook_ask "$(write_json $SEC NEW1)")" in *'"deny"'*) echo "ok: created が文字列の壊れた記録は無効（拒否）" ;; *) echo "NG: 壊れた記録で素通りする"; fail=1 ;; esac
+printf '[1,2]' > "$HARNESS_APPROVAL_DIR/$(python3 -I -c 'import sys; sys.path.insert(0,"scripts/hooks"); import approval_lib as A; print(A.key(".claude/rules/security.md"))').json"
+case "$(hook_ask "$(write_json $SEC NEW1)")" in *'"deny"'*) echo "ok: 配列の壊れた記録は無効（拒否）" ;; *) echo "NG: 配列の記録で素通りする"; fail=1 ;; esac
+out=$(printf '%s' '{"tool_name":"Write","tool_input":{"file_path":"/w/.claude/settings.json","content":{"x":1}}}' | python3 -I scripts/hooks/pre_tool_guard.py; echo "rc=$?")
+case "$out" in *'"deny"'*"rc=0"*|*"rc=0"*) echo "ok: 想定外の入力でもフックは終了コード 0（非ブロックのエラーにならない）" ;; *) echo "NG: フックが異常終了: $out"; fail=1 ;; esac
+printf '%s' '[1,2,3 .claude/settings.json' | python3 -I scripts/hooks/pre_tool_guard.py | grep -q '"deny"' && echo "ok: 壊れたイベントでも、境界ファイルに触れる内容なら拒否（fail-closed）" || { echo "NG: 壊れたイベントで素通り"; fail=1; }
+printf '%s' '[1,2,3 internal/a.go' | python3 -I scripts/hooks/pre_tool_guard.py | grep -q . && { echo "NG: 無関係な壊れたイベントを拒否した"; fail=1; } || echo "ok: 無関係な壊れたイベントは通す（開発を止めない）"
+# バイナリ（UTF-8 でない）の境界ファイルでも落ちない
+bf="$tmp/projb/.claude/rules"; mkdir -p "$bf"; printf '\377\376\000\001' > "$bf/security.md"
+case "$(printf '%s' "{\"tool_name\":\"Edit\",\"tool_input\":{\"file_path\":\"$bf/security.md\",\"old_string\":\"a\",\"new_string\":\"b\"}}" | python3 -I scripts/hooks/pre_tool_guard.py)" in *'"deny"'*|*'"ask"'*) echo "ok: バイナリの境界ファイルでもフックが落ちない" ;; *) echo "NG: バイナリで素通りする"; fail=1 ;; esac
+out=$(hook_ask '{"tool_name":"Bash","tool_input":{"command":"sed -i s/a/b/ .claude/settings.json","description":"hooks を整理するため"}}')
+case "$out" in *"なぜ実行しようとしたか: hooks を整理するため"*"実行内容（コマンド）: sed -i"*) echo "ok: Bash の拒否画面に、理由（description）と実行内容（コマンド）が出る" ;; *) echo "NG: 拒否画面に理由と実行内容が無い: $out"; fail=1 ;; esac
+out=$(hook_ask '{"tool_name":"Bash","tool_input":{"command":"sed -i s/a/b/ .claude/settings.json"}}')
+case "$out" in *"目的の記載なし"*) echo "ok: 理由（description）が空のときはその旨を明示する" ;; *) echo "NG: 理由が空のときの表示が無い"; fail=1 ;; esac
+# 評価の置き場への Bash 書き込みは拒否（記録の偽造防止）
+case "$(hook_ask '{"tool_name":"Bash","tool_input":{"command":"echo {} > .git/harness-approvals/abc.json"}}')" in *'"deny"'*) echo "ok: 評価の置き場への書き込みは拒否される" ;; *) echo "NG: 評価の置き場に書ける"; fail=1 ;; esac
+# 評価の記録コマンド: 引数がすべて安全な文字だけの形（要約はファイルで渡す）に限って通す。引用符・エスケープ・連結・置換は通さない
+rec_ok='{"tool_name":"Bash","tool_input":{"command":"bash scripts/record-approval.sh .claude/settings.json APPROVE tighten /tmp/claude-1000/appr/s.txt /tmp/claude-1000/appr/new.txt"}}'
+case "$(hook_ask "$rec_ok")" in "") echo "ok: 評価の記録コマンド（引数が安全な文字だけ・要約はファイル渡し）は通る" ;; *) echo "NG: 正規の記録コマンドが止まる"; fail=1 ;; esac
+case "$(hook_ask '{"tool_name":"Bash","tool_input":{"command":"bash scripts/record-approval.sh .claude/settings.json APPROVE tighten \"cp を禁止する\" /tmp/x"}}')" in *'"deny"'*) echo "ok: 引用符付きの要約をコマンドに載せる形は拒否（ファイル渡しにする）" ;; *) echo "NG: 引用符付きの記録コマンドが通る"; fail=1 ;; esac
+case "$(hook_ask '{"tool_name":"Bash","tool_input":{"command":"bash scripts/record-approval.sh a APPROVE tighten \"$(cp x .claude/settings.json)\" /tmp/x"}}')" in *'"deny"'*) echo "ok: 要約文のコマンド置換を使った抜け道は拒否" ;; *) echo "NG: コマンド置換の抜け道が通る"; fail=1 ;; esac
+case "$(hook_ask '{"tool_name":"Bash","tool_input":{"command":"bash scripts/record-approval.sh a APPROVE tighten s /tmp/x; cp /tmp/y .claude/settings.json"}}')" in *'"deny"'*) echo "ok: 記録コマンドに連結した書き換えは拒否" ;; *) echo "NG: 連結した書き換えが通る"; fail=1 ;; esac
+case "$(hook_ask '{"tool_name":"Bash","tool_input":{"command":"bash scripts/record-approval.sh a APPROVE neutral \\\"; cp /tmp/y .claude/settings.json; echo \\\" /tmp/x"}}')" in *'"deny"'*) echo "ok: エスケープした引用符で囲みを抜ける抜け道は拒否" ;; *) echo "NG: エスケープ引用符の抜け道が通る"; fail=1 ;; esac
+case "$(hook_ask '{"tool_name":"Bash","tool_input":{"command":"bash scripts/record-approval.sh a APPROVE neutral \"x\ncp /tmp/y .claude/settings.json\" /tmp/x"}}')" in *'"deny"'*) echo "ok: 引用符内の改行で別コマンドを混ぜる抜け道は拒否" ;; *) echo "NG: 改行の抜け道が通る"; fail=1 ;; esac
+# パスの書き方（./ .. // 大文字小文字 シンボリックリンク）で保護をすり抜けられない
+for pth in "/w/.claude/./settings.json" "/w/.claude//settings.json" "/w/.claude/rules/../settings.json" "/w/.CLAUDE/Settings.json" "/w/.claude/settings.json "; do
+  rm -f "$HARNESS_APPROVAL_DIR"/*.json
+  case "$(hook_ask "$(write_json "$pth" X)")" in *'"deny"'*) echo "ok: パス表記 '$pth' でも保護される（評価が無ければ拒否）" ;; *) echo "NG: パス表記 '$pth' で保護をすり抜ける"; fail=1 ;; esac
+done
+ln -s "$tmp/proj/.claude/settings.json" "$tmp/link-to-settings" 2>/dev/null; mkdir -p "$tmp/proj/.claude"; : > "$tmp/proj/.claude/settings.json"
+case "$(hook_ask "$(write_json "$tmp/link-to-settings" X)")" in *'"deny"'*) echo "ok: シンボリックリンク経由でも保護される" ;; *) echo "NG: シンボリックリンク経由で保護をすり抜ける"; fail=1 ;; esac
+for pth in "/w/.git/./harness-approvals/x.json" "/w/.git/worktrees/w/harness-approvals/x.json" "/w/.GIT/Harness-Approvals/x.json"; do
+  case "$(hook_ask "$(write_json "$pth" '{}')")" in *'"deny"'*) echo "ok: 評価の置き場（$pth）への Write は拒否される" ;; *) echo "NG: 評価の置き場に書ける: $pth"; fail=1 ;; esac
+done
+# Edit: 空の old_string・見つからない old_string の扱い
+mkdir -p "$tmp/projc/.claude/rules"; printf 'existing body\n' > "$tmp/projc/.claude/rules/security.md"
+case "$(printf '%s' "{\"tool_name\":\"Edit\",\"tool_input\":{\"file_path\":\"$tmp/projc/.claude/rules/security.md\",\"old_string\":\"\",\"new_string\":\"injected\"}}" | python3 -I scripts/hooks/pre_tool_guard.py)" in *'"deny"'*"old_string が空"*) echo "ok: 既存ファイルへの空 old_string の Edit は拒否される" ;; *) echo "NG: 空 old_string の Edit が通る"; fail=1 ;; esac
+case "$(printf '%s' "{\"tool_name\":\"Edit\",\"tool_input\":{\"file_path\":\"$tmp/projc/.claude/rules/security.md\",\"old_string\":\"no such text\",\"new_string\":\"x\"}}" | python3 -I scripts/hooks/pre_tool_guard.py)" in *'"deny"'*"見つかりません"*) echo "ok: 見つからない old_string の Edit は拒否される" ;; *) echo "NG: 見つからない old_string の Edit が通る"; fail=1 ;; esac
+# 偽造しやすい記録（created が NaN・未来）は無効
+kf="$HARNESS_APPROVAL_DIR/$(python3 -I -c 'import sys; sys.path.insert(0,"scripts/hooks"); import approval_lib as A; print(A.key(".claude/rules/security.md"))').json"
+printf '{"path":"x","verdict":"APPROVE","risk":"neutral","summary":"s","content_sha":"%s","created":NaN}' "$(python3 -I -c 'import sys; sys.path.insert(0,"scripts/hooks"); import approval_lib as A; print(A.sha("NEWX"))')" > "$kf"
+case "$(hook_ask "$(write_json $SEC NEWX)")" in *'"deny"'*) echo "ok: created が NaN の記録は無効" ;; *) echo "NG: NaN の記録が通る"; fail=1 ;; esac
+approve ".claude/rules/security.md" APPROVE neutral "未来の評価" NEWX 99999999999
+case "$(hook_ask "$(write_json $SEC NEWX)")" in *'"deny"'*) echo "ok: 未来の時刻の記録は無効" ;; *) echo "NG: 未来の記録が通る"; fail=1 ;; esac
+# 確認画面に、記録は実装者にも作れる旨の注意が出る
+approve ".claude/rules/security.md" APPROVE neutral "文言の整理のみ" NEWX
+case "$(hook_ask "$(write_json $SEC NEWX)")" in *"実装者にも作成できてしまいます"*) echo "ok: 確認画面に「評価の記録は実装者にも作れる」旨の注意が出る" ;; *) echo "NG: 注意書きが無い"; fail=1 ;; esac
+# settings.json: 権限・フック・その他の設定の増減を決定論的に要約し、評価と食い違えば拒否する
+sd="$tmp/proj/.claude"; mkdir -p "$sd"
+printf '{"permissions":{"allow":["Bash(ls *)"],"deny":["Bash(sudo *)","Bash(rm -rf *)"]}}' > "$sd/settings.json"
+mk_settings() { python3 -I -c 'import json,sys; print(json.dumps({"tool_name":"Write","tool_input":{"file_path":sys.argv[1],"content":sys.argv[2]}}))' "$sd/settings.json" "$1"; }
+LOOSEN='{"permissions":{"allow":["Bash(ls *)","Bash(curl *)"],"deny":["Bash(sudo *)"]}}'
+approve ".claude/settings.json" APPROVE tighten "締める変更です" "$LOOSEN"
+case "$(hook_ask "$(mk_settings "$LOOSEN")")" in *'"deny"'*"食い違い"*) echo "ok: 実際は権限を緩めるのに「締める」と評価された変更は拒否される" ;; *) echo "NG: 評価の食い違いを検出しない"; fail=1 ;; esac
+approve ".claude/settings.json" APPROVE loosen "curl を許可する（要望 #999 のため）" "$LOOSEN"
+out=$(hook_ask "$(mk_settings "$LOOSEN")")
+case "$out" in *'"ask"'*"deny を 1 件削除"*"allow を 1 件追加"*"緩める"*) echo "ok: settings の deny/allow の増減と「緩める」判定が確認画面に出る" ;; *) echo "NG: settings の増減サマリが不足: $out"; fail=1 ;; esac
+TIGHT='{"permissions":{"allow":["Bash(ls *)"],"deny":["Bash(sudo *)","Bash(rm -rf *)","Bash(ssh *)"]}}'
+approve ".claude/settings.json" APPROVE tighten "ssh を禁止する" "$TIGHT"
+case "$(hook_ask "$(mk_settings "$TIGHT")")" in *'"ask"'*"deny を 1 件追加"*"締める"*) echo "ok: 権限を締める変更は「締める」と表示される" ;; *) echo "NG: 締める変更の判定が不正"; fail=1 ;; esac
+for danger in '{"permissions":{"allow":["Bash(ls *)"],"deny":["Bash(sudo *)","Bash(rm -rf *)"],"defaultMode":"bypassPermissions"}}' \
+              '{"permissions":{"allow":["Bash(ls *)"],"deny":["Bash(sudo *)","Bash(rm -rf *)"]},"disableAllHooks":true}' \
+              '{"permissions":{"allow":["Bash(ls *)"],"deny":["Bash(sudo *)","Bash(rm -rf *)"]},"enableAllProjectMcpServers":true}'; do
+  approve ".claude/settings.json" APPROVE neutral "変わらない（誤評価）" "$danger"
+  case "$(hook_ask "$(mk_settings "$danger")")" in *'"deny"'*"食い違い"*) echo "ok: 権限の動作に関わる設定の追加を「変わらない」と評価しても拒否される" ;; *) echo "NG: 危険な設定の追加が neutral のまま通る: $danger"; fail=1 ;; esac
+done
+# 配置の確認: change-approver・record-approval・check-approvals・request-approval が揃っている
+for f in .claude/agents/change-approver.md scripts/record-approval.sh scripts/check-approvals.sh .claude/skills/request-approval/SKILL.md; do
+  [ -f "$f" ] && echo "ok: $f がある" || { echo "NG: $f が無い"; fail=1; }
+done
+rm -f "$HARNESS_APPROVAL_DIR"/*.json
 out=$(printf '{"tool_name":"Bash","tool_input":{"command":"bash scripts/gh-read.sh pr 1"},"tool_response":{"result":"%s"}}' "$inj" | python3 -I scripts/hooks/post_tool_guard.py)
 [ -z "$out" ] && echo "ok: gh-read.sh の出力には二重に警告しない" || { echo "NG: gh-read.sh の出力に二重警告"; fail=1; }
 # gh-read: 外部投稿者の内容は <untrusted-data> で囲み、所有者の内容は囲まない

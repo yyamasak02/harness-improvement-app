@@ -16,6 +16,7 @@ description: 品質担保・リファクタリング・テスト保守のルー�
 | 独立レビュー | 全 PR を独立レビューエージェント（`.claude/agents/code-reviewer.md`、基準は `docs/review-guidelines.md`）がレビュー。承認は head コミットごと。`merge-pr.sh` が承認マーカーと CI 成功を検査 | `scripts/merge-pr.sh` / `review-pr` skill / `claude-review.yml` |
 | 個人情報の流出防止 | コミット差分・メッセージ・作者メールを検査（pre-commit / pre-push / CI）。GitHub への投稿は `gh-post.sh` で本文を検査 | `scripts/check-privacy.sh` / `gh-post.sh` / `.claude/rules/security.md` |
 | インジェクション対策 | issue/PR の読み取りは `gh-read.sh`（外部投稿者の内容を untrusted-data で囲む）。PostToolUse フックで警告、PreToolUse フックで境界ファイルの変更を人の確認に回す | `scripts/gh-read.sh` / `scripts/hooks/` / `.claude/rules/security.md` |
+| 境界変更の承認 | settings・security.md・agents・フック・検査/マージのスクリプトの変更は、第一承認者（別エージェント）の評価が無ければ PreToolUse フックが拒否。確認画面は「なぜ・実行内容・影響・評価」。評価は台帳に残り、CI が PR ごとに確認 | `scripts/hooks/` / `scripts/record-approval.sh` / `scripts/check-approvals.sh` / `docs/approval-log.md` |
 | 関連 issue | 着手前に関連 issue を探し、PR 本文で参照（Closes/Refs #N 。依頼由来の変更は必ず issue 化。例外は区分付き `[no-issue]`） | `scripts/related-issues.sh` / `check-pr-issue-link.sh` |
 | 週次点検 | govulncheck / npm audit | `.github/workflows/maintenance.yml` |
 
