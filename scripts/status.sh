@@ -80,7 +80,7 @@ if [ "$branch" != "main" ] && [ $gh_ok -eq 1 ]; then
       decide "PR #$pr はクローズ済み（未マージ）→ 理由を確認（gh pr view $pr --comments）。再開するなら新しい PR を作る"
     else
       head=$(g pr view "$pr" --json headRefOid --jq .headRefOid)
-      verdict=$(g pr view "$pr" --json comments,reviews | bash scripts/review-verdict.sh "${head:-none}" "$owner,github-actions,claude" 2>/dev/null || echo NONE)
+      verdict=$(g pr view "$pr" --json comments,reviews | bash scripts/review-verdict.sh "${head:-none}" "$owner,app/github-actions,github-actions[bot],app/claude,claude[bot]" 2>/dev/null || echo NONE)
       [ -n "$verdict" ] || verdict=NONE
       echo "head: ${head:0:7} / 独立レビューの判定（この head に対して）: $verdict"
       checks=$(g pr checks "$pr")
@@ -112,7 +112,7 @@ fi
 if [ $gh_ok -eq 1 ]; then
   section "open な PR"
   # 外部の投稿者のタイトルはモデルの文脈に流さない（プロンプトインジェクション対策）。信頼するのはリポジトリ所有者・bot・claude のみ
-  TRUSTED="$owner,app/dependabot,app/github-actions,claude"; export TRUSTED
+  TRUSTED="$owner,app/dependabot,dependabot[bot],app/github-actions,github-actions[bot],app/claude,claude[bot]"; export TRUSTED
   prs=$(g pr list --state open --json number,title,headRefName,author | python3 -I -c '
 import json, os, sys
 try:

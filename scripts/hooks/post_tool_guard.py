@@ -28,6 +28,9 @@ def main():
     # リポジトリ内のファイル読み取り（Read/Grep/Glob）と編集系は対象外。外部由来になりうるものだけ見る
     if name in ("Read", "Grep", "Glob", "Edit", "Write", "MultiEdit", "NotebookEdit"):
         return
+    # gh-read.sh の出力は自前で囲み・警告を付けているので二重に警告しない
+    if "scripts/gh-read.sh" in str((ev.get("tool_input") or {}).get("command", "")):
+        return
     kinds = scan(flatten(ev.get("tool_response")))
     if not kinds:
         return

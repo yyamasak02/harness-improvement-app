@@ -7,7 +7,7 @@ n="${1:-$(gh pr view --json number --jq .number)}"
 sha=$(gh pr view "$n" --json headRefOid --jq .headRefOid)
 # 承認として扱う投稿者: リポジトリのオーナーと GitHub Actions 系の bot（第三者のコメントは無視する）
 owner=$(gh repo view --json owner --jq .owner.login)
-verdict=$(gh pr view "$n" --json comments,reviews | bash scripts/review-verdict.sh "$sha" "$owner,github-actions,claude")
+verdict=$(gh pr view "$n" --json comments,reviews | bash scripts/review-verdict.sh "$sha" "$owner,app/github-actions,github-actions[bot],app/claude,claude[bot]")
 if [ "$verdict" != "APPROVE" ]; then
   echo "マージできません: head ${sha:0:7} に対する独立レビューの判定が '$verdict' です（APPROVE が必要）。review-pr skill に従ってください。"
   exit 1

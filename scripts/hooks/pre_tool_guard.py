@@ -17,10 +17,13 @@ PROTECTED = [
 ]
 PROT_RX = [re.compile(p) for p in PROTECTED]
 # 保護ファイルを書き換えうる Bash の形
-WRITE_HINT = re.compile(r"(>|>>|\bsed\s+-[a-z]*i|\btee\b|\bmv\b|\bcp\b|\brm\b|\bgit\s+(checkout|restore|apply)\b|\bperl\s+-[a-z]*i|\bpython3?\b|\bnode\b|\bchmod\b|\btruncate\b|\bdd\b|\bln\b)")
+WRITE_HINT = re.compile(r"(\bsed\s+-[a-z]*i|\btee\b|\bmv\b|\bcp\b|\brm\b|\bgit\s+(checkout|restore|apply)\b|\bperl\s+-[a-z]*i|\bpython3?\b|\bnode\b|\bchmod\b|\btruncate\b|\bdd\b|\bln\b)")
+REDIRECT = re.compile(r">>?\s*(\S+)")
+FD_REDIRECT = re.compile(r"\d*>&\d*|&>>?\s*\S+|>\s*/dev/null")
 # コマンドの先頭（行頭・; & | ( ` の直後・sudo/xargs の後）にある git だけを見る。文書やコミットメッセージの中の説明文では反応しない
 _HEAD = r"(?:^|[;&|(`\n]\s*)(?:(?:sudo|xargs|env)\s+)*"
-REMOTE = re.compile(_HEAD + r"git\s+remote\s+(?:add|set-url|rename)\b|" + _HEAD + r"git\s+push\s+(?!-u\s+origin\b|origin\b)\S*(?:https?://|git@|ssh://)")
+_GIT = _HEAD + r"git(?:\s+-\S+(?:\s+[^-\s]\S*)?)*\s+"   # git -C dir などのオプションを読み飛ばす
+REMOTE = re.compile(_GIT + r"remote\s+(?:add|set-url|rename)\b|" + _GIT + r"push\b[^\n;&|]*?(?:https?://|git@|ssh://)")
 
 
 def is_protected(path):
@@ -39,7 +42,11 @@ def decide(ev):
         cmd = ti.get("command", "")
         if REMOTE.search(cmd):
             return "deny", "送信先（git remote / push 先）の差し替えは禁止です。"
-        if WRITE_HINT.search(cmd) and any(rx.search(tok) for tok in re.split(r"[\s'\"=:]+", cmd) for rx in PROT_RX):
+        plain = FD_REDIRECT.sub(" ", cmd)   # 2>&1 や > /dev/null は書き込みではない
+        toks = [t for t in re.split(r"[\s'\"=:]+", plain) if t]
+        touches = any(rx.search(t) for t in toks for rx in PROT_RX)
+        redirects_to_protected = any(is_protected(m.group(1).strip("'\"")) for m in REDIRECT.finditer(plain))
+        if (touches and WRITE_HINT.search(plain)) or redirects_to_protected:
             return "ask", "セキュリティの境界のファイルを書き換えうるコマンドです。人が確認してください。"
     return None, ""
 
