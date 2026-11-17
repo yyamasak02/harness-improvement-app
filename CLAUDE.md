@@ -32,6 +32,7 @@ Claude Code のハーネス（CLAUDE.md・rules・メモリ・skills）を、`~/
 - `feat` / `fix` の変更で `CHANGELOG.md` の `[Unreleased]` を更新しない。バージョンを `wails.json` 以外で勝手に変えない（出典は `wails.json`）。リリースタグの push・付け替え・削除をしない（`scripts/release.sh tag` でローカルに作り、push は人に依頼する）。
 - force push、`git reset --hard`、`git clean`、`rm -rf`、履歴改変、タグ push、`gh release` をしない（タグ・リリースはユーザーが行う）。
 - 未着手・保留の課題を口頭 TODO や握りつぶしにしない。必ず issue にする（`create-issue` skill、ラベルは `.claude/rules/issues-labels.md`）。GitHub 既定ラベルは使わない。
+- **ユーザーの要求（機能追加・修正・方針変更・調査の依頼）を、issue にしないまま着手しない。** 受け取ったら最初に issue を作る（`create-issue` skill）。口頭のまま実装して後追いで起票しない。`[no-issue]` は依存更新・誤字修正・生成物の更新・リリース準備だけ。
 - 修正・実装の前に関連 issue を探さない（`bash scripts/related-issues.sh`）、PR 本文で issue を参照しない。
 - 独立レビュー（`review-pr` skill・`code-reviewer` エージェント）を経ずにマージしない。自分で自分をレビューしたことにしない。`gh pr merge` を直接実行しない（`scripts/merge-pr.sh` を使う）。レビュー後に push したら再レビューを受ける。
 - 1PR に複数機能を混ぜない。タスク順（`docs/tasks.md`）を飛ばさない。
