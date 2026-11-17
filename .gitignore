@@ -10,3 +10,4 @@ coverage.out
 frontend/coverage/
 frontend/package.json.md5
 __pycache__/
+*.pyc
