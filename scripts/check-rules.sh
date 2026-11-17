@@ -51,6 +51,10 @@ hits=$(grep -rnE 'exec\.Command(Context)?\([^)]*"(open|xdg-open|explorer|cmd|pow
   | grep -vE '_test\.go|internal/(osutil|runner|testutil)/' || true)
 [ -z "$hits" ] || report "OS 依存のコマンドを osutil / runner の外で起動しています" "$hits"
 
+# 12. 実行時の生成物（Python のバイトコード等）を追跡しない。ローカルの絶対パス（ホーム・ユーザー名）が埋め込まれ、個人情報の検査（テキスト差分）をすり抜ける
+hits=$(git ls-files | grep -E '(^|/)__pycache__/|\.pyc$' || true)
+[ -z "$hits" ] || report "コミットしてはいけない生成物が追跡されています（.gitignore で除外すること）" "$hits"
+
 # 11. go:embed のプレースホルダーが追跡されていること（無いとクリーンな clone で go vet が失敗する）
 [ -n "$(git ls-files frontend/dist/.gitkeep)" ] || report "frontend/dist/.gitkeep が追跡されていません（main.go の go:embed が失敗します）" "git add -f frontend/dist/.gitkeep"
 

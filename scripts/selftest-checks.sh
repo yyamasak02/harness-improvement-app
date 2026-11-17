@@ -181,6 +181,11 @@ printf 'x@example.evil.io\n' | bash scripts/check-privacy.sh text >/dev/null 2>&
 GH_POST_DRY_RUN=1 bash scripts/gh-post.sh repo delete x >/dev/null 2>&1 && { echo "NG: gh-post が許可外のサブコマンドを通した"; fail=1; } || echo "ok: gh-post は許可外のサブコマンドを拒否"
 rm -rf "$pv"
 
+# 生成物（__pycache__ / .pyc）の追跡を check-rules が検出する（ローカルパス入りのバイナリがコミットされた実例の回帰）
+mkdir -p scripts/__pycache__ && printf 'x' > scripts/__pycache__/zz_selftest.cpython-312.pyc && git add -f scripts/__pycache__/zz_selftest.cpython-312.pyc >/dev/null 2>&1
+expect_fail "追跡された .pyc の検出" bash scripts/check-rules.sh
+git rm -q --cached -f scripts/__pycache__/zz_selftest.cpython-312.pyc >/dev/null 2>&1; rm -rf scripts/__pycache__
+
 # release-guide（Release ノート先頭のダウンロード案内）: インストーラ名の案内と、release.yml の添付物が食い違わないこと
 g=$(bash scripts/release-guide.sh)
 for want in "harness-app.dmg" "harness-app-amd64-installer.exe" "Source code"; do
