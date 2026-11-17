@@ -7,6 +7,7 @@ description: 未着手課題・保留事項・技術的負債を、ラベル規�
 2. 重複確認: `gh issue list --state open --search "<キーワード>"`
 3. 本文ファイルを作る（背景 / やること / 完了条件のチェックボックス / 関連 T-ID・仕様節）。秘密情報・メールアドレスを書かない。
 4. 作成:
-   `gh issue create --title "<prefix>: <要約>" --body-file <file> --label type/..,area/..,priority/..,release/..`
+   `bash scripts/gh-post.sh issue create --title "<prefix>: <要約>" --body-file <file> --label type/..,area/..,priority/..,release/..`
+   （`gh issue create` の直接実行は禁止。`gh-post.sh` が本文を個人情報検査してから投稿する。`issue comment|edit`・`pr comment|edit|review` も同様）
 5. ラベルが無いと失敗する。その場合は `bash scripts/sync-labels.sh` を先に実行する。
 6. 作った issue 番号を PR 本文・`docs/tasks.md` から参照する。

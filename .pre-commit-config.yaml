@@ -53,6 +53,12 @@ repos:
         language: system
         always_run: true
         pass_filenames: false
+      - id: check-privacy-staged
+        name: 個人情報・秘密の混入検査（ステージ差分）
+        entry: bash scripts/check-privacy.sh staged
+        language: system
+        always_run: true
+        pass_filenames: false
       - id: check-version
         name: バージョンの整合（wails.json・package.json・CHANGELOG）
         entry: bash scripts/check-version.sh
@@ -73,6 +79,13 @@ repos:
       - id: check-tests-changed-range
         name: 実装を変えたらテストも変える（push 前）
         entry: bash scripts/check-tests-changed.sh range origin/main
+        language: system
+        stages: [pre-push]
+        always_run: true
+        pass_filenames: false
+      - id: check-privacy-range
+        name: 個人情報・秘密・作者メールの検査（push 前）
+        entry: bash scripts/check-privacy.sh range origin/main
         language: system
         stages: [pre-push]
         always_run: true
