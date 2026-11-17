@@ -24,6 +24,15 @@ sha=$(git rev-parse HEAD 2>/dev/null || echo "")
 next=""   # 次にすべきこと（最初に決まったものを採用）
 decide() { [ -n "$next" ] || next="$1"; }
 
+# ---- 安全装置（フック・権限）の診断。無効・旧版・壊れていれば、他のどの判断よりも先に知らせる ----
+harness_rc=0; harness_out=""
+[ -f scripts/check-harness.sh ] && { harness_out=$(bash scripts/check-harness.sh --quiet 2>&1); harness_rc=$?; }
+if [ $harness_rc -ne 0 ]; then
+  section "安全装置（フック・権限）"
+  echo "$harness_out" | sed 's/^/  /'
+  decide "安全装置（フック・権限）が無効または旧版 → 他の作業より先に直す。main を最新にして settings.json とフックの一致を確認し、直らなければユーザーに報告する（check-harness.sh で再診断）"
+fi
+
 section "Git"
 echo "ブランチ: $branch ($(git rev-parse --short HEAD 2>/dev/null))"
 if [ -n "$dirty" ]; then

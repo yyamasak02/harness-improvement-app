@@ -30,6 +30,8 @@ jobs:
         run: pre-commit run --all-files --show-diff-on-failure
       - name: 品質ゲート自体のテスト
         run: bash scripts/selftest-checks.sh
+      - name: 安全装置（フック・権限）の実環境診断
+        run: bash scripts/check-harness.sh
 
   test-go:
     name: test-go（race・カバレッジ基準）

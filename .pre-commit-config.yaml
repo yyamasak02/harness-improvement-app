@@ -1,6 +1,6 @@
 # 導入: `make setup`（= pre-commit install の 3 ステージ）。全件実行: `pre-commit run --all-files`
 # 一時的に飛ばす場合は SKIP=<hook-id> 。`--no-verify` は使わない（CLAUDE.md で禁止）。
-default_install_hook_types: [pre-commit, commit-msg, pre-push]
+default_install_hook_types: [pre-commit, commit-msg, pre-push, post-checkout]
 exclude: '^(frontend/wailsjs/|frontend/package-lock\.json$|build/|testdata/.*\.jsonl$)'
 repos:
   - repo: https://github.com/pre-commit/pre-commit-hooks
@@ -90,6 +90,21 @@ repos:
         stages: [pre-push]
         always_run: true
         pass_filenames: false
+      - id: check-harness-push
+        name: 安全装置（フック・権限）の実環境診断（push 前）
+        entry: bash scripts/check-harness.sh
+        language: system
+        stages: [pre-push]
+        always_run: true
+        pass_filenames: false
+      - id: check-harness-checkout
+        name: 安全装置（フック・権限）の診断（ブランチ切り替え後）
+        entry: bash scripts/check-harness.sh
+        language: system
+        stages: [post-checkout]
+        always_run: true
+        pass_filenames: false
+        verbose: true
       - id: check-approvals-range
         name: 境界ファイルの変更に第一承認者の評価の記録があること（push 前）
         entry: bash scripts/check-approvals.sh range origin/main

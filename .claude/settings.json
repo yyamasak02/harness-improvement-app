@@ -194,7 +194,7 @@
         "hooks": [
           {
             "type": "command",
-            "command": "python3 -I \"$CLAUDE_PROJECT_DIR/scripts/hooks/pre_tool_guard.py\"",
+            "command": "python3 -I -c \"import io,os,shutil,subprocess,sys,tarfile,tempfile as T\ntry:\n d=os.environ.get('CLAUDE_PROJECT_DIR') or '.'\n s=sys.stdin.buffer.read()\n ps=[p for p in (subprocess.run(['git','-C',d,'archive',r,'scripts/hooks','scripts/injection_scan.py'],capture_output=True) for r in ('main','origin/main')) if p.returncode==0]\n t=T.mkdtemp() if ps else None\n ps and tarfile.open(fileobj=io.BytesIO(ps[0].stdout)).extractall(t)\n f=os.path.join(t or d,'scripts','hooks','pre_tool_guard.py')\n r=subprocess.run([sys.executable,'-I',f],input=s)\n t and shutil.rmtree(t,True)\n sys.exit(r.returncode)\nexcept Exception as e:\n sys.stderr.write('フックの起動に失敗したため、安全側でツールの実行を止めました: %s\\n' % type(e).__name__)\n sys.exit(2)\"",
             "timeout": 10
           }
         ]
@@ -206,7 +206,7 @@
         "hooks": [
           {
             "type": "command",
-            "command": "python3 -I \"$CLAUDE_PROJECT_DIR/scripts/hooks/post_tool_guard.py\"",
+            "command": "python3 -I -c \"import io,os,shutil,subprocess,sys,tarfile,tempfile as T\ntry:\n d=os.environ.get('CLAUDE_PROJECT_DIR') or '.'\n s=sys.stdin.buffer.read()\n ps=[p for p in (subprocess.run(['git','-C',d,'archive',r,'scripts/hooks','scripts/injection_scan.py'],capture_output=True) for r in ('main','origin/main')) if p.returncode==0]\n t=T.mkdtemp() if ps else None\n ps and tarfile.open(fileobj=io.BytesIO(ps[0].stdout)).extractall(t)\n f=os.path.join(t or d,'scripts','hooks','post_tool_guard.py')\n r=subprocess.run([sys.executable,'-I',f],input=s)\n t and shutil.rmtree(t,True)\n sys.exit(r.returncode)\nexcept Exception as e:\n sys.stderr.write('フックの起動に失敗したため、安全側でツールの実行を止めました: %s\\n' % type(e).__name__)\n sys.exit(2)\"",
             "timeout": 10
           }
         ]
