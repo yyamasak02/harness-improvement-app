@@ -9,3 +9,4 @@ coverage.out
 *.zip
 frontend/coverage/
 frontend/package.json.md5
+__pycache__/

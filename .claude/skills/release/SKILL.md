@@ -6,7 +6,7 @@ description: リリース（バージョン確定・CHANGELOG・タグ作成・R
 
 ## 1. 事前確認
 - `bash scripts/status.sh`（open PR が無い・main が最新・CI 成功）
-- `gh issue list --state open --label priority/p0` と `priority/p1`。着手できるもの（needs-human 以外）は先に片付ける。人の作業待ち（macOS / Windows 実機確認など）が残っていれば、**リリースを止めてユーザーに報告**する。
+- `bash scripts/status.sh`（open な issue を優先度順に表示。`gh issue list` の直接実行は禁止）で p0 と p1。着手できるもの（needs-human 以外）は先に片付ける。人の作業待ち（macOS / Windows 実機確認など）が残っていれば、**リリースを止めてユーザーに報告**する。
 - `[Unreleased]` が空でないこと（`CHANGELOG.md`）。
 
 ## 2. リリース準備 PR
