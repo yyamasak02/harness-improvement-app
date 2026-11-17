@@ -32,8 +32,15 @@ GitHub 既定のラベル（bug / enhancement など）は使わない。**必�
 - PR タイトルは Conventional 形式: `feat|fix|refactor|test|docs|chore|ci(: |(scope): )要約`。
 - 対応する issue があれば本文に `Closes #N` を書く。
 
+## ユーザーの要求は必ず issue にする（必須）
+- ユーザーから機能追加・修正・方針変更・調査などを頼まれたら、**実装に入る前に** issue を作る（`create-issue`）。小さな依頼でも作る。複数の依頼は 1 件ずつ別の issue にする。
+- 質問への回答だけで変更を伴わないものは対象外。依頼の言葉は本文の背景に「ユーザー要望: …」として残す。
+- 作った issue 番号をユーザーへの返信で伝え、PR 本文で `Closes #N` / `Refs #N` する。
+- PR の `[no-issue]` は `[no-issue]: <依存更新|誤字修正|生成物の更新|リリース準備>: 理由` の形式のみ（`check-pr-issue-link.sh` が検査）。
+- 機械的な補助: UserPromptSubmit フック（`.claude/settings.json`）が、ユーザーの入力のたびにこの規則を表示する。
+
 ## 着手前に関連 issue を探す（必須）
 - 修正・実装に入る**前**に `bash scripts/related-issues.sh [キーワード]` を実行し、変更領域（area ラベル）とブランチ名・キーワードに一致する open issue を確認する。
 - 該当する issue があれば PR 本文に `Closes #N`（完了条件を満たす）または `Refs #N`（部分対応）を書く。複数あれば全て書く。完了条件のチェックボックスも更新する。
-- 該当が無く、課題がある場合は先に `create-issue` で起票してから着手する。課題を伴わない変更（依存更新など）は本文に `[no-issue]: 理由` を書く。
+- 該当が無く、課題がある場合は先に `create-issue` で起票してから着手する。課題を伴わない変更（依存更新など）は本文に `[no-issue]: 依存更新: 理由` のように区分付きで書く。
 - 機械的な検査: `scripts/ship.sh` と CI の pr-policy が `scripts/check-pr-issue-link.sh` で参照の有無を検査する。

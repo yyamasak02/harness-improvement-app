@@ -5,7 +5,7 @@ description: PR を独立レビューエージェント（code-reviewer）にレ
 実装者本人のコンテキストでの自己レビューは**レビューとして数えない**。必ず別のエージェントに実行させる。
 
 1. PR を作る（まだマージしない）: `bash scripts/ship.sh "<prefix>: <要約>" "<本文: Closes #N / 概要 / 品質チェック>"`
-   - 本文に関連 issue（`Closes #N` / `Refs #N`、無ければ `[no-issue]: 理由`）が必要。探し方: `bash scripts/related-issues.sh`
+   - 本文に関連 issue（`Closes #N` / `Refs #N`、依頼由来の変更は必ず issue 化。例外は `[no-issue]: <依存更新|誤字修正|生成物の更新|リリース準備>: 理由`）が必要。探し方: `bash scripts/related-issues.sh`
 2. **独立レビューを起動する**: Agent ツールで `subagent_type: "code-reviewer"`（定義: `.claude/agents/code-reviewer.md`）を起動し、プロンプトに PR 番号を渡す。
    - `code-reviewer` が使えない環境では general-purpose エージェントに「`.claude/agents/code-reviewer.md` と `docs/review-guidelines.md` に完全に従ってレビューし、GitHub にコメントを投稿して」と指示する。
    - 実装時の文脈（意図の説明・言い訳）を渡さない。渡すのは PR 番号だけ。

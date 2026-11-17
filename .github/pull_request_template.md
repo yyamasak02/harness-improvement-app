@@ -4,7 +4,7 @@
 ## 概要
 
 ## 関連 issue
-<!-- 着手前に `bash scripts/related-issues.sh` で探す。完了なら `Closes #N`、部分対応なら `Refs #N`。無ければ下の行を `[no-issue]: 理由` にする（CI の pr-policy が検査） -->
+<!-- 着手前に `bash scripts/related-issues.sh` で探す。完了なら `Closes #N`、部分対応なら `Refs #N`。依頼由来の変更は先に issue を作る。例外は下の行を `[no-issue]: <依存更新|誤字修正|生成物の更新|リリース準備>: 理由` にする（CI の pr-policy が検査） -->
 Closes #
 
 ## 品質チェック（該当しない項目は理由を書く）

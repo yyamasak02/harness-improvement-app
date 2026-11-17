@@ -2,6 +2,7 @@
 name: implement-task
 description: docs/tasks.md の次の未完了タスク（または機能グループ）を、テスト先行で実装し PR マージまで進める標準手順。
 ---
+0. **要求を受けたら先に issue にする**（`create-issue`。依頼の言葉は「ユーザー要望: …」として本文に残す）。
 1. `docs/tasks.md` で最初の未完了 `[ ]` を特定し、同じ PR にまとめるべき関連タスクを決める。`docs/spec.md` の該当節を読む。
 2. **関連 issue を探す**: `bash scripts/related-issues.sh`（該当 issue は PR 本文で `Closes/Refs #N`。無ければ `create-issue`）。
 3. `git switch main && git pull && git switch -c feat/<id>-<slug>`

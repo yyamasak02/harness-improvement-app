@@ -3,6 +3,9 @@ description: セッションの開始・再開・中断時の運用（引き継�
 ---
 # セッション運用
 
+## ユーザーの要求は issue にする
+- 依頼を受けたら、実装の前に issue にして番号を伝える（`.claude/rules/issues-labels.md`。UserPromptSubmit フックが毎回表示する）。再開時に issue が無い依頼を見つけたら、先に起票する。
+
 ## 開始・再開時（必ず最初に）
 1. `bash scripts/status.sh`（SessionStart フックでも自動表示される）。`resume` skill に従って状態を判定する。
 2. `docs/handoff.md` は**参考情報**。git・PR・issue の現実と食い違ったら現実を信じる。

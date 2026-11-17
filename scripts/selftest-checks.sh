@@ -38,8 +38,9 @@ bash scripts/check-commit-msg.sh "$tmp/m2" && echo "ok: 正しいメッセージ
 expect_fail "issue 参照のない PR 本文の検出" env PR_BODY="説明だけ" bash scripts/check-pr-issue-link.sh
 PR_BODY="Closes #12" bash scripts/check-pr-issue-link.sh >/dev/null 2>&1 && echo "ok: Closes #N を認識" || { echo "NG: Closes #N を認識できない"; fail=1; }
 PR_BODY="Refs #3" bash scripts/check-pr-issue-link.sh >/dev/null 2>&1 && echo "ok: Refs #N を認識" || { echo "NG: Refs #N を認識できない"; fail=1; }
-PR_BODY="[no-issue]: 依存更新のみ" bash scripts/check-pr-issue-link.sh >/dev/null 2>&1 && echo "ok: [no-issue] を認識" || { echo "NG: [no-issue] を認識できない"; fail=1; }
+PR_BODY="[no-issue]: 依存更新: パッチ更新のみ" bash scripts/check-pr-issue-link.sh >/dev/null 2>&1 && echo "ok: [no-issue] を認識" || { echo "NG: [no-issue] を認識できない"; fail=1; }
 expect_fail "単語の一部（prefix #3）を issue 参照と誤認しない" env PR_BODY="prefix #3 を修正" bash scripts/check-pr-issue-link.sh
+expect_fail "区分の無い [no-issue]（依頼由来の変更の抜け道）の検出" env PR_BODY="[no-issue]: 小さい変更なので" bash scripts/check-pr-issue-link.sh
 expect_fail "理由なしの [no-issue] の検出" env PR_BODY="[no-issue]:" bash scripts/check-pr-issue-link.sh
 PR_AUTHOR="dependabot[bot]" PR_BODY="" bash scripts/check-pr-issue-link.sh >/dev/null 2>&1 && echo "ok: dependabot は免除" || { echo "NG: dependabot が免除されない"; fail=1; }
 
