@@ -21,7 +21,7 @@ jobs:
           test -s changes.md || { echo "CHANGELOG の ${GITHUB_REF_NAME#v} の節が空です"; exit 1; }
           bash scripts/release-guide.sh > release-notes.md
           cat changes.md >> release-notes.md
-      - uses: actions/upload-artifact@v4
+      - uses: actions/upload-artifact@v7
         with:
           name: release-notes
           path: release-notes.md
@@ -47,7 +47,7 @@ jobs:
         run: cd frontend && npm ci && npm run build && npm test && cd .. && go vet ./... && go test -count=1 ./...
       - name: .dmg をビルド（署名・公証なし）
         run: make dmg
-      - uses: actions/upload-artifact@v4
+      - uses: actions/upload-artifact@v7
         with:
           name: dist-macos
           path: build/bin/harness-app.dmg
@@ -84,7 +84,7 @@ jobs:
           export PATH="$PATH:/c/Program Files (x86)/NSIS"
           wails build -platform windows/amd64 -clean -nsis
           ls -la build/bin
-      - uses: actions/upload-artifact@v4
+      - uses: actions/upload-artifact@v7
         with:
           name: dist-windows
           path: build/bin/*installer.exe

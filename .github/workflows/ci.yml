@@ -156,7 +156,7 @@ jobs:
           export PATH="$PATH:/c/Program Files (x86)/NSIS"
           wails build -platform windows/amd64 -clean -nsis
           ls -la build/bin
-      - uses: actions/upload-artifact@v4
+      - uses: actions/upload-artifact@v7
         with:
           name: harness-app-windows
           path: build/bin/*installer.exe
@@ -208,7 +208,7 @@ jobs:
           ls -la build/bin
           file build/bin/harness-app.app/Contents/MacOS/harness-app
           hdiutil verify build/bin/harness-app.dmg
-      - uses: actions/upload-artifact@v4
+      - uses: actions/upload-artifact@v7
         with:
           name: harness-app-dmg
           path: build/bin/harness-app.dmg
