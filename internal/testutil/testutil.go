@@ -23,6 +23,14 @@ func moduleRoot() string {
 	return filepath.Join(filepath.Dir(file), "..", "..")
 }
 
+// Cleanup は FakeClaude が作った一時ディレクトリを消す。使うパッケージの TestMain で
+// `code := m.Run(); testutil.Cleanup(); os.Exit(code)` のように呼ぶ。
+func Cleanup() {
+	if fakePath != "" {
+		_ = os.RemoveAll(filepath.Dir(fakePath))
+	}
+}
+
 // FakeClaude はフェイク claude をビルドして実行ファイルのパスを返す（プロセス内で 1 回だけビルド）。
 // 挙動は環境変数（t.Setenv）で切り替える。詳細は fakeclaude/main.go を参照。
 func FakeClaude(t testing.TB) string {
