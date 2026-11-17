@@ -13,19 +13,23 @@ case "$1 $2" in
 esac
 tmp=$(mktemp); trap 'rm -f "$tmp"' EXIT
 args=("$@"); i=2
+read_file() { # 本文ファイルを検査対象に足す
+  local f="$1"
+  if [ "$f" = "-" ]; then echo "--body-file - （標準入力）は検査できないので使えません。ファイルに書いてください" >&2; exit 2; fi
+  [ -f "$f" ] || { echo "本文ファイルがありません: $f" >&2; exit 2; }
+  cat "$f" >> "$tmp"; printf '\n' >> "$tmp"
+}
+# すべての引数の文字列を検査対象にする（--body / --title / -b=… / -bTEXT などの書式の違いで抜けないように）。
+# --body-file / -F は、値（別引数・=付き・連結）のファイル内容も検査する。
 while [ $i -lt ${#args[@]} ]; do
   a="${args[$i]}"
   case "$a" in
-    --body-file|-F)
-      f="${args[$((i+1))]:-}"
-      if [ "$f" = "-" ]; then echo "--body-file - （標準入力）は検査できないので使えません。ファイルに書いてください" >&2; exit 2; fi
-      [ -f "$f" ] || { echo "本文ファイルがありません: $f" >&2; exit 2; }
-      cat "$f" >> "$tmp"; printf '\n' >> "$tmp"; i=$((i+2)) ;;
-    --body|-b|--title|-t|--comment|--body-text)
-      printf '%s\n' "${args[$((i+1))]:-}" >> "$tmp"; i=$((i+2)) ;;
-    --body=*|--title=*|--comment=*) printf '%s\n' "${a#*=}" >> "$tmp"; i=$((i+1)) ;;
-    *) i=$((i+1)) ;;
+    --body-file|-F) read_file "${args[$((i+1))]:-}"; i=$((i+2)); continue ;;
+    --body-file=*)  read_file "${a#--body-file=}" ;;
+    -F?*)           v="${a#-F}"; read_file "${v#=}" ;;
   esac
+  printf '%s\n' "$a" >> "$tmp"
+  i=$((i+1))
 done
 if ! bash scripts/check-privacy.sh text < "$tmp"; then
   echo "投稿を中止しました（本文に個人情報・秘密らしきものがあります）。取り除くか、意図したダミー値なら 'privacy-allow: 理由' を行に書いてください。" >&2

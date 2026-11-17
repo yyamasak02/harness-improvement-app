@@ -171,6 +171,13 @@ printf '%s\n' "$phone" > "$pv/body.md"
 GH_POST_DRY_RUN=1 bash scripts/gh-post.sh issue create --title t --body-file "$pv/body.md" >/dev/null 2>&1 && { echo "NG: gh-post が個人情報入りの本文を通した"; fail=1; } || echo "ok: gh-post は個人情報入りの本文の投稿を止める"
 GH_POST_DRY_RUN=1 bash scripts/gh-post.sh issue create --title "$mailaddr" --body ok >/dev/null 2>&1 && { echo "NG: gh-post がタイトルの個人情報を通した"; fail=1; } || echo "ok: gh-post はタイトルの個人情報も止める"
 GH_POST_DRY_RUN=1 bash scripts/gh-post.sh issue create --title t --body ok >/dev/null 2>&1 && echo "ok: gh-post は問題のない投稿を通す" || { echo "NG: gh-post が正常な投稿を拒否"; fail=1; }
+for form in "--body-file=$pv/body.md" "-F$pv/body.md" "-F=$pv/body.md"; do
+  GH_POST_DRY_RUN=1 bash scripts/gh-post.sh issue create --title t $form >/dev/null 2>&1 && { echo "NG: gh-post が $form 形式の本文ファイルの個人情報を通した"; fail=1; } || echo "ok: gh-post は $form 形式の本文ファイルも検査"
+done
+for form in "-b=$phone" "-b$phone" "--body=$phone" "-t$phone"; do
+  GH_POST_DRY_RUN=1 bash scripts/gh-post.sh issue create "$form" >/dev/null 2>&1 && { echo "NG: gh-post が ${form%%$phone*} 形式の本文の個人情報を通した"; fail=1; } || echo "ok: gh-post は ${form%%$phone*} 形式の本文も検査"
+done
+printf 'x@example.evil.io\n' | bash scripts/check-privacy.sh text >/dev/null 2>&1 && { echo "NG: example を装ったメールを通した"; fail=1; } || echo "ok: example.evil.io のようなメールは検出"  # privacy-allow: 検出テスト用のダミー
 GH_POST_DRY_RUN=1 bash scripts/gh-post.sh repo delete x >/dev/null 2>&1 && { echo "NG: gh-post が許可外のサブコマンドを通した"; fail=1; } || echo "ok: gh-post は許可外のサブコマンドを拒否"
 rm -rf "$pv"
 

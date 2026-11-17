@@ -16,7 +16,7 @@ import sys
 
 PLACEHOLDER_NAMES = {"demo", "user", "username", "you", "runner", "example", "test", "alice", "bob", "carol",
                      "name", "me", "foo", "x", "u", "yourname", "your-name", "someone", "dev", "admin", "root", "work"}
-EMAIL_OK = re.compile(r"(@users\.noreply\.github\.com|^noreply@(anthropic|github)\.com|@example\.[a-z.]+|@test\.|^git@github\.com|@localhost)$", re.I)
+EMAIL_OK = re.compile(r"(@users\.noreply\.github\.com|^noreply@(anthropic|github)\.com|@example\.(com|org|net)|@test|^git@github\.com|@localhost)$", re.I)
 DOC_IPS = ("192.0.2.", "198.51.100.", "203.0.113.", "127.", "0.")
 
 
@@ -60,7 +60,7 @@ def lux(s):
 
 RULES = [
     ("email", re.compile(r"[A-Za-z0-9._%+\-]+@[A-Za-z0-9.\-]+\.[A-Za-z]{2,}"), lambda m: not EMAIL_OK.search(m)),
-    ("phone", re.compile(r"\+\d{1,3}[ -]\d{1,4}[ -]\d{2,4}[ -]\d{3,4}\b|\b0\d{1,4}-\d{1,4}-\d{3,4}\b|\b0[5789]0\d{8}\b"), None),
+    ("phone", re.compile(r"\+\d{1,3}[ -]\d{1,4}[ -]\d{2,4}[ -]\d{3,4}(?!\d)|(?<![\d-])0\d{1,4}-\d{1,4}-\d{3,4}(?![\d-])|(?<!\d)0[5789]0\d{8}(?!\d)"), None),
     ("postal-code", re.compile(r"〒\s?\d{3}-?\d{4}"), None),
     ("credit-card", re.compile(r"(?<![\w\-.])(?:\d[ -]?){12,18}\d(?![\w\-])"), lux),
     ("home-path", re.compile(r"(?:/home/|/Users/)([^/\s\"'<>:$*`,;)\]]+)|[A-Za-z]:\\Users\\([^\\\s\"'<>:$*`,;)\]]+)"),  # privacy-allow: 検出用の正規表現

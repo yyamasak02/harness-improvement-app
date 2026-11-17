@@ -128,7 +128,23 @@
       "Bash(ncat *)",
       "Bash(scp *)",
       "Bash(rsync *)",
-      "Bash(ssh *)"
+      "Bash(ssh *)",
+      "Bash(gh * issue create*)",
+      "Bash(gh * issue edit*)",
+      "Bash(gh * issue comment*)",
+      "Bash(gh * pr create*)",
+      "Bash(gh * pr edit*)",
+      "Bash(gh * pr comment*)",
+      "Bash(gh * pr review*)",
+      "Bash(gh issue close*--comment*)",
+      "Bash(gh issue close* -c *)",
+      "Bash(gh pr close*--comment*)",
+      "Bash(gh pr close* -c *)",
+      "Bash(gh * issue close*)",
+      "Bash(gh * pr close*)",
+      "Bash(gh * api *)",
+      "Bash(gh * release *)",
+      "Bash(gh * pr merge*)"
     ]
   },
   "hooks": {

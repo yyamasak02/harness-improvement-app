@@ -15,7 +15,7 @@ case "$mode" in
     git diff --no-color -U0 --diff-filter=AM "$base"...HEAD -- . ':!go.sum' ':!frontend/package-lock.json' | scan diff || fail=1
     git log --format='%B' "$base"..HEAD | scan text || fail=1
     # 作者・コミッターのメールは noreply のみ許可（GitHub のコミッターは noreply@github.com）
-    bad=$(git log --format='%ae%n%ce' "$base"..HEAD | sort -u | grep -viE '(@users\.noreply\.github\.com|^noreply@github\.com|^noreply@anthropic\.com|^$)' || true)
+    bad=$(git log --format='%ae%n%ce' "$base"..HEAD | sort -u | grep -vE '(@users\.noreply\.github\.com|^noreply@github\.com|^noreply@anthropic\.com|^)$' || true)
     if [ -n "$bad" ]; then
       echo "NG: コミットの作者/コミッターのメールが noreply ではありません（$(echo "$bad" | wc -l | tr -d ' ') 件）。GIT_AUTHOR_EMAIL / GIT_COMMITTER_EMAIL に noreply を設定して作り直す"; fail=1
     fi
