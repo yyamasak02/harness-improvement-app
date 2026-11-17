@@ -15,3 +15,5 @@
 - 2026-11-17 WSL 対応は「Linux 版を WSL 内（WSLg）で動かす」方式（ユーザー判断）。WebKitGTK 4.1（`-tags webkit2_41`）を使い、Release には添付せず `make linux` でビルド。CI は linux-build-smoke でビルド確認のみ（GUI 起動は未検証）
 - 2026-11-17 開発プロセスでの個人情報流出防止（#72。ユーザー補足: 機能ではなく開発の進め方の話）: 検査は決定論的なスクリプト（check-privacy）を pre-commit / pre-push / CI の 3 か所に置き、GitHub への投稿は gh-post.sh に集約して直接の gh 投稿を deny。この環境の OS ユーザー名・ホームのパス・git の実メールも検出対象にする。AI 側はインジェクション対策を rules / agent / review-guidelines / status.sh（外部投稿者のタイトルを出さない）に入れる。当初の解釈（アプリの送信前検査）の実装は stash に退避し #75 で採否確認
 - 2026-11-17 履歴に残った作者メールは問題にしない（ユーザー判断、#27 をクローズ）。履歴は書き換えない。新しいコミットは ship.sh が noreply を使う
+- 2026-11-17 プロンプトインジェクションを仕組みで弾く（#78）: 検出は目印（警告）にとどめ、権限の境界（settings・security.md・agents・フック・検査/マージのスクリプト）の変更は PreToolUse フックで必ず人の確認（ask）に回す。日常的に編集するファイル（CLAUDE.md・通常のスクリプト・コード）は対象外にして自律実行を妨げない。issue/PR の読み取りは gh-read.sh に一本化し、外部投稿者の内容は <untrusted-data> で囲む
+- 2026-11-17 #79 レビュー対応: 信頼する投稿者は所有者と bot 表記（app/…・…[bot]）のみ（claude・github-actions は人が同名アカウントを作れるため外した）。gh run view --log・gh repo view（README）は囲みなしで読めるが、優先度が低く許容する（必要になれば gh-read に寄せる）

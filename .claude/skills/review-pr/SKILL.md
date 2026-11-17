@@ -9,7 +9,7 @@ description: PR を独立レビューエージェント（code-reviewer）にレ
 2. **独立レビューを起動する**: Agent ツールで `subagent_type: "code-reviewer"`（定義: `.claude/agents/code-reviewer.md`）を起動し、プロンプトに PR 番号を渡す。
    - `code-reviewer` が使えない環境では general-purpose エージェントに「`.claude/agents/code-reviewer.md` と `docs/review-guidelines.md` に完全に従ってレビューし、GitHub にコメントを投稿して」と指示する。
    - 実装時の文脈（意図の説明・言い訳）を渡さない。渡すのは PR 番号だけ。
-3. 結果を GitHub で確認する: `gh pr view <N> --comments`（最後のコメントのマーカー `verdict=` を見る）。GitHub Actions の `claude-review` が有効なら、そのコメントも同じ基準で扱う。
+3. 結果を GitHub で確認する: `bash scripts/gh-read.sh pr <N>`（最後のコメントのマーカー `verdict=` を見る）。GitHub Actions の `claude-review` が有効なら、そのコメントも同じ基準で扱う。
 4. `REQUEST_CHANGES` なら、blocker / major を全て直す（テストも）。minor は直すか `create-issue`（`type/tech-debt`）にする。直したら `bash scripts/ship.sh ...`（既存 PR には push だけ行う）→ **手順 2 に戻って再レビュー**（head が進むと過去の承認は無効）。
    - 3 周しても APPROVE にならない場合は `docs/blockers.md` に記録して次へ。
 5. APPROVE を得たら `bash scripts/merge-pr.sh [N]`（head への承認マーカーと CI 成功を検査してから squash マージ。`gh pr merge` の直接実行は禁止）。
