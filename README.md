@@ -23,6 +23,8 @@ Claude Code を使う → ログ・メモリが溜まる → AI が改善案を�
 
 ## インストール
 
+> Release ページには GitHub が自動で「Source code (zip / tar.gz)」を付けますが、それはソースコードです。**使うのは下記のインストーラ（`.dmg` / `-installer.exe`）だけ**です。
+
 ### macOS
 
 1. [Releases](../../releases) から `harness-app.dmg` をダウンロードして開き、`harness-app.app` を「アプリケーション」へドラッグします。

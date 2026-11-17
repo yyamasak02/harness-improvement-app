@@ -181,6 +181,15 @@ printf 'x@example.evil.io\n' | bash scripts/check-privacy.sh text >/dev/null 2>&
 GH_POST_DRY_RUN=1 bash scripts/gh-post.sh repo delete x >/dev/null 2>&1 && { echo "NG: gh-post が許可外のサブコマンドを通した"; fail=1; } || echo "ok: gh-post は許可外のサブコマンドを拒否"
 rm -rf "$pv"
 
+# release-guide（Release ノート先頭のダウンロード案内）: インストーラ名の案内と、release.yml の添付物が食い違わないこと
+g=$(bash scripts/release-guide.sh)
+for want in "harness-app.dmg" "harness-app-amd64-installer.exe" "Source code"; do
+  case "$g" in *"$want"*) echo "ok: release-guide が '$want' を案内する" ;; *) echo "NG: release-guide に '$want' が無い"; fail=1 ;; esac
+done
+grep -q "artifacts/dist-macos/harness-app.dmg" .github/workflows/release.yml && grep -q "installer.exe" .github/workflows/release.yml \
+  && echo "ok: release.yml の添付物が案内と一致（dmg とインストーラ）" || { echo "NG: release.yml の添付物が案内と食い違う"; fail=1; }
+grep -q "release-guide.sh" .github/workflows/release.yml && echo "ok: release.yml がダウンロード案内をノートに付ける" || { echo "NG: release.yml が案内を付けない"; fail=1; }
+
 # check-version / changelog-notes / check-changelog（リリース整備）
 cv="$tmp/cv"; mkdir -p "$cv/scripts" "$cv/frontend"; cp scripts/check-version.sh scripts/changelog-notes.sh "$cv/scripts/"
 printf '{"info":{"productVersion":"1.2.3"}}\n' > "$cv/wails.json"; printf '{"version":"1.2.3"}\n' > "$cv/frontend/package.json"
