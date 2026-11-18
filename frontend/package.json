@@ -22,7 +22,6 @@
     "@testing-library/jest-dom": "^6.9.1",
     "@testing-library/react": "^16.3.3",
     "@testing-library/user-event": "^14.6.12",
-    "@types/diff": "^7.0.2",
     "@types/react": "^19.1.0",
     "@types/react-dom": "^19.1.0",
     "@vitejs/plugin-react": "^5.0.0",
@@ -31,7 +30,7 @@
     "jsdom": "^29.1.1",
     "postcss": "^8.5.33",
     "tailwindcss": "^3.4.19",
-    "typescript": "^5.6.3",
+    "typescript": "^7.0.2",
     "vite": "^7.0.0",
     "vitest": "^4.1.12"
   }
