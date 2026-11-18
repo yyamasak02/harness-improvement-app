@@ -7,14 +7,9 @@
 - v0.1.0 リリースの準備。MVP（F1・F2・F3・F8・F9）と macOS / Windows 対応は実装・マージ済み。残りは人の確認とタグ push。
 - 並行して、**開発プロセスの安全装置**（個人情報の流出防止・プロンプトインジェクション対策・承認フロー・再発防止）を整備してきた（#72 #78 #81 #85 はマージ済み）。
 
-## 中断時点の状態（2026-11-18・ユーザーの指示で作業を中止）
-**作業ブランチ `chore/approval-hardening-84`（#84「承認フローの誤検出・fail-open・台帳の照合」）が途中。PR は未作成。**
-- 反映済み（作業ツリー・コミット前〜ローカルコミット。`git status` で確認）: `scripts/hooks/pre_tool_guard.py`（誤検出の削減・引用符の扱い・実行専用の形）、`scripts/record-approval.sh`（台帳に内容のハッシュ `sha:…`）、`scripts/check-approvals.sh`（差分が取れなければ NG・台帳のハッシュ照合）、`scripts/check_harness.py`（CI/pre-commit の配線の検査・必須 deny の追加）、`scripts/selftest-checks.sh`（#84 のテスト追加）、`docs/approval-log.md`（評価の台帳）。これらは別エージェント（change-approver）の評価（最終 APPROVE）を経て反映した。
-- **未反映（再開時にやること）**: `.claude/settings.json` の deny に、main の移動・削除の禁止を追加する。追加する 8 項目: `Bash(git branch -f*)` `Bash(git branch -m*)` `Bash(git branch -D main*)` `Bash(git branch -d main*)` `Bash(git update-ref*)` `Bash(git switch -C*)` `Bash(git switch --force-create*)` `Bash(git checkout -B*)`（deny の末尾に追記。allow の追加は無い）。
-  - これが未反映の間は、`check_harness.py` の必須 deny（`git branch -f*`・`git update-ref*`）が足りず、**`bash scripts/check-harness.sh` は NG になる**（ブランチ上の一時的な状態。main では正常）。
-  - 手順は `request-approval` skill: 変更後の全文を境界ファイル以外にファイルとして作る → `change-approver` に評価・記録させる（有効 30 分・評価した内容にのみ有効）→ Write ツールで同じ内容を反映（人の確認画面が出る）→ `bash scripts/selftest-checks.sh` と `bash scripts/check-harness.sh` を通す → `bash scripts/ship.sh` で PR → 独立レビュー（`review-pr`）→ `bash scripts/merge-pr.sh`。
-  - 評価の記録は 30 分で切れる。切れていたら再評価が要る。
-- スクラッチ領域（`/tmp/claude-…/scratchpad/wip84/`）の作業ファイルは消えている前提で進める（必要なら上の説明から作り直す）。
+## 現在の状態（2026-11-18）
+- 作業ブランチ `chore/approval-hardening-84`（#84）。settings.json の deny 追加（8 項目）まで反映済みで、`check-harness.sh` は OK。
+- 残り: PR 作成（`scripts/ship.sh`）→ 独立レビュー（`review-pr`）→ `scripts/merge-pr.sh`。PR 番号は `status.sh` で確認する。
 
 ## 進捗（要約）
 - 実装: docs/tasks.md の T00〜T44 完了。Phase 5（F4〜F7）は issue（#21〜#24）で管理。
@@ -29,7 +24,7 @@
 
 ## 次の一手
 1. `bash scripts/status.sh` で現状を確認する（冒頭に「安全装置」の警告が出たら、それを最優先で直す）。
-2. 上の「中断時点の状態」の #84 を仕上げる（settings.json の deny 追加 → 承認フロー → PR → レビュー → マージ）。
+2. 上の「現在の状態」の #84 を仕上げる（PR → レビュー → マージ）。
 3. そのほかの backlog（優先順）: #87（スクリプトの可読性の改善・p2）、#56 の続き（dependabot の actions グループが major を束ねる点の修正・冒頭コメントの追記、置き換わった PR の取り込み）、#68（多言語対応・対象言語の確認が必要）、#73（ハーネス改善の提案機能・着手前に設計案を出す）、#74（ペルソナ整備）、#21〜#24（v0.2 の機能）。
 4. 人の作業待ち（needs-human）: #25 macOS 実機確認 / #26 dmg 起動確認と v0.1.0 タグ push / #47 API キー登録とブランチ保護 / #52 Windows 実機確認 / #64 Windows の Smart App Control（署名するかの判断）/ #66 WSLg での起動確認 / #75 アプリの AI 送信前検査（採否の確認。実装は git stash に退避）。
 
