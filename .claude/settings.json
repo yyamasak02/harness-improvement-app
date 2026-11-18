@@ -163,7 +163,15 @@
       "Bash(gh pr view*body*)",
       "Bash(gh * pr view*body*)",
       "Bash(gh pr view*title*)",
-      "Bash(gh * pr view*title*)"
+      "Bash(gh * pr view*title*)",
+      "Bash(git branch -f*)",
+      "Bash(git branch -m*)",
+      "Bash(git branch -D main*)",
+      "Bash(git branch -d main*)",
+      "Bash(git update-ref*)",
+      "Bash(git switch -C*)",
+      "Bash(git switch --force-create*)",
+      "Bash(git checkout -B*)"
     ]
   },
   "hooks": {

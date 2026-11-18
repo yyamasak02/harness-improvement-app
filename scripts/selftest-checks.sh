@@ -205,6 +205,59 @@ for f in scripts/check-harness.sh scripts/check_harness.py; do
   case "$(printf '{"tool_name":"Write","tool_input":{"file_path":"/w/%s","content":"x"}}' "$f" | HARNESS_APPROVAL_DIR="$tmp/hsa" python3 -I scripts/hooks/pre_tool_guard.py)" in *'"deny"'*) echo "ok: $f は境界ファイル（評価なしの変更は拒否）" ;; *) echo "NG: $f が保護されていない"; fail=1 ;; esac
 done
 
+# ---- #84: 承認フローの誤検出の回帰（開発を妨げない）と、すり抜けの回帰 ----
+# （この位置より後ろで hook_ask が再定義されるが、ここで使うので先に定義する。評価の記録は一時ディレクトリ）
+hook_ask() { printf '%s' "$1" | python3 -I scripts/hooks/pre_tool_guard.py; }
+export HARNESS_APPROVAL_DIR="$tmp/approvals84"; mkdir -p "$HARNESS_APPROVAL_DIR"
+case "$(hook_ask '{"tool_name":"Bash","tool_input":{"command":"git commit -m \"fix: scripts/hooks/approval_lib.py を python で直す\""}}')" in "") echo "ok: 境界ファイルのパスと python を含むコミットメッセージは止めない" ;; *) echo "NG: コミットメッセージが止まる"; fail=1 ;; esac
+case "$(hook_ask '{"tool_name":"Bash","tool_input":{"command":"python3 -I scripts/hooks/post_tool_guard.py < /dev/null"}}')" in "") echo "ok: 境界スクリプトを実行するだけの形は止めない" ;; *) echo "NG: 実行だけの形が止まる"; fail=1 ;; esac
+case "$(hook_ask '{"tool_name":"Bash","tool_input":{"command":"git diff main -- scripts/hooks/pre_tool_guard.py | xargs echo"}}')" in "") echo "ok: xargs を含む読み取りのコマンドは止めない" ;; *) echo "NG: xargs の読み取りが止まる"; fail=1 ;; esac
+for cmd in "python3 -c \\\"open('.claude/settings.json','w')\\\"" "bash -c \\\"sed -i s/a/b/ .claude/settings.json\\\"" "python3 scripts/hooks/x.py .claude/settings.json" "echo .claude/settings.json | xargs sed -i s/a/b/" "eval \\\"cp /tmp/x .claude/settings.json\\\""; do
+  case "$(hook_ask "{\"tool_name\":\"Bash\",\"tool_input\":{\"command\":\"$cmd\"}}")" in *'"deny"'*) echo "ok: すり抜けの形も拒否: $cmd" ;; *) echo "NG: すり抜ける形がある: $cmd"; fail=1 ;; esac
+done
+# check-approvals: 差分を取得できなければ失敗、台帳は内容のハッシュと照合
+ca="$tmp/ca"; mkdir -p "$ca/scripts/hooks" "$ca/docs"
+cp scripts/hooks/*.py "$ca/scripts/hooks/"; cp scripts/check-approvals.sh scripts/injection_scan.py "$ca/scripts/"
+printf '# base\n' > "$ca/scripts/gh-post.sh"; printf '__pycache__/\n' > "$ca/.gitignore"
+(cd "$ca" && git init -q -b main && git config user.email t@example.com && git config user.name t && git add -A && git commit -qm base \
+  && git switch -q -c feat && printf '# changed\n' >> scripts/gh-post.sh && git add -A && git commit -qm change)
+(cd "$ca" && bash scripts/check-approvals.sh range main >/dev/null 2>&1) && { echo "NG: 評価の記録なしの境界変更が通る"; fail=1; } || echo "ok: 評価の記録が無い境界変更は失敗する"
+good=$(cd "$ca" && git show HEAD:scripts/gh-post.sh | python3 -I -c 'import sys; sys.path.insert(0,"scripts/hooks"); import approval_lib as A; print(A.sha(sys.stdin.buffer.read().decode("utf-8","replace"))[:12])')
+printf '| 2026-11-18T00:00 | scripts/gh-post.sh | APPROVE | tighten · sha:%s | テスト |\n' "$good" > "$ca/docs/approval-log.md"
+(cd "$ca" && git add -A && git commit -qm ledger && bash scripts/check-approvals.sh range main >/dev/null 2>&1) && echo "ok: 内容のハッシュが一致する評価の記録があれば通る" || { echo "NG: 正しい記録が通らない"; fail=1; }
+printf '| 2026-11-18T00:00 | scripts/gh-post.sh | APPROVE | tighten · sha:000000000000 | テスト |\n' > "$ca/docs/approval-log.md"
+(cd "$ca" && git add -A && git commit -qm badledger && bash scripts/check-approvals.sh range main >/dev/null 2>&1) && { echo "NG: ハッシュ不一致の記録が通る"; fail=1; } || echo "ok: 評価の後に内容が変わった（ハッシュ不一致）記録は失敗する"
+(cd "$ca" && bash scripts/check-approvals.sh range no-such-base >/dev/null 2>&1) && { echo "NG: 比較元が無くても通る（fail-open）"; fail=1; } || echo "ok: 比較元を取得できないときは失敗する（fail-open にしない）"
+# record-approval: 台帳の行に内容のハッシュが入る
+cp scripts/record-approval.sh scripts/check-privacy.sh scripts/privacy_scan.py "$ca/scripts/"
+printf 'テスト用の要約\n' > "$ca/summary.txt"; printf '# new body\n' > "$ca/proposed.txt"
+rm -f "$ca/docs/approval-log.md"
+(cd "$ca" && HARNESS_APPROVAL_DIR="$tmp/ca-appr" bash scripts/record-approval.sh scripts/gh-post.sh APPROVE tighten summary.txt proposed.txt >/dev/null 2>&1)
+grep -qE '\| tighten · sha:[0-9a-f]{12} \|' "$ca/docs/approval-log.md" 2>/dev/null && echo "ok: 台帳の行に内容のハッシュ（sha:…）が入る" || { echo "NG: 台帳に内容のハッシュが入らない"; fail=1; }
+# コマンド名や引数を引用符で囲んで隠す形は、引用符を外さずに判定する（第一承認者の指摘: "cp" 等）
+for cmd in "\\\"cp\\\" /tmp/x .claude/settings.json" "'sed' -i s/a/b/ .claude/settings.json" "\\\"python3\\\" -c x .claude/settings.json" "echo \\\"x\\\" > .claude/settings.json"; do
+  case "$(hook_ask "{\"tool_name\":\"Bash\",\"tool_input\":{\"command\":\"$cmd\"}}")" in *'"deny"'*) echo "ok: 引用符で隠した形も拒否: $cmd" ;; *) echo "NG: 引用符で隠すと通る: $cmd"; fail=1 ;; esac
+done
+# 第一承認者の 2 回目の指摘: 「実行するだけ」の形の抜け道（= の後ろのパス・改行で別コマンド）と、-t / -b の直後の引用符
+for cmd in "python3 scripts/x.py --out=.claude/settings.json" "python3 scripts/x.py\\ndd if=/tmp/a of=.claude/settings.json" "watch -t \\\"cp /tmp/a .claude/settings.json\\\"" "tool -b \\\"cp /tmp/a .claude/settings.json\\\""; do
+  case "$(hook_ask "{\"tool_name\":\"Bash\",\"tool_input\":{\"command\":\"$cmd\"}}")" in *'"deny"'*) echo "ok: 抜け道を拒否: $cmd" ;; *) echo "NG: 抜け道が通る: $cmd"; fail=1 ;; esac
+done
+# 説明文のフラグ（-m / --message / --body）の直後の引用符の中の語は、書き換えとみなさない
+case "$(hook_ask '{"tool_name":"Bash","tool_input":{"command":"git commit -m \"docs: .claude/settings.json の cp と sed の説明\""}}')" in "") echo "ok: コミットメッセージ内の語は止めない" ;; *) echo "NG: コミットメッセージ内の語で止まる"; fail=1 ;; esac
+case "$(hook_ask '{"tool_name":"Bash","tool_input":{"command":"bash scripts/gh-post.sh pr comment 1 --body \"scripts/hooks の python と cp の話\""}}')" in "") echo "ok: --body の説明文内の語は止めない" ;; *) echo "NG: --body の説明文で止まる"; fail=1 ;; esac
+case "$(hook_ask '{"tool_name":"Bash","tool_input":{"command":"git commit -m \"$(cp /tmp/x .claude/settings.json)\""}}')" in *'"deny"'*) echo "ok: -m の中のコマンド置換は拒否" ;; *) echo "NG: -m の中のコマンド置換が通る"; fail=1 ;; esac
+# check-harness: CI・pre-commit から検査の配線が消えたら検出する
+wr="$tmp/wire"; mkdir -p "$wr/.claude" "$wr/.github/workflows" "$wr/scripts"
+cp .claude/settings.json "$wr/.claude/"; cp -r scripts/hooks "$wr/scripts/"; cp scripts/injection_scan.py "$wr/scripts/"
+cp .github/workflows/ci.yml "$wr/.github/workflows/"; cp .pre-commit-config.yaml "$wr/"
+python3 -I scripts/check_harness.py --repo "$wr" >/dev/null 2>&1 && echo "ok: 配線が揃っていれば診断に通る" || { echo "NG: 配線が揃っているのに診断が失敗する"; python3 -I scripts/check_harness.py --repo "$wr" | head -4; fail=1; }
+grep -v 'check-approvals' "$wr/.github/workflows/ci.yml" > "$wr/ci.tmp" && mv "$wr/ci.tmp" "$wr/.github/workflows/ci.yml"
+hout=$(python3 -I scripts/check_harness.py --repo "$wr" 2>&1); case "$hout" in *"検査の配線が消えています"*"check-approvals.sh"*) echo "ok: CI から check-approvals が消えたら検出する" ;; *) echo "NG: 配線の削除を検出できない"; fail=1 ;; esac
+# main の移動・削除の deny が settings にある
+for pat in "git branch -f" "git update-ref" "git switch -C" "git checkout -B"; do
+  grep -qF "Bash($pat" .claude/settings.json && echo "ok: settings に deny: $pat" || { echo "NG: settings に deny が無い: $pat"; fail=1; }
+done
+
 # release-guide（Release ノート先頭のダウンロード案内）: インストーラ名の案内と、release.yml の添付物が食い違わないこと
 g=$(bash scripts/release-guide.sh)
 for want in "harness-app.dmg" "harness-app-amd64-installer.exe" "Source code"; do
