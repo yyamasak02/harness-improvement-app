@@ -8,8 +8,9 @@
 - 並行して、**開発プロセスの安全装置**（個人情報の流出防止・プロンプトインジェクション対策・承認フロー・再発防止）を整備してきた（#72 #78 #81 #85 はマージ済み）。
 
 ## 現在の状態（2026-11-18）
-- 作業ブランチ `chore/approval-hardening-84`（#84）。settings.json の deny 追加（8 項目）まで反映済みで、`check-harness.sh` は OK。
-- 残り: PR 作成（`scripts/ship.sh`）→ 独立レビュー（`review-pr`）→ `scripts/merge-pr.sh`。PR 番号は `status.sh` で確認する。
+- #84（承認フローの改善）は #89 でマージ済み。安全装置の診断（`check-harness.sh`）は main で OK。
+- 作業中: #56（dependabot）。actions グループが major を束ねないよう `dependabot.yml` を修正中。続けて major の PR（typescript 7・vitest 5・jsdom 31 など）を個別に検証する。
+- minor 2 件は #90（p3）。
 
 ## 進捗（要約）
 - 実装: docs/tasks.md の T00〜T44 完了。Phase 5（F4〜F7）は issue（#21〜#24）で管理。
@@ -24,7 +25,7 @@
 
 ## 次の一手
 1. `bash scripts/status.sh` で現状を確認する（冒頭に「安全装置」の警告が出たら、それを最優先で直す）。
-2. 上の「現在の状態」の #84 を仕上げる（PR → レビュー → マージ）。
+2. 上の「現在の状態」の #56 を進める。
 3. そのほかの backlog（優先順）: #87（スクリプトの可読性の改善・p2）、#56 の続き（dependabot の actions グループが major を束ねる点の修正・冒頭コメントの追記、置き換わった PR の取り込み）、#68（多言語対応・対象言語の確認が必要）、#73（ハーネス改善の提案機能・着手前に設計案を出す）、#74（ペルソナ整備）、#21〜#24（v0.2 の機能）。
 4. 人の作業待ち（needs-human）: #25 macOS 実機確認 / #26 dmg 起動確認と v0.1.0 タグ push / #47 API キー登録とブランチ保護 / #52 Windows 実機確認 / #64 Windows の Smart App Control（署名するかの判断）/ #66 WSLg での起動確認 / #75 アプリの AI 送信前検査（採否の確認。実装は git stash に退避）。
 

@@ -39,3 +39,4 @@ updates:
     groups:
       actions:
         patterns: ["*"]
+        update-types: [minor, patch]   # major は束ねず個別の PR にする
