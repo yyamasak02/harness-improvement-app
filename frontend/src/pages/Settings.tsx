@@ -63,6 +63,16 @@ export default function Settings() {
         </label>
       </Card>
 
+      <Card title="日次振り返り">
+        <label className="flex items-center gap-2 text-sm">
+          <input type="checkbox" aria-label="日報を自動生成する" checked={cfg.dailyReportEnabled} onChange={(e) => set('dailyReportEnabled', e.target.checked)} />
+          アプリ起動中、指定時刻に当日の日報を自動生成する
+        </label>
+        <label className="mt-3 block text-sm">生成時刻（HH:MM。空欄なら 21:00）
+          <input className="mt-1 w-32 rounded border px-2 py-1" aria-label="日報の生成時刻" placeholder="21:00" value={cfg.dailyReportTime} onChange={(e) => set('dailyReportTime', e.target.value)} />
+        </label>
+      </Card>
+
       <Card title="取り込み">
         <label className="block text-sm">除外するプロジェクト（プロジェクトディレクトリ名または cwd。1 行 1 件）
           <textarea className="mt-1 w-full rounded border p-2 font-mono text-xs" rows={3} aria-label="除外するプロジェクト" value={cfg.excludedProjects.join('\n')} onChange={(e) => set('excludedProjects', lines(e.target.value))} />

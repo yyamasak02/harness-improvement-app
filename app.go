@@ -48,6 +48,13 @@ func (a *App) startup(ctx context.Context) {
 	}
 	a.svc = svc
 	go a.indexAndWatch(ctx)
+	go svc.StartReportScheduler(ctx, func(info service.ReportInfo, err error) {
+		if err != nil {
+			wruntime.EventsEmit(ctx, "report:error", err.Error())
+			return
+		}
+		wruntime.EventsEmit(ctx, "report:done", info)
+	})
 }
 
 func (a *App) shutdown(ctx context.Context) {
@@ -218,6 +225,36 @@ func (a *App) ApplySkill(name string, files []service.SkillApplyFile) ([]applier
 		return nil, err
 	}
 	return a.svc.ApplySkill(name, files)
+}
+
+// GenerateReport は日報を生成して <データディレクトリ>/reports/ に保存する（date が空なら今日）。
+func (a *App) GenerateReport(date string) (service.ReportInfo, error) {
+	if err := a.ready(); err != nil {
+		return service.ReportInfo{}, err
+	}
+	return a.svc.GenerateReport(context.Background(), date)
+}
+
+func (a *App) ListReports() ([]service.ReportInfo, error) {
+	if err := a.ready(); err != nil {
+		return nil, err
+	}
+	return a.svc.ListReports()
+}
+
+func (a *App) ReadReport(date string) (string, error) {
+	if err := a.ready(); err != nil {
+		return "", err
+	}
+	return a.svc.ReadReport(date)
+}
+
+// LaunchdPlist は launchd 用の plist を文字列で返す（生成のみ。登録・実行はしない）。
+func (a *App) LaunchdPlist() (string, error) {
+	if err := a.ready(); err != nil {
+		return "", err
+	}
+	return a.svc.LaunchdPlist()
 }
 
 func (a *App) ListBackups() ([]applier.Entry, error) {

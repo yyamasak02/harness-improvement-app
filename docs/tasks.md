@@ -50,5 +50,5 @@
 
 - [x] T50 F4 メモリビューア（#21）
 - [x] T51 F5 自己ナレッジ生成（`skill-generate`）（#22）
-- [ ] T52 F6 日次振り返り（`daily-report`、スケジューラ、launchd の plist 生成）（#23）
+- [x] T52 F6 日次振り返り（`daily-report`、スケジューラ、launchd の plist 生成）（#23）
 - [x] T53 F7 拡張機能一覧（#24）

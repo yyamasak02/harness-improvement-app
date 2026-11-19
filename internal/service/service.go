@@ -16,6 +16,7 @@ import (
 	"harness-app/internal/digest"
 	"harness-app/internal/masking"
 	"harness-app/internal/runner"
+	"harness-app/internal/scheduler"
 	"harness-app/internal/store"
 	"harness-app/internal/targets"
 )
@@ -39,6 +40,9 @@ type Service struct {
 	mu      sync.Mutex
 	cancel  context.CancelFunc
 	reindex sync.Mutex // Reindex の同時実行を直列化する
+
+	reportBusy     bool      // 日報の定期生成中（mu で保護）
+	reportFailedAt time.Time // 直近の定期生成の失敗時刻（mu で保護）
 }
 
 // New は設定を読み DB を開く。
@@ -85,6 +89,11 @@ func (s *Service) SaveSettings(c config.Config) error {
 	}
 	if c.TimeoutSeconds <= 0 {
 		c.TimeoutSeconds = 300
+	}
+	if c.DailyReportTime != "" {
+		if _, _, err := scheduler.ParseClock(c.DailyReportTime); err != nil {
+			return err
+		}
 	}
 	if err := config.Save(s.env.DataDir, c); err != nil {
 		return err

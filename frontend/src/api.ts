@@ -23,6 +23,10 @@ export interface Api {
   applyProposal(path: string, content: string, baseHash: string): Promise<T.Manifest>
   generateSkill(req: T.SkillRequest): Promise<T.SkillProposal>
   applySkill(name: string, files: T.SkillApplyFile[]): Promise<T.Manifest[]>
+  generateReport(date: string): Promise<T.ReportInfo>
+  listReports(): Promise<T.ReportInfo[]>
+  readReport(date: string): Promise<string>
+  launchdPlist(): Promise<string>
   listBackups(): Promise<T.BackupEntry[]>
   getBackup(id: string): Promise<T.BackupEntry>
   rollback(id: string): Promise<T.Manifest>
@@ -53,6 +57,10 @@ export const wailsApi: Api = {
   applyProposal: (p, c, h) => cast(App.ApplyProposal(p, c, h)),
   generateSkill: (r) => cast(App.GenerateSkill(r as never)),
   applySkill: (n, f) => cast(App.ApplySkill(n, f as never)),
+  generateReport: (d) => cast(App.GenerateReport(d)),
+  listReports: () => cast(App.ListReports()),
+  readReport: (d) => App.ReadReport(d),
+  launchdPlist: () => App.LaunchdPlist(),
   listBackups: () => cast(App.ListBackups()),
   getBackup: (id) => cast(App.GetBackup(id)),
   rollback: (id) => cast(App.Rollback(id)),

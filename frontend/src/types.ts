@@ -7,7 +7,10 @@ export interface Config {
   correctionPatterns: string[]
   maskPatterns: MaskPattern[]
   timeoutSeconds: number
+  dailyReportEnabled: boolean
+  dailyReportTime: string
 }
+export interface ReportInfo { date: string; path: string }
 export interface Session {
   id: string; project: string; filePath: string; cwd: string; gitBranch: string
   startedAt: string; endedAt: string

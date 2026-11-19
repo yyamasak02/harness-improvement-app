@@ -28,6 +28,14 @@ export function GetSession(arg1:string):Promise<service.SessionDetail>;
 
 export function InitError():Promise<string>;
 
+export function GenerateReport(arg1:string):Promise<service.ReportInfo>;
+
+export function LaunchdPlist():Promise<string>;
+
+export function ListReports():Promise<Array<service.ReportInfo>>;
+
+export function ReadReport(arg1:string):Promise<string>;
+
 export function ListBackups():Promise<Array<applier.Entry>>;
 
 export function ListExtensions():Promise<extensions.Report>;
