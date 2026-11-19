@@ -98,7 +98,7 @@ func toServers(m map[string]rawMCP, scope, project string, mask func(string) str
 }
 
 // Scan は claudeDir（~/.claude 相当）と claudeJSON（~/.claude.json 相当）を読む。
-// mask は表示するコマンド・引数・URL に適用する（nil なら無加工）。壊れたファイルは Warnings に記録して続行する。
+// mask は表示するコマンド・引数・URL・skill の name/description に適用する（nil なら無加工）。壊れたファイルは Warnings に記録して続行する。
 func Scan(claudeDir, claudeJSON string, mask func(string) string) Report {
 	if mask == nil {
 		mask = func(s string) string { return s }
@@ -179,11 +179,11 @@ func Scan(claudeDir, claudeJSON string, mask func(string) string) Report {
 	}
 	sort.Slice(r.Plugins, func(i, j int) bool { return r.Plugins[i].ID < r.Plugins[j].ID })
 
-	r.Skills = scanSkills(filepath.Join(claudeDir, "skills"), warn)
+	r.Skills = scanSkills(filepath.Join(claudeDir, "skills"), mask, warn)
 	return r
 }
 
-func scanSkills(dir string, warn func(string, error)) []Skill {
+func scanSkills(dir string, mask func(string) string, warn func(string, error)) []Skill {
 	out := []Skill{}
 	ents, err := os.ReadDir(dir)
 	if err != nil {
@@ -202,7 +202,7 @@ func scanSkills(dir string, warn func(string, error)) []Skill {
 		if name == "" {
 			name = e.Name()
 		}
-		out = append(out, Skill{Name: name, Description: desc, Path: p})
+		out = append(out, Skill{Name: mask(name), Description: mask(desc), Path: p})
 	}
 	sort.Slice(out, func(i, j int) bool { return out[i].Name < out[j].Name })
 	return out

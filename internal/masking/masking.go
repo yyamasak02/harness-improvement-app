@@ -32,6 +32,8 @@ func builtin() []rule {
 		mk("slack-token", `xox[baprs]-[A-Za-z0-9\-]{6,}`, mask("slack-token")),
 		mk("bearer", `(?i)\bBearer\s+[A-Za-z0-9._~+/=\-]{6,}`, mask("bearer")),
 		mk("email", `[A-Za-z0-9._%+\-]+@[A-Za-z0-9.\-]+\.[A-Za-z]{2,}`, mask("email")),
+		// コマンドライン引数の `--token abc` / `--api-key=abc`（値が `-` で始まる次のフラグは対象外）
+		mk("secret", `(?i)(--?(?:password|passwd|secret|token|api[-_]?key|access[-_]?token)(?:=|\s+))[^\s-]\S*`, "${1}"+mask("secret")),
 		mk("secret", `(?i)((?:password|secret|token|api_key)\s*[:=]\s*)\S+`, "${1}"+mask("secret")),
 	}
 }

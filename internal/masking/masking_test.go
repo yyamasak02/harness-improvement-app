@@ -17,6 +17,9 @@ func TestMask(t *testing.T) {
 		{"email", "mail a.b@example.co.jp now", "mail [MASKED:email] now"},
 		{"kv colon", "password: hunter2", "password: [MASKED:secret]"},
 		{"kv eq", "API_KEY=zzz", "API_KEY=[MASKED:secret]"},
+		{"flag 空白区切り", "run --token abc123 now", "run --token [MASKED:secret] now"},
+		{"flag 等号", "--api-key=abc123", "--api-key=[MASKED:secret]"},
+		{"flag 他の語は対象外", "--tokens 5 --token-limit 3", "--tokens 5 --token-limit 3"},
 		{"pem", "x\n-----BEGIN RSA PRIVATE KEY-----\nAAA\n-----END RSA PRIVATE KEY-----\ny", "x\n[MASKED:private-key]\ny"}, // privacy-allow: 検出テスト用のダミー
 		{"pem 終端なし", "-----BEGIN PRIVATE KEY-----\nAAA", "[MASKED:private-key]"},                                           // privacy-allow: 検出テスト用のダミー
 		{"custom", "see PRJ-42", "see [MASKED:proj]"},
