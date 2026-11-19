@@ -192,6 +192,7 @@ jobs:
             echo "::error::frontend/wailsjs が wails generate module の出力と一致しません。再生成してコミットしてください。"
             git status --porcelain -- frontend/wailsjs
             git diff -- frontend/wailsjs | head -100
+            git diff -- frontend/wailsjs > "$RUNNER_TEMP/wailsjs.diff"
             exit 1
           fi
       - name: 失敗時に再生成結果をアップロード
@@ -199,7 +200,9 @@ jobs:
         uses: actions/upload-artifact@v4
         with:
           name: wailsjs-regenerated
-          path: frontend/wailsjs
+          path: |
+            frontend/wailsjs
+            ${{ runner.temp }}/wailsjs.diff
 
   linux-build-smoke:
     name: linux-build-smoke（WSL・Linux 用バイナリ）
