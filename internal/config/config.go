@@ -30,6 +30,22 @@ type Config struct {
 	DailyReportTime    string `json:"dailyReportTime"`
 }
 
+// Clone はスライスも含めて複製する（共有による data race を避けるため）。
+func (c Config) Clone() Config {
+	c.ExcludedProjects = cloneSlice(c.ExcludedProjects)
+	c.CorrectionPatterns = cloneSlice(c.CorrectionPatterns)
+	c.MaskPatterns = cloneSlice(c.MaskPatterns)
+	return c
+}
+
+// cloneSlice は nil は nil、空は空のまま複製する（JSON で null と [] を区別するため）。
+func cloneSlice[T any](s []T) []T {
+	if s == nil {
+		return nil
+	}
+	return append(make([]T, 0, len(s)), s...)
+}
+
 // DefaultCorrectionPatterns は訂正発言の初期パターン。
 func DefaultCorrectionPatterns() []string {
 	return []string{"違う", "そうじゃな", "じゃなくて", "やめて", "間違", "no,", "don't", "instead", "actually"}
