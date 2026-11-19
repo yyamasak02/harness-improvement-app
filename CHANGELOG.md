@@ -5,6 +5,8 @@
 
 ## [Unreleased]
 
+## [0.1.0-rc.2] - 2026-11-20
+
 ### 追加
 - Linux 用パッケージ（`.deb`、amd64）を Release に添付する。`sudo apt install ./harness-app_*_amd64.deb` で必要なライブラリごと導入できる（署名なし。apt リポジトリは未提供）
 
