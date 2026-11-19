@@ -4,6 +4,10 @@ description: リリース（バージョン確定・CHANGELOG・タグ作成・R
 ---
 前提: `.claude/rules/release.md` を読む。
 
+## 0. 初回は rc で配布経路を検証する
+- まだ正式版（`v0.1.0` など）を一度も出していないときは、先に `X.Y.Z-rc.1` で以下の手順 1〜4 を回す（`release.sh` は `0.1.0-rc.1` 形式に対応。pre-release として公開される）。
+- Release に dmg・インストーラが添付されたことを確認してから、正式版で同じ手順を行う。rc から変更が無ければ `[Unreleased]` が空でも `prepare` は通る。
+
 ## 1. 事前確認
 - `bash scripts/status.sh`（open PR が無い・main が最新・CI 成功）
 - `bash scripts/status.sh`（open な issue を優先度順に表示。`gh issue list` の直接実行は禁止）で p0 と p1。着手できるもの（needs-human 以外）は先に片付ける。人の作業待ち（macOS / Windows 実機確認など）が残っていれば、**リリースを止めてユーザーに報告**する。
