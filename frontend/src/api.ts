@@ -14,6 +14,7 @@ export interface Api {
   getSession(id: string): Promise<T.SessionDetail>
   search(q: string): Promise<T.SearchHit[]>
   listTargets(): Promise<T.Target[]>
+  listMemories(): Promise<T.MemoryItem[]>
   readTarget(path: string): Promise<T.TargetContent>
   buildDigest(project: string, days: number): Promise<string>
   generateProposal(req: T.ProposalRequest): Promise<T.Proposal>
@@ -40,6 +41,7 @@ export const wailsApi: Api = {
   getSession: (id) => cast(App.GetSession(id)),
   search: (q) => cast(App.Search(q)),
   listTargets: () => cast(App.ListTargets()),
+  listMemories: () => cast(App.ListMemories()),
   readTarget: (p) => cast(App.ReadTarget(p)),
   buildDigest: (p, d) => App.BuildDigest(p, d),
   generateProposal: (r) => cast(App.GenerateProposal(r as never)),

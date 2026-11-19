@@ -155,6 +155,13 @@ func (a *App) ListTargets() ([]targets.Target, error) {
 	return a.svc.ListTargets()
 }
 
+func (a *App) ListMemories() ([]service.MemoryItem, error) {
+	if err := a.ready(); err != nil {
+		return nil, err
+	}
+	return a.svc.ListMemories()
+}
+
 func (a *App) ReadTarget(path string) (service.TargetContent, error) {
 	if err := a.ready(); err != nil {
 		return service.TargetContent{}, err
