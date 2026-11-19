@@ -192,6 +192,11 @@ jobs:
         run: |
           ls -la build/bin
           test -x build/bin/harness-app
+      - name: .deb を作って中身を確認
+        run: |
+          bash scripts/build-deb.sh build/bin
+          dpkg-deb --info build/bin/harness-app_*_amd64.deb | grep -q 'Depends: libgtk-3-0, libwebkit2gtk-4.1-0'
+          dpkg-deb --contents build/bin/harness-app_*_amd64.deb | grep -q ' ./usr/bin/harness-app$'
 
   dmg-smoke:
     name: dmg-smoke（make dmg）

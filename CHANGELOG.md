@@ -5,6 +5,9 @@
 
 ## [Unreleased]
 
+### 追加
+- Linux 用パッケージ（`.deb`、amd64）を Release に添付する。`sudo apt install ./harness-app_*_amd64.deb` で必要なライブラリごと導入できる（署名なし。apt リポジトリは未提供）
+
 ### 修正
 - GitHub の Release 画面からリリースを作った場合（タグ名に `v` が付かない場合も含む）でも、インストーラ（.dmg・Windows インストーラ）がその Release に添付されるようにした。ビルドに失敗したときは Release のノートの先頭に表示する
 
