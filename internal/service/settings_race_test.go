@@ -1,6 +1,8 @@
 package service
 
 import (
+	"encoding/json"
+	"strings"
 	"sync"
 	"testing"
 
@@ -25,6 +27,18 @@ func TestSettingsSnapshotIsIsolated(t *testing.T) {
 	got.ExcludedProjects[0] = "mut"
 	if again := f.svc.Settings(); again.ExcludedProjects[0] != "a" {
 		t.Fatalf("取得した値の変更が波及: %+v", again)
+	}
+}
+
+// Settings の JSON で空スライスが null にならない（フロントの .join/.map が落ちる）。
+func TestSettingsJSONHasNoNullSlices(t *testing.T) {
+	f := newFixture(t)
+	b, err := json.Marshal(f.svc.Settings())
+	if err != nil {
+		t.Fatal(err)
+	}
+	if strings.Contains(string(b), "null") {
+		t.Fatalf("JSON に null: %s", b)
 	}
 }
 

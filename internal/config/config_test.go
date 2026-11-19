@@ -1,11 +1,32 @@
 package config
 
 import (
+	"encoding/json"
 	"os"
 	"path/filepath"
 	"reflect"
+	"strings"
 	"testing"
 )
+
+// Clone は nil と空を区別して保つ（空が JSON で null になるとフロントが落ちる）。
+func TestCloneKeepsNilAndEmpty(t *testing.T) {
+	d := Default().Clone()
+	if d.ExcludedProjects == nil || d.MaskPatterns == nil || d.CorrectionPatterns == nil {
+		t.Fatalf("空スライスが nil になった: %+v", d)
+	}
+	b, err := json.Marshal(d)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if strings.Contains(string(b), "null") {
+		t.Fatalf("JSON に null: %s", b)
+	}
+	n := Config{}.Clone()
+	if n.ExcludedProjects != nil || n.MaskPatterns != nil {
+		t.Fatalf("nil は nil のまま: %+v", n)
+	}
+}
 
 func TestLoadDefaultWhenMissing(t *testing.T) {
 	c, err := Load(t.TempDir())
