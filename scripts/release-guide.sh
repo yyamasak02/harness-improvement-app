@@ -11,6 +11,8 @@ cat <<'EOF'
 | macOS | `harness-app.dmg` |
 | Windows | `harness-app-amd64-installer.exe` |
 
+インストーラが見当たらない場合は、ビルドが完了していない（数分〜十数分かかります）か失敗しています。Actions の実行結果を確認してください。
+
 インストール手順と、未署名アプリの開き方は README の「インストール」を参照してください。
 
 EOF
