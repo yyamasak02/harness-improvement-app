@@ -447,7 +447,7 @@ mkdir -p "$rl/work/scripts" "$rl/work/frontend"
 cp "$root/scripts/release.sh" "$root/scripts/check-version.sh" "$rl/work/scripts/"
 printf '{"info":{"productVersion":"0.0.1"}}\n' > "$rl/work/wails.json"; printf '{"version":"0.0.1"}\n' > "$rl/work/frontend/package.json"
 printf '# Changelog\n\n## [Unreleased]\n\n### 追加\n- 機能 A\n' > "$rl/work/CHANGELOG.md"
-(cd "$rl/work" && git config user.email t@example.com && git config user.name t && git add -A && git commit -qm "chore: base" && git push -q origin main 2>/dev/null)
+(cd "$rl/work" && git config user.email t@users.noreply.github.com && git config user.name t && git add -A && git commit -qm "chore: base" && git push -q origin main 2>/dev/null)
 (cd "$rl/work" && PATH="$rl/bin:$PATH" bash scripts/release.sh prepare 0.1.0-rc.1 >/dev/null 2>&1 && grep -q '^## \[0.1.0-rc.1\]' CHANGELOG.md && grep -q '0.1.0-rc.1' wails.json) \
   && echo "ok: release.sh prepare は rc 版（0.1.0-rc.1）を受け付ける" || { echo "NG: rc 版の prepare が失敗する"; fail=1; }
 # rc をマージした状態を再現し、[Unreleased] が空のまま正式版を prepare する
@@ -456,6 +456,24 @@ printf '# Changelog\n\n## [Unreleased]\n\n### 追加\n- 機能 A\n' > "$rl/work/
   && echo "ok: rc の後の正式版は [Unreleased] が空でも prepare できる" || { echo "NG: rc 後の正式版 prepare が失敗する"; fail=1; }
 (cd "$rl/work" && git switch -q main && PATH="$rl/bin:$PATH" bash scripts/release.sh prepare 0.2.0 >/dev/null 2>&1) \
   && { echo "NG: rc の無い版で空の [Unreleased] が通ってしまう"; fail=1; } || echo "ok: rc の無い版は空の [Unreleased] を拒否する"
+# release.sh は、git config が実メール相当でも、コミットの作者を noreply にする（origin/main の noreply を使う）
+(cd "$rl/work" && git switch -q main && sed -i.bak '/^## \[Unreleased\]/a\
+\
+- 機能 B' CHANGELOG.md && rm -f CHANGELOG.md.bak && git commit -qam "feat: b" && git push -q origin main 2>/dev/null)
+(cd "$rl/work" && git config user.email real-person@example.com \
+  && PATH="$rl/bin:$PATH" bash scripts/release.sh prepare 0.3.0 >/dev/null 2>&1 \
+  && [ "$(git log -1 --format=%ae)" = "t@users.noreply.github.com" ]) \
+  && echo "ok: release.sh prepare は作者を noreply にする（git config が実メール相当でも）" || { echo "NG: release.sh prepare のコミットの作者が noreply ではない"; fail=1; }
+# user.email が noreply でも、環境変数のコミッターが実メール相当なら、実効の作者・コミッターを noreply に直す
+(cd "$rl/work" && git switch -q main && git config user.email t@users.noreply.github.com \
+  && GIT_COMMITTER_EMAIL=real-person@example.com PATH="$rl/bin:$PATH" bash scripts/release.sh prepare 0.3.1 >/dev/null 2>&1 \
+  && [ "$(git log -1 --format=%ce)" = "t@users.noreply.github.com" ]) \
+  && echo "ok: release.sh prepare は環境変数のコミッターが実メール相当でも noreply にする" || { echo "NG: コミッターが実メールのまま残る"; fail=1; }
+# noreply を決められない（origin/main の作者も noreply でない）なら、コミットを作らず止まる
+(cd "$rl/work" && git switch -q main && git config user.email real-person@example.com \
+  && git -c user.email=real-person@example.com commit -q --amend --reset-author -m "feat: b" && git push -q -f origin main 2>/dev/null \
+  && git fetch -q origin main && ! PATH="$rl/bin:$PATH" bash scripts/release.sh prepare 0.4.0 >/dev/null 2>&1) \
+  && echo "ok: noreply を決められないときは release.sh が止まる" || { echo "NG: noreply を決められなくても release.sh が進む"; fail=1; }
 cc="$tmp/cc"; mkdir -p "$cc/scripts"; cp scripts/check-changelog.sh "$cc/scripts/"
 (cd "$cc" && git init -q -b main && git config user.email t@example.com && git config user.name t && echo '# c' > CHANGELOG.md && echo a > a.txt && git add -A && git commit -qm "chore: base" \
   && git switch -q -c f && echo b >> a.txt && git commit -qam "feat: x")
