@@ -86,7 +86,7 @@ func (s *Service) Settings() config.Config { return s.config() }
 func (s *Service) config() config.Config {
 	s.mu.Lock()
 	defer s.mu.Unlock()
-	return s.cfg
+	return s.cfg.Clone()
 }
 
 // SaveSettings は設定を検証して保存する（不正なマスキング正規表現は拒否）。
@@ -106,7 +106,7 @@ func (s *Service) SaveSettings(c config.Config) error {
 		return err
 	}
 	s.mu.Lock()
-	s.cfg = c
+	s.cfg = c.Clone()
 	s.mu.Unlock()
 	return nil
 }
