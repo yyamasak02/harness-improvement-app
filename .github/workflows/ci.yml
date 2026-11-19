@@ -194,6 +194,12 @@ jobs:
             git diff -- frontend/wailsjs | head -100
             exit 1
           fi
+      - name: 失敗時に再生成結果をアップロード
+        if: failure()
+        uses: actions/upload-artifact@v4
+        with:
+          name: wailsjs-regenerated
+          path: frontend/wailsjs
 
   linux-build-smoke:
     name: linux-build-smoke（WSL・Linux 用バイナリ）
