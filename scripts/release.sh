@@ -18,15 +18,25 @@ case "$cmd" in
     require_clean_main
     git rev-parse -q --verify "refs/tags/$tag" >/dev/null && { echo "タグ $tag は既に存在します"; exit 1; }
     grep -qE '^## \[Unreleased\]' CHANGELOG.md || { echo "CHANGELOG.md に [Unreleased] がありません"; exit 1; }
-    [ -n "$(awk '/^## \[Unreleased\]/{on=1;next} on&&/^## \[/{exit} on&&NF{print}' CHANGELOG.md)" ] || { echo "CHANGELOG の [Unreleased] が空です。リリースする変更を書いてください"; exit 1; }
+    unreleased=$(awk '/^## \[Unreleased\]/{on=1;next} on&&/^## \[/{exit} on&&NF{print}' CHANGELOG.md)
+    base="${ver%%-*}"
+    if [ -z "$unreleased" ]; then
+      # rc の後の正式版は、rc から変更が無ければ [Unreleased] が空でもよい（rc の節を参照する一文を入れる）
+      if [ "$ver" = "$base" ] && grep -qE "^## \[${base//./\\.}-" CHANGELOG.md; then
+        rcnote="rc 版から変更はありません（正式版）。変更点は $base の rc 版の節を参照してください。"
+      else
+        echo "CHANGELOG の [Unreleased] が空です。リリースする変更を書いてください"; exit 1
+      fi
+    fi
     git switch -q -c "release/$tag"
     today=$(date +%Y-%m-%d)
     # [Unreleased] を新しい節に確定し、空の [Unreleased] を先頭に作る
-    python3 -I - "$ver" "$today" <<'PY'
+    python3 -I - "$ver" "$today" "${rcnote:-}" <<'PY'
 import re, sys
-ver, today = sys.argv[1:3]
+ver, today, note = sys.argv[1:4]
 s = open("CHANGELOG.md", encoding="utf-8").read()
-s = s.replace("## [Unreleased]", "## [Unreleased]\n\n## [%s] - %s" % (ver, today), 1)
+sec = "## [%s] - %s" % (ver, today) + ("\n\n- %s" % note if note else "")
+s = s.replace("## [Unreleased]", "## [Unreleased]\n\n" + sec, 1)
 open("CHANGELOG.md", "w", encoding="utf-8").write(s)
 PY
     python3 -I - "$ver" <<'PY'

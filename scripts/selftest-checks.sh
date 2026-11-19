@@ -438,6 +438,24 @@ printf '{"info":{"productVersion":"1.2.3"}}\n' > "$cv/wails.json"; sed -i.bak 's
 sed -i.bak 's/^## \[9.9.9\].*$/## [1.2.3] - 2026-01-01/' "$cv/CHANGELOG.md"
 notes=$(cd "$cv" && bash scripts/changelog-notes.sh 1.2.3)
 case "$notes" in *"機能 A"*) case "$notes" in *"旧"*) echo "NG: 次の節まで含めている"; fail=1 ;; *) echo "ok: changelog-notes は該当節だけを出す" ;; esac ;; *) echo "NG: changelog-notes が節を取れない"; fail=1 ;; esac
+# release.sh prepare: rc（pre-release）と、rc の後の正式版（[Unreleased] が空でもよい）
+root=$(pwd); rl="$tmp/rl"; mkdir -p "$rl/bin"
+printf '#!/bin/sh\nprintf "{\\"version\\":\\"%%s\\"}\\n" "$2" > package.json\n' > "$rl/bin/npm"; chmod +x "$rl/bin/npm"
+git init -q --bare -b main "$rl/origin.git" 2>/dev/null
+git clone -q "$rl/origin.git" "$rl/work" 2>/dev/null
+mkdir -p "$rl/work/scripts" "$rl/work/frontend"
+cp "$root/scripts/release.sh" "$root/scripts/check-version.sh" "$rl/work/scripts/"
+printf '{"info":{"productVersion":"0.0.1"}}\n' > "$rl/work/wails.json"; printf '{"version":"0.0.1"}\n' > "$rl/work/frontend/package.json"
+printf '# Changelog\n\n## [Unreleased]\n\n### 追加\n- 機能 A\n' > "$rl/work/CHANGELOG.md"
+(cd "$rl/work" && git config user.email t@example.com && git config user.name t && git add -A && git commit -qm "chore: base" && git push -q origin main 2>/dev/null)
+(cd "$rl/work" && PATH="$rl/bin:$PATH" bash scripts/release.sh prepare 0.1.0-rc.1 >/dev/null 2>&1 && grep -q '^## \[0.1.0-rc.1\]' CHANGELOG.md && grep -q '0.1.0-rc.1' wails.json) \
+  && echo "ok: release.sh prepare は rc 版（0.1.0-rc.1）を受け付ける" || { echo "NG: rc 版の prepare が失敗する"; fail=1; }
+# rc をマージした状態を再現し、[Unreleased] が空のまま正式版を prepare する
+(cd "$rl/work" && git switch -q main && git merge -q --ff-only release/v0.1.0-rc.1 && git push -q origin main 2>/dev/null)
+(cd "$rl/work" && PATH="$rl/bin:$PATH" bash scripts/release.sh prepare 0.1.0 >/dev/null 2>&1 && grep -q '^## \[0.1.0\]' CHANGELOG.md && grep -q 'rc 版から変更はありません' CHANGELOG.md) \
+  && echo "ok: rc の後の正式版は [Unreleased] が空でも prepare できる" || { echo "NG: rc 後の正式版 prepare が失敗する"; fail=1; }
+(cd "$rl/work" && git switch -q main && PATH="$rl/bin:$PATH" bash scripts/release.sh prepare 0.2.0 >/dev/null 2>&1) \
+  && { echo "NG: rc の無い版で空の [Unreleased] が通ってしまう"; fail=1; } || echo "ok: rc の無い版は空の [Unreleased] を拒否する"
 cc="$tmp/cc"; mkdir -p "$cc/scripts"; cp scripts/check-changelog.sh "$cc/scripts/"
 (cd "$cc" && git init -q -b main && git config user.email t@example.com && git config user.name t && echo '# c' > CHANGELOG.md && echo a > a.txt && git add -A && git commit -qm "chore: base" \
   && git switch -q -c f && echo b >> a.txt && git commit -qam "feat: x")

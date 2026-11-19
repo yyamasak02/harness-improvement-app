@@ -23,9 +23,25 @@ Claude Code を使う → ログ・メモリが溜まる → AI が改善案を�
 
 ## インストール
 
-> Release ページには GitHub が自動で「Source code (zip / tar.gz)」を付けますが、それはソースコードです。**使うのは下記のインストーラ（`.dmg` / `-installer.exe`）だけ**です。
+> **現在、正式リリース（インストーラ付きの Release）はまだ公開されていません。** 公開されるまでは、先に「[リリースが出るまでの暫定手順（ソースからビルド）](#リリースが出るまでの暫定手順ソースからビルド)」を使ってください。以降の macOS / Windows の手順は **リリース公開後** のものです。
+>
+> Release ページには GitHub が自動で「Source code (zip / tar.gz)」を付けますが、それはソースコードです。リリース公開後に使うのは、下記のインストーラ（`.dmg` / `-installer.exe`）だけです。
 
-### macOS
+### リリースが出るまでの暫定手順（ソースからビルド）
+
+リポジトリを取得し、前提ツール（Go 1.24 以降、Node.js、[Wails v2](https://wails.io/)）を入れてからビルドします。
+
+```sh
+git clone <このリポジトリの URL>
+cd harness-improvement-app
+go install github.com/wailsapp/wails/v2/cmd/wails@v2.10.2
+make dmg      # macOS: build/bin/harness-app.dmg ができる（未署名。開き方は下の macOS 節の手順 2）
+make linux    # Linux / WSL: build/bin/harness-app ができる（詳細は下の Linux 節）
+```
+
+Windows は、Wails の前提（WebView2 など）を満たした環境で `wails build -platform windows/amd64` を実行します。開発用に試すだけなら `wails dev` でも起動できます。
+
+### macOS（リリース公開後）
 
 1. [Releases](../../releases) から `harness-app.dmg` をダウンロードして開き、`harness-app.app` を「アプリケーション」へドラッグします。
 2. **本アプリは署名・公証をしていません。** 初回は次のどちらかで開きます。
@@ -36,7 +52,7 @@ Claude Code を使う → ログ・メモリが溜まる → AI が改善案を�
      ```
 3. [Claude Code](https://claude.com/claude-code) がインストールされている必要があります。見つからない場合は「設定」でフルパスを指定してください（`which claude` で分かります）。
 
-### Windows（10 以降）
+### Windows（10 以降。リリース公開後）
 
 1. [Releases](../../releases) から `harness-app-amd64-installer.exe`（インストーラ）をダウンロードして実行します。WebView2 ランタイムが無ければ自動で案内されます。
 2. **本アプリは署名していません。** 初回は SmartScreen が「Windows によって PC が保護されました」と表示します。**「詳細情報」→「実行」** を選んでください。
