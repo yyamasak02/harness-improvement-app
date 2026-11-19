@@ -71,6 +71,23 @@ func TestScanMissingAndBroken(t *testing.T) {
 	}
 }
 
+func TestScanMasksSkillNameAndDescription(t *testing.T) {
+	d := t.TempDir()
+	secret := "zz" + "secret" + "99" // 実行時に組み立てたダミー
+	sd := filepath.Join(d, "skills", "s1")
+	if err := os.MkdirAll(sd, 0o755); err != nil {
+		t.Fatal(err)
+	}
+	body := "---\nname: n-" + secret + "\ndescription: d-" + secret + "\n---\n"
+	if err := os.WriteFile(filepath.Join(sd, "SKILL.md"), []byte(body), 0o600); err != nil {
+		t.Fatal(err)
+	}
+	r := Scan(d, filepath.Join(d, "none.json"), func(s string) string { return strings.ReplaceAll(s, secret, "[M]") })
+	if len(r.Skills) != 1 || r.Skills[0].Name != "n-[M]" || r.Skills[0].Description != "d-[M]" {
+		t.Errorf("skills=%+v", r.Skills)
+	}
+}
+
 func TestFrontmatter(t *testing.T) {
 	cases := []struct{ in, name, desc string }{
 		{"---\nname: a\ndescription: \"b c\"\n---\nbody", "a", "b c"},
