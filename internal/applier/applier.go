@@ -156,6 +156,7 @@ func (a *Applier) write(path string, content []byte, op, rollbackOf string) (Man
 		if err := os.Remove(path); err != nil && !errors.Is(err, os.ErrNotExist) {
 			return fail(fmt.Errorf("ファイル削除: %w", err))
 		}
+		a.pruneEmptyDirs(filepath.Dir(path))
 		return m, nil
 	}
 	perm := os.FileMode(0o644)
@@ -166,6 +167,20 @@ func (a *Applier) write(path string, content []byte, op, rollbackOf string) (Man
 		return fail(fmt.Errorf("書き込み: %w", err))
 	}
 	return m, nil
+}
+
+// pruneEmptyDirs は、新規作成の取り消しで空になったディレクトリを、許可リスト内の範囲で親へ向かって削除する。
+// os.Remove は空でないディレクトリには失敗するので、他のファイルは消えない。
+func (a *Applier) pruneEmptyDirs(dir string) {
+	for a.Allowed != nil && a.Allowed(dir) {
+		if st, err := os.Lstat(dir); err != nil || st.Mode()&os.ModeSymlink != 0 {
+			return
+		}
+		if os.Remove(dir) != nil {
+			return
+		}
+		dir = filepath.Dir(dir)
+	}
 }
 
 // Apply は改善案を適用する。
