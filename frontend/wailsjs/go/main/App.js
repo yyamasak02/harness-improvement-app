@@ -46,6 +46,10 @@ export function ListBackups() {
   return window['go']['main']['App']['ListBackups']();
 }
 
+export function ListExtensions() {
+  return window['go']['main']['App']['ListExtensions']();
+}
+
 export function ListMemories() {
   return window['go']['main']['App']['ListMemories']();
 }

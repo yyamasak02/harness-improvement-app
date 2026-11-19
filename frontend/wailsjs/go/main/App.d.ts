@@ -6,6 +6,7 @@ import {store} from '../models';
 import {targets} from '../models';
 import {collector} from '../models';
 import {config} from '../models';
+import {extensions} from '../models';
 
 export function ApplyProposal(arg1:string,arg2:string,arg3:string):Promise<applier.Manifest>;
 
@@ -28,6 +29,8 @@ export function GetSession(arg1:string):Promise<service.SessionDetail>;
 export function InitError():Promise<string>;
 
 export function ListBackups():Promise<Array<applier.Entry>>;
+
+export function ListExtensions():Promise<extensions.Report>;
 
 export function ListMemories():Promise<Array<service.MemoryItem>>;
 

@@ -103,7 +103,7 @@ CREATE VIRTUAL TABLE messages_fts USING fts5(text, content='messages', content_r
 | F4 | メモリビューア | プロジェクトメモリの閲覧と編集（適用は applier 経由）、重複・古いメモリの検出 |
 | F5 | 自己ナレッジ生成 | メモリと期間を選び、skill セット（SKILL.md + knowledge）を生成 → プレビュー → `~/.claude/skills/<name>/` に適用 |
 | F6 | 日次振り返り | 指定時刻に当日分の日報と TODO を生成し、`<データディレクトリ>/reports/YYYY-MM-DD.md` に保存。アプリ起動中は内部スケジューラで実行し、オプションで launchd の plist を生成 |
-| F7 | 拡張機能 | MCP / plugins / skills / hooks の一覧と状態（読み取り専用） |
+| F7 | 拡張機能 | MCP / plugins / skills / hooks の一覧と状態（読み取り専用。実装済み）。MCP の env・headers は値を読まずキー名のみ表示し、コマンド・引数・URL は masking を通す |
 
 ## 7. AI 実行（runner）
 

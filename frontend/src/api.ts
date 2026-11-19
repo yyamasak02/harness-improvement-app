@@ -15,6 +15,7 @@ export interface Api {
   search(q: string): Promise<T.SearchHit[]>
   listTargets(): Promise<T.Target[]>
   listMemories(): Promise<T.MemoryItem[]>
+  listExtensions(): Promise<T.ExtensionsReport>
   readTarget(path: string): Promise<T.TargetContent>
   buildDigest(project: string, days: number): Promise<string>
   generateProposal(req: T.ProposalRequest): Promise<T.Proposal>
@@ -44,6 +45,7 @@ export const wailsApi: Api = {
   search: (q) => cast(App.Search(q)),
   listTargets: () => cast(App.ListTargets()),
   listMemories: () => cast(App.ListMemories()),
+  listExtensions: () => cast(App.ListExtensions()),
   readTarget: (p) => cast(App.ReadTarget(p)),
   buildDigest: (p, d) => App.BuildDigest(p, d),
   generateProposal: (r) => cast(App.GenerateProposal(r as never)),

@@ -34,6 +34,17 @@ export interface Target { kind: TargetKind; path: string; label: string; exists:
 export interface MemoryItem {
   target: Target; project: string; size: number; modTime: string; stale: boolean; duplicateOf: string[]
 }
+export interface McpServer {
+  name: string; scope: string; project: string; type: string; command: string
+  args: string[] | null; url: string; envKeys: string[] | null
+}
+export interface PluginInfo { id: string; version: string; scope: string; enabled: boolean }
+export interface SkillInfo { name: string; description: string; path: string }
+export interface HookInfo { event: string; matcher: string; type: string; command: string }
+export interface ExtensionsReport {
+  mcp: McpServer[] | null; plugins: PluginInfo[] | null; skills: SkillInfo[] | null
+  hooks: HookInfo[] | null; warnings: string[] | null
+}
 export interface TargetContent{ target: Target; content: string; hash: string }
 export interface ProposalRequest { targetPath: string; project: string; days: number; instruction: string }
 export interface Proposal {
