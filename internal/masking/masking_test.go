@@ -24,6 +24,13 @@ func TestMask(t *testing.T) {
 		{"flag 単引用符", `--password 'abc def' ok`, `--password [MASKED:secret] ok`},
 		{"flag 等号と引用符", `--api-key="abc def" ok`, `--api-key=[MASKED:secret] ok`},
 		{"語中のハイフンは対象外", "max-token 100 and multi-token sequences", "max-token 100 and multi-token sequences"},
+		{"接頭辞付きフラグ", "--auth-token abc123 x", "--auth-token [MASKED:secret] x"},
+		{"接頭辞付きフラグ等号", "--github-api-key=abc123", "--github-api-key=[MASKED:secret]"},
+		{"接頭辞付きフラグ下線", "--my_password abc123 x", "--my_password [MASKED:secret] x"},
+		{"エスケープ引用符", `--token "ab\"cd ef" ok`, `--token [MASKED:secret] ok`},
+		{"単引用符内のエスケープ", `--token 'ab\'cd ef' ok`, `--token [MASKED:secret] ok`},
+		{"kv 引用符つき空白入り", `token: "abc def" ok`, `token: [MASKED:secret] ok`},
+		{"kv エスケープ引用符", `token="ab\"cd ef" ok`, `token=[MASKED:secret] ok`},
 		{"行頭のフラグ", "--secret abc123", "--secret [MASKED:secret]"},
 		{"pem", "x\n-----BEGIN RSA PRIVATE KEY-----\nAAA\n-----END RSA PRIVATE KEY-----\ny", "x\n[MASKED:private-key]\ny"}, // privacy-allow: 検出テスト用のダミー
 		{"pem 終端なし", "-----BEGIN PRIVATE KEY-----\nAAA", "[MASKED:private-key]"},                                           // privacy-allow: 検出テスト用のダミー

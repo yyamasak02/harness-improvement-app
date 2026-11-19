@@ -127,7 +127,7 @@ CREATE VIRTUAL TABLE messages_fts USING fts5(text, content='messages', content_r
    - 同じディレクトリに temp ファイルを書き、fsync → `os.Rename`。
    - 書き込みを許可するのは、targets が発見したパスと `~/.claude/skills/` 配下だけ（許可リスト方式）。
 3. ロールバックも applier 経由で行い、ロールバック自体もバックアップを取る。
-4. masking：`sk-ant-…`、`AKIA[0-9A-Z]{16}`、`ghp_` / `github_pat_`、`xox[baprs]-`、`Bearer …`、PEM 秘密鍵、メールアドレス、`(password|secret|token|api_key)\s*[:=]\s*\S+` を `[MASKED:<種別>]` に置き換える。ユーザーが追加パターンを設定できる。
+4. masking：`sk-ant-…`、`AKIA[0-9A-Z]{16}`、`ghp_` / `github_pat_`、`xox[baprs]-`、`Bearer …`、PEM 秘密鍵、メールアドレス、`(password|secret|token|api_key)\s*[:=]\s*\S+`（引用符つきの値は空白・エスケープ引用符を含めて全体）、引数形式の秘密（`--token 値`・`--api-key=値`・`--auth-token 値` のような接頭辞付きも。`--token-limit` など別語は対象外）を `[MASKED:<種別>]` に置き換える。ユーザーが追加パターンを設定できる。
 
 ## 9. 完了の定義（v0.1）
 
