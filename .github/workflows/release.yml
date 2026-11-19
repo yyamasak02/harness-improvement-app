@@ -1,24 +1,46 @@
 name: Release
-# v* タグの push で起動する（タグの push は人が行う: scripts/release.sh tag X.Y.Z が案内する）。
-# 検証 → macOS / Windows のビルド（成果物はアーティファクト）→ 公開（1 ジョブで Release を作成し全成果物を添付）
+# 起動条件は 2 つ。
+#   1. v* タグの push（scripts/release.sh tag X.Y.Z が案内。Release をワークフローが作成し、ノートは CHANGELOG から）
+#   2. GitHub の Release 画面での公開（release: published。タグ名は v の有無どちらでもよい。既存の Release に成果物を添付し、ノートは上書きしない）
+# 検証 → macOS / Windows のビルド（成果物はアーティファクト）→ 公開（1 ジョブで成果物を添付）
+# ワークフローが GITHUB_TOKEN で作った Release の公開イベントは、別のワークフローを起動しない（再起動の心配はない）。
+# 外部由来の値（タグ名・Release の本文）は run: に直接埋め込まず、必ず env 経由で渡す。
 on:
   push:
     tags: ['v*']
+  release:
+    types: [published]
 permissions:
   contents: read
+
+# 同じタグで 2 重に走らせない（push と Release 公開の両方が起きた場合は順に実行する）
+concurrency:
+  group: release-${{ github.event.release.tag_name || github.ref_name }}
+  cancel-in-progress: false
 
 jobs:
   verify:
     name: タグとバージョン・CHANGELOG の整合を検証
     runs-on: ubuntu-latest
+    outputs:
+      tag: ${{ steps.tag.outputs.tag }}
     steps:
       - uses: actions/checkout@v4
+      - name: タグ名を正規化する（v の有無を吸収。外部由来なので env 経由）
+        id: tag
+        env:
+          RAW_TAG: ${{ github.event.release.tag_name || github.ref_name }}
+        run: |
+          version="${RAW_TAG#v}"
+          [[ "$version" =~ ^[0-9]+\.[0-9]+\.[0-9]+(-[0-9A-Za-z.]+)?$ ]] || { echo "タグ名が X.Y.Z / vX.Y.Z 形式ではありません"; exit 1; }
+          echo "tag=$RAW_TAG" >> "$GITHUB_OUTPUT"
+          echo "version=$version" >> "$GITHUB_ENV"
       - name: check-version
-        run: bash scripts/check-version.sh "$GITHUB_REF_NAME"
+        run: bash scripts/check-version.sh "v$version"
       - name: リリースノート（CHANGELOG の該当節）を作る
         run: |
-          bash scripts/changelog-notes.sh "${GITHUB_REF_NAME#v}" > changes.md
-          test -s changes.md || { echo "CHANGELOG の ${GITHUB_REF_NAME#v} の節が空です"; exit 1; }
+          bash scripts/changelog-notes.sh "$version" > changes.md
+          test -s changes.md || { echo "CHANGELOG の $version の節が空です"; exit 1; }
           bash scripts/release-guide.sh > release-notes.md
           cat changes.md >> release-notes.md
       - uses: actions/upload-artifact@v4
@@ -92,7 +114,7 @@ jobs:
 
   publish:
     name: Release を作成して成果物を添付
-    needs: [dmg, windows]
+    needs: [verify, dmg, windows]
     runs-on: ubuntu-latest
     permissions:
       contents: write
@@ -107,8 +129,30 @@ jobs:
           ls artifacts/dist-windows/*installer.exe
       - uses: softprops/action-gh-release@v2
         with:
-          body_path: artifacts/release-notes/release-notes.md
-          prerelease: ${{ contains(github.ref_name, '-') }}   # v0.2.0-rc.1 のような名前は pre-release
+          tag_name: ${{ needs.verify.outputs.tag }}
+          # push 起動のときだけノートを設定する。Release 画面から作った Release の本文は上書きしない
+          body_path: ${{ github.event_name == 'push' && 'artifacts/release-notes/release-notes.md' || '' }}
+          # push 起動のときだけ pre-release を判定する（release 起動では人が選んだ値を変えない）
+          prerelease: ${{ github.event_name == 'push' && contains(github.ref_name, '-') || github.event.release.prerelease }}
           files: |
             artifacts/dist-macos/harness-app.dmg
             artifacts/dist-windows/*installer.exe
+
+  notify-failure:
+    name: 失敗を Release のノートに表示
+    # Release 画面から作った場合のみ（push 起動では Release がまだ無い。Actions の失敗表示を見る）
+    if: failure() && github.event_name == 'release'
+    needs: [verify, dmg, windows, publish]
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    steps:
+      - name: ノートの先頭に警告を付ける
+        env:
+          GH_TOKEN: ${{ github.token }}
+          TAG: ${{ github.event.release.tag_name }}
+          RUN_URL: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}
+        run: |
+          body=$(gh release view "$TAG" --repo "$GITHUB_REPOSITORY" --json body --jq .body)
+          printf '> **インストーラのビルドに失敗しました。** この Release にインストーラは添付されていません。詳細: %s\n\n%s\n' "$RUN_URL" "$body" > notes.md
+          gh release edit "$TAG" --repo "$GITHUB_REPOSITORY" --notes-file notes.md
