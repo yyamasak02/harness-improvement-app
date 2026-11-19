@@ -125,6 +125,50 @@ func TestSaveSettingsRejectsBadReportTime(t *testing.T) {
 	}
 }
 
+// 設定保存と定期チェックが並行しても data race にならない（go test -race で検出）。
+func TestSaveSettingsAndScheduledReportRace(t *testing.T) {
+	f := newFixture(t)
+	f.svc.env.Now = func() time.Time { return time.Date(2026, 11, 10, 8, 0, 0, 0, time.UTC) } // 予定時刻前: 生成はしない
+	setReport(t, f, true, "21:00")
+	done := make(chan struct{})
+	go func() {
+		defer close(done)
+		for i := 0; i < 200; i++ {
+			c := f.svc.Settings()
+			c.ExcludedProjects = []string{"x"}
+			c.DailyReportTime = "21:00"
+			if err := f.svc.SaveSettings(c); err != nil {
+				t.Error(err)
+				return
+			}
+		}
+	}()
+	for i := 0; i < 200; i++ {
+		if _, err := f.svc.RunScheduledReport(context.Background()); err != nil {
+			t.Error(err)
+			break
+		}
+	}
+	<-done
+}
+
+func TestGenerateReportRejectsOtherDates(t *testing.T) {
+	f := newFixture(t)
+	if _, err := f.svc.GenerateReport(context.Background(), "2026-11-09"); err == nil {
+		t.Fatal("今日以外の日付は拒否（digest は当日分のため）")
+	}
+}
+
+func TestGenerateReportRejectsConcurrent(t *testing.T) {
+	f := newFixture(t)
+	f.svc.mu.Lock()
+	f.svc.reportBusy = true
+	f.svc.mu.Unlock()
+	if _, err := f.svc.GenerateReport(context.Background(), ""); err == nil {
+		t.Fatal("生成中は拒否")
+	}
+}
+
 func TestLaunchdPlistFromSettings(t *testing.T) {
 	f := newFixture(t)
 	setReport(t, f, true, "07:30")

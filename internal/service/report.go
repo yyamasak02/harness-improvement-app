@@ -49,23 +49,36 @@ func (s *Service) reportPath(date string) (string, error) {
 // GenerateReport は当日分の digest（マスク済み）から日報を生成し、<データディレクトリ>/reports/<date>.md に保存する。
 // 保存先はアプリのデータディレクトリのみ（~/.claude やプロジェクトには書かない）。date が空なら今日。
 func (s *Service) GenerateReport(ctx context.Context, date string) (ReportInfo, error) {
+	today := s.now().Format("2006-01-02")
 	if date == "" {
-		date = s.now().Format("2006-01-02")
+		date = today
 	}
 	path, err := s.reportPath(date)
 	if err != nil {
 		return ReportInfo{}, err
 	}
+	if date != today {
+		return ReportInfo{}, fmt.Errorf("日報は今日（%s）の分だけ生成できます: %s", today, date)
+	}
+	s.mu.Lock()
+	if s.reportBusy {
+		s.mu.Unlock()
+		return ReportInfo{}, errors.New("日報を生成中です。完了までお待ちください")
+	}
+	s.reportBusy = true
+	s.mu.Unlock()
+	defer func() { s.mu.Lock(); s.reportBusy = false; s.mu.Unlock() }()
+
 	d, err := s.BuildDigest("", 1)
 	if err != nil {
 		return ReportInfo{}, err
 	}
-	r, rctx, done, err := s.startRunner(ctx)
+	// F3/F5 の生成とキャンセルを共有しないよう、キャンセル登録をしない Runner を使う。
+	r, err := s.newRunner()
 	if err != nil {
 		return ReportInfo{}, err
 	}
-	defer done()
-	body, err := r.RunDailyReport(rctx, runner.DailyInput{Date: date, Digest: d})
+	body, err := r.RunDailyReport(ctx, runner.DailyInput{Date: date, Digest: d})
 	if err != nil {
 		return ReportInfo{}, err
 	}
@@ -109,16 +122,16 @@ func (s *Service) ReadReport(date string) (string, error) {
 }
 
 func (s *Service) reportClock() string {
-	if s.cfg.DailyReportTime == "" {
-		return DefaultReportTime
+	if t := s.config().DailyReportTime; t != "" {
+		return t
 	}
-	return s.cfg.DailyReportTime
+	return DefaultReportTime
 }
 
 // RunScheduledReport は定期チェック 1 回分。有効で、今日の予定時刻を過ぎ、今日の日報が無ければ生成する（取り戻しを含む）。
 // 生成したら true。失敗後は retryAfter 経つまで再試行しない。
 func (s *Service) RunScheduledReport(ctx context.Context) (bool, error) {
-	if !s.cfg.DailyReportEnabled {
+	if !s.config().DailyReportEnabled {
 		return false, nil
 	}
 	now := s.now()
@@ -136,11 +149,9 @@ func (s *Service) RunScheduledReport(ctx context.Context) (bool, error) {
 		s.mu.Unlock()
 		return false, nil
 	}
-	s.reportBusy = true
 	s.mu.Unlock()
 	_, err = s.GenerateReport(ctx, today)
 	s.mu.Lock()
-	s.reportBusy = false
 	s.reportFailedAt = time.Time{}
 	if err != nil {
 		s.reportFailedAt = now

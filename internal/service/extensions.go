@@ -10,7 +10,7 @@ import (
 // ListExtensions は MCP / plugins / skills / hooks の状態（読み取りのみ）。
 // コマンド・引数・URL はマスキングを通して返す。
 func (s *Service) ListExtensions() (extensions.Report, error) {
-	m, err := s.masker(s.cfg)
+	m, err := s.masker(s.config())
 	if err != nil {
 		// 追加パターンが不正でも一覧は出す（組み込みパターンだけで伏せる）
 		if m, err = masking.New(nil); err != nil {

@@ -75,7 +75,7 @@ func (s *Service) GenerateSkill(ctx context.Context, req SkillRequest) (*SkillPr
 	if len(req.MemoryPaths) == 0 {
 		return nil, errors.New("メモリを 1 つ以上選んでください")
 	}
-	m, err := s.masker(s.cfg)
+	m, err := s.masker(s.config())
 	if err != nil {
 		return nil, err
 	}
