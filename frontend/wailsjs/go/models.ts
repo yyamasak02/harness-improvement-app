@@ -143,6 +143,109 @@ export namespace config {
 
 }
 
+export namespace extensions {
+
+	export class Hook {
+	    event: string;
+	    matcher: string;
+	    type: string;
+	    command: string;
+
+	    static createFrom(source: any = {}) {
+	        return new Hook(source);
+	    }
+
+	    constructor(source: any = {}) {
+	        if ('string' === typeof source) source = JSON.parse(source);
+	        this.event = source["event"];
+	        this.matcher = source["matcher"];
+	        this.type = source["type"];
+	        this.command = source["command"];
+	    }
+	}
+	export class Skill {
+	    name: string;
+	    description: string;
+	    path: string;
+
+	    static createFrom(source: any = {}) {
+	        return new Skill(source);
+	    }
+
+	    constructor(source: any = {}) {
+	        if ('string' === typeof source) source = JSON.parse(source);
+	        this.name = source["name"];
+	        this.description = source["description"];
+	        this.path = source["path"];
+	    }
+	}
+	export class Plugin {
+	    id: string;
+	    version: string;
+	    scope: string;
+	    enabled: boolean;
+
+	    static createFrom(source: any = {}) {
+	        return new Plugin(source);
+	    }
+
+	    constructor(source: any = {}) {
+	        if ('string' === typeof source) source = JSON.parse(source);
+	        this.id = source["id"];
+	        this.version = source["version"];
+	        this.scope = source["scope"];
+	        this.enabled = source["enabled"];
+	    }
+	}
+	export class MCPServer {
+	    name: string;
+	    scope: string;
+	    project: string;
+	    type: string;
+	    command: string;
+	    args: string[];
+	    url: string;
+	    envKeys: string[];
+
+	    static createFrom(source: any = {}) {
+	        return new MCPServer(source);
+	    }
+
+	    constructor(source: any = {}) {
+	        if ('string' === typeof source) source = JSON.parse(source);
+	        this.name = source["name"];
+	        this.scope = source["scope"];
+	        this.project = source["project"];
+	        this.type = source["type"];
+	        this.command = source["command"];
+	        this.args = source["args"];
+	        this.url = source["url"];
+	        this.envKeys = source["envKeys"];
+	    }
+	}
+	export class Report {
+	    mcp: MCPServer[];
+	    plugins: Plugin[];
+	    skills: Skill[];
+	    hooks: Hook[];
+	    warnings: string[];
+
+	    static createFrom(source: any = {}) {
+	        return new Report(source);
+	    }
+
+	    constructor(source: any = {}) {
+	        if ('string' === typeof source) source = JSON.parse(source);
+	        this.mcp = (source["mcp"] ?? []).map((e: any) => new MCPServer(e));
+	        this.plugins = (source["plugins"] ?? []).map((e: any) => new Plugin(e));
+	        this.skills = (source["skills"] ?? []).map((e: any) => new Skill(e));
+	        this.hooks = (source["hooks"] ?? []).map((e: any) => new Hook(e));
+	        this.warnings = source["warnings"];
+	    }
+	}
+
+}
+
 export namespace service {
 	
 	export class ClaudeStatus {

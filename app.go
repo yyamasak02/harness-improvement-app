@@ -12,6 +12,7 @@ import (
 	"harness-app/internal/applier"
 	"harness-app/internal/collector"
 	"harness-app/internal/config"
+	"harness-app/internal/extensions"
 	"harness-app/internal/osutil"
 	"harness-app/internal/service"
 	"harness-app/internal/store"
@@ -160,6 +161,13 @@ func (a *App) ListMemories() ([]service.MemoryItem, error) {
 		return nil, err
 	}
 	return a.svc.ListMemories()
+}
+
+func (a *App) ListExtensions() (extensions.Report, error) {
+	if err := a.ready(); err != nil {
+		return extensions.Report{}, err
+	}
+	return a.svc.ListExtensions()
 }
 
 func (a *App) ReadTarget(path string) (service.TargetContent, error) {

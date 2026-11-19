@@ -1,0 +1,9 @@
+{
+  "mcpServers": {
+    "demo-stdio": {"type": "stdio", "command": "demo-mcp", "args": ["serve", "--token=abcd1234efgh5678"], "env": {"DEMO_SECRET": "should-not-appear"}},
+    "demo-http": {"type": "http", "url": "https://mcp.example.com/mcp", "headers": {"Authorization": "should-not-appear"}}
+  },
+  "projects": {
+    "/demo/app": {"mcpServers": {"proj-srv": {"command": "demo-proj"}}}
+  }
+}

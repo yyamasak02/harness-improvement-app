@@ -68,6 +68,19 @@ export function mockApi(): Api {
     listMemories: () => delay(memTargets.map((t, i) => ({
       target: t, project: '-home-demo-app', size: files[t.path].length, modTime: '2026-11-01T00:00:00Z',
       stale: i === 1, duplicateOf: [memTargets[1 - i].path]}))),
+    listExtensions: () => delay({
+      mcp: [
+        {name: 'demo-stdio', scope: 'user', project: '', type: 'stdio', command: 'demo-mcp', args: ['serve'], url: '', envKeys: ['DEMO_KEY']},
+        {name: 'demo-http', scope: 'project', project: '/demo/app', type: 'http', command: '', args: null, url: 'https://mcp.example.com/mcp', envKeys: null},
+      ],
+      plugins: [
+        {id: 'demo-plugin@demo-market', version: '1.2.0', scope: 'user', enabled: true},
+        {id: 'off-plugin@demo-market', version: '0.1.0', scope: 'user', enabled: false},
+      ],
+      skills: [{name: 'demo-skill', description: 'デモ用の skill です', path: '/demo/.claude/skills/demo-skill/SKILL.md'}],
+      hooks: [{event: 'PreToolUse', matcher: 'Bash', type: 'command', command: 'echo demo-check'}],
+      warnings: null,
+    }),
     readTarget: async (p) => {
       const t = [...targets, ...memTargets].find((x) => x.path === p)
       if (!t) throw new Error('許可されていないパスです')

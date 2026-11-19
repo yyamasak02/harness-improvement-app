@@ -1,0 +1,8 @@
+{
+  "enabledPlugins": {"demo-plugin@demo-market": true, "off-plugin@demo-market": false},
+  "mcpServers": {"settings-srv": {"command": "demo-cmd", "args": ["--flag"]}},
+  "hooks": {
+    "PreToolUse": [{"matcher": "Bash", "hooks": [{"type": "command", "command": "echo demo-check"}]}],
+    "Stop": [{"hooks": [{"type": "command", "command": "echo done"}, {"type": "command", "command": "echo again"}]}]
+  }
+}
