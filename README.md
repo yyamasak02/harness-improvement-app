@@ -137,4 +137,6 @@ git push origin v0.1.0                  # タグの push は人が行う
 
 タグを push すると GitHub Actions（`release.yml`）がバージョンと CHANGELOG の整合を検証し、macOS（`.dmg`）と Windows（インストーラ）をビルドして、CHANGELOG の該当節をノートとして Release に添付します（`-` を含むタグは pre-release）。
 
-GitHub の Release 画面（Releases → Draft a new release）から作ることもできます。Release を**公開（Publish）**すると同じワークフローが起動し、インストーラをその Release に添付します（下書きのままでは起動しません）。タグ名は `v0.1.0` でも `0.1.0` でもよく、`wails.json` のバージョンと CHANGELOG の節（`## [0.1.0]`）が揃っている必要があります。この場合ノートは上書きされません。ビルドに失敗すると、Release のノートの先頭に失敗の表示と Actions へのリンクが付きます。
+GitHub の Release 画面（Releases → Draft a new release）から作ることもできます。Release を**公開（Publish）**すると同じワークフローが起動し、インストーラをその Release に添付します（下書きのままでは起動しません）。タグ名は `v0.1.0` でも `0.1.0` でもよく、`wails.json` のバージョンと CHANGELOG の節（`## [0.1.0]`）が揃っている必要があります。この場合ノートは上書きされません。ビルドに失敗すると、Release のノートの先頭に失敗の表示と Actions へのリンクが付きます（再実行で成功すると取り除かれます）。
+
+注意: ワークフローの定義は**タグが指すコミット**のものが使われます。この Release 画面からの添付に対応する前のコミットを指す既存のタグ（`v0.1.0-rc.1` など）では、公開してもインストーラは添付されません。修正を含む最新の `main` のコミットで新しいタグ（例 `v0.1.0-rc.2`）を作ってください。

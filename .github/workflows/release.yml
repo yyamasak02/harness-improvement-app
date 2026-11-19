@@ -13,9 +13,10 @@ on:
 permissions:
   contents: read
 
-# 同じタグで 2 重に走らせない（push と Release 公開の両方が起きた場合は順に実行する）
+# 同じタグで 2 重に走らせない（push と Release 公開の両方が起きた場合は順に実行する）。
+# 0.1.0 と v0.1.0 を同じグループにするため、先頭の v を除いた名前で束ねる
 concurrency:
-  group: release-${{ github.event.release.tag_name || github.ref_name }}
+  group: release-${{ startsWith(github.event.release.tag_name || github.ref_name, 'v') && substring(github.event.release.tag_name || github.ref_name, 1) || (github.event.release.tag_name || github.ref_name) }}
   cancel-in-progress: false
 
 jobs:
@@ -137,6 +138,18 @@ jobs:
           files: |
             artifacts/dist-macos/harness-app.dmg
             artifacts/dist-windows/*installer.exe
+      # 再実行（Re-run）で成功したとき、前回の失敗で付いた警告をノートから取り除く（Release 画面起動のみ）
+      - name: 前回の失敗の警告をノートから取り除く
+        if: github.event_name == 'release'
+        env:
+          GH_TOKEN: ${{ github.token }}
+          TAG: ${{ needs.verify.outputs.tag }}
+        run: |
+          gh release view "$TAG" --repo "$GITHUB_REPOSITORY" --json body --jq .body > body.md
+          if grep -q 'release-build-failed' body.md; then
+            awk '/release-build-failed/{skip=1; next} skip&&/^$/{skip=0; next} {skip=0; print}' body.md > notes.md
+            gh release edit "$TAG" --repo "$GITHUB_REPOSITORY" --notes-file notes.md
+          fi
 
   notify-failure:
     name: 失敗を Release のノートに表示
@@ -154,5 +167,7 @@ jobs:
           RUN_URL: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}
         run: |
           body=$(gh release view "$TAG" --repo "$GITHUB_REPOSITORY" --json body --jq .body)
-          printf '> **インストーラのビルドに失敗しました。** この Release にインストーラは添付されていません。詳細: %s\n\n%s\n' "$RUN_URL" "$body" > notes.md
+          # 再実行で失敗が続いても警告を重複して積まない
+          if printf '%s' "$body" | grep -q 'release-build-failed'; then exit 0; fi
+          printf '> **インストーラのビルドに失敗しました。** この Release にインストーラは添付されていません。詳細: %s <!-- release-build-failed -->\n\n%s\n' "$RUN_URL" "$body" > notes.md
           gh release edit "$TAG" --repo "$GITHUB_REPOSITORY" --notes-file notes.md
