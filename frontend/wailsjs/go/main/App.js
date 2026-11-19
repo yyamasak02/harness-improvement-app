@@ -6,12 +6,12 @@ export function ApplyProposal(arg1, arg2, arg3) {
   return window['go']['main']['App']['ApplyProposal'](arg1, arg2, arg3);
 }
 
-export function BuildDigest(arg1, arg2) {
-  return window['go']['main']['App']['BuildDigest'](arg1, arg2);
-}
-
 export function ApplySkill(arg1, arg2) {
   return window['go']['main']['App']['ApplySkill'](arg1, arg2);
+}
+
+export function BuildDigest(arg1, arg2) {
+  return window['go']['main']['App']['BuildDigest'](arg1, arg2);
 }
 
 export function CancelGeneration() {
@@ -24,6 +24,10 @@ export function CheckClaude() {
 
 export function GenerateProposal(arg1) {
   return window['go']['main']['App']['GenerateProposal'](arg1);
+}
+
+export function GenerateReport(arg1) {
+  return window['go']['main']['App']['GenerateReport'](arg1);
 }
 
 export function GenerateSkill(arg1) {
@@ -42,20 +46,8 @@ export function InitError() {
   return window['go']['main']['App']['InitError']();
 }
 
-export function GenerateReport(arg1) {
-  return window['go']['main']['App']['GenerateReport'](arg1);
-}
-
 export function LaunchdPlist() {
   return window['go']['main']['App']['LaunchdPlist']();
-}
-
-export function ListReports() {
-  return window['go']['main']['App']['ListReports']();
-}
-
-export function ReadReport(arg1) {
-  return window['go']['main']['App']['ReadReport'](arg1);
 }
 
 export function ListBackups() {
@@ -74,6 +66,10 @@ export function ListProjects() {
   return window['go']['main']['App']['ListProjects']();
 }
 
+export function ListReports() {
+  return window['go']['main']['App']['ListReports']();
+}
+
 export function ListSessions(arg1, arg2, arg3) {
   return window['go']['main']['App']['ListSessions'](arg1, arg2, arg3);
 }
@@ -88,6 +84,10 @@ export function OpenDataDir() {
 
 export function Overview(arg1) {
   return window['go']['main']['App']['Overview'](arg1);
+}
+
+export function ReadReport(arg1) {
+  return window['go']['main']['App']['ReadReport'](arg1);
 }
 
 export function ReadTarget(arg1) {
