@@ -14,7 +14,7 @@ description: セッションの開始・再開時に、どのフェーズから�
 | GitHub の状態を取得できない（判定不能） | PR の作成・マージ判断をしない。git の状態だけで判断し、一時的な障害なら再実行、認証なら `gh auth status` をユーザーに確認してもらう。`gh pr list` で既存 PR を手動確認して重複作成を避ける |
 | 現在のブランチの PR がマージ済み・クローズ済み | マージ済み: `git switch main && git pull`、不要なブランチを削除、handoff を更新。クローズ済み: 理由をコメントで確認 |
 | PR の CI が失敗 | 完了後に `gh run view <run-id> --log-failed` で原因を特定し、直して push（`fix-bug` の要領で回帰テストも） |
-| PR の CI が実行中 | 完了を待つ（Monitor で run-id を指定して待つ。`--limit 1` で最新を拾うと古い実行を拾うことがあるので ID を固定する） |
+| PR の CI が実行中 | 完了を待つ（Monitor で run-id を指定して待つ。`--limit 1` で最新を拾うと古い実行を拾うことがあるので ID を固定する）。**待つだけにしない**: 独立した issue があれば `parallel-work` で並行して進める |
 | head への独立レビューが無い | `review-pr` skill（`code-reviewer` に PR 番号だけ渡す） |
 | REQUEST_CHANGES | 最新コメントの blocker/major を全て直す → push → CI 確定後に再レビュー |
 | APPROVE かつ CI 成功 | `bash scripts/merge-pr.sh <N>` |
