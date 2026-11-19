@@ -13,8 +13,21 @@ require_clean_main() {
   git fetch -q origin main
   [ "$(git rev-parse HEAD)" = "$(git rev-parse origin/main)" ] || { echo "main が origin/main と一致していません（git pull してください）"; exit 1; }
 }
+# コミット・タグの作者を noreply にする（実メールを公開履歴に残さない。ship.sh と同じ方針）。
+# git config は変更せず環境変数で上書きする。noreply は origin/main の最新コミットから得る。
+use_noreply_identity() {
+  local cfg nr nm
+  cfg=$(git config user.email 2>/dev/null || true)
+  if printf '%s' "$cfg" | grep -qiE '@users\.noreply\.github\.com$'; then return 0; fi
+  nr=$(git log origin/main -1 --format='%ae' 2>/dev/null || true)
+  printf '%s' "$nr" | grep -qiE '@users\.noreply\.github\.com$' || {
+    echo "noreply のメールを決められません。GIT_AUTHOR_EMAIL / GIT_COMMITTER_EMAIL に noreply を設定してください"; exit 1; }
+  nm=$(git log origin/main -1 --format='%an' 2>/dev/null || echo dev)
+  export GIT_AUTHOR_NAME="$nm" GIT_COMMITTER_NAME="$nm" GIT_AUTHOR_EMAIL="$nr" GIT_COMMITTER_EMAIL="$nr"
+}
 case "$cmd" in
   prepare)
+    use_noreply_identity
     require_clean_main
     git rev-parse -q --verify "refs/tags/$tag" >/dev/null && { echo "タグ $tag は既に存在します"; exit 1; }
     grep -qE '^## \[Unreleased\]' CHANGELOG.md || { echo "CHANGELOG.md に [Unreleased] がありません"; exit 1; }
@@ -54,6 +67,7 @@ Co-Authored-By: Claude Sonnet 5.5 <noreply@anthropic.com>"
     echo "リリース準備のコミットを release/$tag に作りました。次: bash scripts/ship.sh \"chore: $tag のリリース準備\" \"Refs #<リリース issue>\\n[no-test-needed]: バージョンと CHANGELOG のみ\" → 独立レビュー → merge-pr.sh → bash scripts/release.sh tag $ver"
     ;;
   tag)
+    use_noreply_identity
     require_clean_main
     git rev-parse -q --verify "refs/tags/$tag" >/dev/null && { echo "タグ $tag は既にローカルに存在します"; exit 1; }
     git ls-remote --exit-code --tags origin "refs/tags/$tag" >/dev/null 2>&1 && { echo "タグ $tag は既にリモートに存在します"; exit 1; }
@@ -70,6 +84,10 @@ Co-Authored-By: Claude Sonnet 5.5 <noreply@anthropic.com>"
     git tag -a "$tag" -m "$tag
 
 $notes"
+    # 作ったタグの Tagger が noreply であること（実メールのタグは push させない）
+    tagger=$(git for-each-ref "refs/tags/$tag" --format='%(taggeremail)')
+    printf '%s' "$tagger" | grep -qiE '@users\.noreply\.github\.com>$' || {
+      git tag -d "$tag" >/dev/null; echo "タグの Tagger が noreply ではないため、作成したタグを取り消しました"; exit 1; }
     echo "ローカルに注釈付きタグ $tag を作成しました（${head:0:7}）。"
     echo "push はあなたが実行してください（エージェントには権限がありません）:"
     echo "  git push origin $tag"
