@@ -116,6 +116,10 @@ func Memories(claudeDir string) []Target {
 	sort.Strings(files)
 	out := make([]Target, 0, len(files))
 	for _, f := range files {
+		// シンボリックリンクは辿らない（許可リスト外のファイルを読み書きさせない）
+		if st, err := os.Lstat(f); err != nil || st.Mode()&os.ModeSymlink != 0 {
+			continue
+		}
 		proj := filepath.Base(filepath.Dir(filepath.Dir(f)))
 		out = append(out, Target{Kind: KindMemory, Path: f, Label: proj + "/" + filepath.Base(f), Exists: exists(f)})
 	}
