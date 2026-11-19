@@ -45,6 +45,8 @@ type Manifest struct {
 	OldHash    string `json:"oldHash"` // 操作前のハッシュ
 	NewHash    string `json:"newHash"` // 操作後のハッシュ（削除なら AbsentHash）
 	RollbackOf string `json:"rollbackOf,omitempty"`
+	// CreatedDirs は、この適用で新規作成したディレクトリ（浅い順）。ロールバックはこれだけを（空なら）消す。
+	CreatedDirs []string `json:"createdDirs,omitempty"`
 }
 
 // Request は適用要求。
@@ -119,7 +121,7 @@ func (a *Applier) newBackupDir(hash string) (string, string, error) {
 }
 
 // write は backup → atomic write を行う。content==nil ならファイル削除（新規作成の取り消し）。
-func (a *Applier) write(path string, content []byte, op, rollbackOf string) (Manifest, error) {
+func (a *Applier) write(path string, content []byte, op, rollbackOf string, removeDirs []string) (Manifest, error) {
 	old, err := os.ReadFile(path)
 	existed := err == nil
 	if err != nil && !errors.Is(err, os.ErrNotExist) {
@@ -139,6 +141,10 @@ func (a *Applier) write(path string, content []byte, op, rollbackOf string) (Man
 			return fail(fmt.Errorf("バックアップ保存: %w", err))
 		}
 	}
+	var createdDirs []string
+	if content != nil && !existed {
+		createdDirs = missingDirs(filepath.Dir(path))
+	}
 	newHash := AbsentHash
 	if content != nil {
 		newHash = HashBytes(content)
@@ -147,7 +153,7 @@ func (a *Applier) write(path string, content []byte, op, rollbackOf string) (Man
 		}
 	}
 	m := Manifest{ID: id, Path: path, Op: op, Time: a.now().UTC().Format(time.RFC3339), Existed: existed,
-		OldHash: oldHash, NewHash: newHash, RollbackOf: rollbackOf}
+		OldHash: oldHash, NewHash: newHash, RollbackOf: rollbackOf, CreatedDirs: createdDirs}
 	mb, _ := json.MarshalIndent(m, "", "  ")
 	if err := fsutil.WriteFileAtomic(filepath.Join(dir, "manifest.json"), mb, 0o600); err != nil {
 		return fail(fmt.Errorf("manifest 保存: %w", err))
@@ -156,7 +162,7 @@ func (a *Applier) write(path string, content []byte, op, rollbackOf string) (Man
 		if err := os.Remove(path); err != nil && !errors.Is(err, os.ErrNotExist) {
 			return fail(fmt.Errorf("ファイル削除: %w", err))
 		}
-		a.pruneEmptyDirs(filepath.Dir(path))
+		a.removeCreatedDirs(removeDirs)
 		return m, nil
 	}
 	perm := os.FileMode(0o644)
@@ -169,17 +175,37 @@ func (a *Applier) write(path string, content []byte, op, rollbackOf string) (Man
 	return m, nil
 }
 
-// pruneEmptyDirs は、新規作成の取り消しで空になったディレクトリを、許可リスト内の範囲で親へ向かって削除する。
-// os.Remove は空でないディレクトリには失敗するので、他のファイルは消えない。
-func (a *Applier) pruneEmptyDirs(dir string) {
-	for a.Allowed != nil && a.Allowed(dir) {
-		if st, err := os.Lstat(dir); err != nil || st.Mode()&os.ModeSymlink != 0 {
+// missingDirs は dir のうち、まだ存在しない祖先ディレクトリを浅い順に返す（書き込みで MkdirAll が作るもの）。
+func missingDirs(dir string) []string {
+	var out []string
+	for {
+		if _, err := os.Lstat(dir); err == nil {
+			break
+		}
+		out = append([]string{dir}, out...)
+		parent := filepath.Dir(dir)
+		if parent == dir {
+			break
+		}
+		dir = parent
+	}
+	return out
+}
+
+// removeCreatedDirs は、適用で新規作成したディレクトリだけを深い順に消す。
+// os.Remove は空でないディレクトリには失敗するので、他のファイルは消えない。適用前から存在した空ディレクトリは対象外。
+func (a *Applier) removeCreatedDirs(dirs []string) {
+	for i := len(dirs) - 1; i >= 0; i-- {
+		d := dirs[i]
+		if a.Allowed == nil || !a.Allowed(d) {
 			return
 		}
-		if os.Remove(dir) != nil {
+		if st, err := os.Lstat(d); err != nil || st.Mode()&os.ModeSymlink != 0 {
 			return
 		}
-		dir = filepath.Dir(dir)
+		if os.Remove(d) != nil {
+			return
+		}
 	}
 }
 
@@ -195,7 +221,7 @@ func (a *Applier) Apply(r Request) (Manifest, error) {
 	if cur != r.ExpectedHash {
 		return Manifest{}, fmt.Errorf("%s: %w", r.Path, ErrHashMismatch)
 	}
-	return a.write(r.Path, []byte(r.Content), "apply", "")
+	return a.write(r.Path, []byte(r.Content), "apply", "", nil)
 }
 
 // Entry は履歴 1 件（manifest と保存済み内容）。
@@ -271,7 +297,7 @@ func (a *Applier) Rollback(id string) (Manifest, error) {
 		return Manifest{}, err
 	}
 	if !e.Existed {
-		return a.write(e.Path, nil, "rollback", id)
+		return a.write(e.Path, nil, "rollback", id, e.CreatedDirs)
 	}
-	return a.write(e.Path, []byte(e.Before), "rollback", id)
+	return a.write(e.Path, []byte(e.Before), "rollback", id, nil)
 }
