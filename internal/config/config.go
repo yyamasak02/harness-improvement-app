@@ -25,6 +25,9 @@ type Config struct {
 	CorrectionPatterns []string      `json:"correctionPatterns"`
 	MaskPatterns       []MaskPattern `json:"maskPatterns"`
 	TimeoutSeconds     int           `json:"timeoutSeconds"`
+	// 日次振り返り（F6）。DailyReportTime は "HH:MM"（空なら 21:00）。
+	DailyReportEnabled bool   `json:"dailyReportEnabled"`
+	DailyReportTime    string `json:"dailyReportTime"`
 }
 
 // DefaultCorrectionPatterns は訂正発言の初期パターン。

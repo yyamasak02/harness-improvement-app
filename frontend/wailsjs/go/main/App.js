@@ -42,6 +42,22 @@ export function InitError() {
   return window['go']['main']['App']['InitError']();
 }
 
+export function GenerateReport(arg1) {
+  return window['go']['main']['App']['GenerateReport'](arg1);
+}
+
+export function LaunchdPlist() {
+  return window['go']['main']['App']['LaunchdPlist']();
+}
+
+export function ListReports() {
+  return window['go']['main']['App']['ListReports']();
+}
+
+export function ReadReport(arg1) {
+  return window['go']['main']['App']['ReadReport'](arg1);
+}
+
 export function ListBackups() {
   return window['go']['main']['App']['ListBackups']();
 }

@@ -38,7 +38,8 @@ export function mockApi(): Api {
   }
   const hashOf = (p: string) => (p in files ? 'h:' + files[p].length + ':' + files[p].slice(0, 8) : 'absent')
   let history: T.BackupEntry[] = []
-  let cfg: T.Config = {claudePath: '', model: '', excludedProjects: [], correctionPatterns: ['違う', "don't"], maskPatterns: [], timeoutSeconds: 300}
+  let cfg: T.Config = {claudePath: '', model: '', excludedProjects: [], correctionPatterns: ['違う', "don't"], maskPatterns: [], timeoutSeconds: 300, dailyReportEnabled: false, dailyReportTime: ''}
+  const reports: Record<string, string> = {}
   let cancelFn: (() => void) | null = null
   const delay = <V,>(v: V, ms = 0) => new Promise<V>((res) => setTimeout(() => res(v), ms))
 
@@ -135,6 +136,15 @@ export function mockApi(): Api {
       }
       return ms
     },
+    generateReport: async (date) => {
+      const d = date || new Date().toISOString().slice(0, 10)
+      if (!/^\d{4}-\d{2}-\d{2}$/.test(d)) throw new Error('日付は YYYY-MM-DD 形式で指定してください')
+      reports[d] = `# 日報 ${d}\n\n## やったこと\n\n- mock の日報\n\n## TODO\n\n- [ ] 明日やること\n`
+      return {date: d, path: `/data/reports/${d}.md`}
+    },
+    listReports: () => delay(Object.keys(reports).sort().reverse().map((d) => ({date: d, path: `/data/reports/${d}.md`}))),
+    readReport: async (d) => { if (!(d in reports)) throw new Error('日報がありません'); return reports[d] },
+    launchdPlist: async () => '<?xml version="1.0" encoding="UTF-8"?>\n<plist version="1.0"><dict><key>Label</key><string>app.harness-app.daily-report</string></dict></plist>\n',
     listBackups: () => delay(history.map((h) => ({...h, before: '', after: ''}))),
     getBackup: async (id) => {
       const h = history.find((x) => x.id === id)

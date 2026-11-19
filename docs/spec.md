@@ -112,7 +112,7 @@ CREATE VIRTUAL TABLE messages_fts USING fts5(text, content='messages', content_r
 - 同梱 skill（`internal/skills` に embed し、実行時に `<work>/<job-id>/.claude/skills/` へ展開する）：
   - `claudemd-improve`：改善後の全文を `output.md` に書く。加えて変更理由を `rationale.md` に箇条書きで書く。既存の記述は理由なく消さない。重複は統合する。行数を増やしすぎない。
   - `skill-generate`（F5）：入力 `input.json` は `{ "skillName": string, "memories": [{ "label": string, "content": string }], "digest": string, "instruction": string }`（全てマスク済み）。出力は `output/SKILL.md`（必須）、`output/knowledge/*.md`（任意）、`rationale.md`。生成物は `.md` のみ・最大 20 ファイル・各 200KB まで、`output/` の外や不正なパスは拒否する。skill 名は小文字・数字・ハイフン（64 文字まで）。アプリは生成結果を diff で表示し、人が「適用」したときだけ `~/.claude/skills/<名前>/` に applier 経由で書き込む（ファイル単位でバックアップ・ロールバック可）。実行コマンドは `claudemd-improve` と同じ（`--allowedTools Read,Write`、cwd はジョブディレクトリ）。
-  - `daily-report`（F6）
+  - `daily-report`（F6）: 当日 digest（マスク済み）から日報と TODO を `output.md` に書く
 - 実行コマンド：`claude -p "<指示>" --allowedTools Read,Write --output-format json [--model <model>]`、cwd は `<work>/<job-id>`。
 - タイムアウト（初期値5分）とキャンセルに対応する。stderr はジョブログに保存する。
 - **claude バイナリの解決**：GUI アプリは PATH が最小限になるため、①設定値 ②macOS: `$SHELL -lc 'command -v claude'` / Windows: `where claude`（`.exe` を優先） ③既知の場所（macOS: `~/.claude/local/claude`、`~/.local/bin/claude`、`/opt/homebrew/bin/claude`、`/usr/local/bin/claude`、`~/.npm-global/bin/claude` / Windows: `%USERPROFILE%\.claude\local\claude.exe`、`%USERPROFILE%\.local\bin\claude.exe`、`%APPDATA%\npm\claude.cmd`、`%USERPROFILE%\.npm-global\claude.cmd`）の順で探す。実行可否は Windows では拡張子（`.exe` `.cmd` `.bat` `.com`）、それ以外は実行ビットで判定する。見つからなければ設定画面に誘導する。

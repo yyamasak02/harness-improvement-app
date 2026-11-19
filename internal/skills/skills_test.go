@@ -17,7 +17,7 @@ func TestExtract(t *testing.T) {
 		t.Fatalf("%v %s", err, b)
 	}
 	names, _ := Names()
-	if len(names) != 2 || names[0] != "claudemd-improve" || names[1] != "skill-generate" {
+	if len(names) != 3 || names[0] != "claudemd-improve" || names[1] != "daily-report" || names[2] != "skill-generate" {
 		t.Fatalf("%v", names)
 	}
 	b, err = os.ReadFile(filepath.Join(dir, ".claude", "skills", "skill-generate", "SKILL.md"))

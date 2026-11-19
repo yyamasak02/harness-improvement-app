@@ -107,6 +107,8 @@ export namespace config {
 	    correctionPatterns: string[];
 	    maskPatterns: MaskPattern[];
 	    timeoutSeconds: number;
+	    dailyReportEnabled: boolean;
+	    dailyReportTime: string;
 	
 	    static createFrom(source: any = {}) {
 	        return new Config(source);
@@ -120,6 +122,8 @@ export namespace config {
 	        this.correctionPatterns = source["correctionPatterns"];
 	        this.maskPatterns = this.convertValues(source["maskPatterns"], MaskPattern);
 	        this.timeoutSeconds = source["timeoutSeconds"];
+	        this.dailyReportEnabled = source["dailyReportEnabled"];
+	        this.dailyReportTime = source["dailyReportTime"];
 	    }
 	
 		convertValues(a: any, classs: any, asMap: boolean = false): any {
@@ -248,6 +252,20 @@ export namespace extensions {
 
 export namespace service {
 	
+	export class ReportInfo {
+	    date: string;
+	    path: string;
+	
+	    static createFrom(source: any = {}) {
+	        return new ReportInfo(source);
+	    }
+	
+	    constructor(source: any = {}) {
+	        if ('string' === typeof source) source = JSON.parse(source);
+	        this.date = source["date"];
+	        this.path = source["path"];
+	    }
+	}
 	export class ClaudeStatus {
 	    found: boolean;
 	    path: string;

@@ -298,6 +298,25 @@ func TestRunSkillGenerateErrors(t *testing.T) {
 	}
 }
 
+func TestRunDailyReport(t *testing.T) {
+	argsFile := filepath.Join(t.TempDir(), "args")
+	t.Setenv("FAKE_CLAUDE_ARGS_FILE", argsFile)
+	body, err := newRunner(t).RunDailyReport(context.Background(), DailyInput{Date: "2026-11-10", Digest: "d"})
+	if err != nil || !strings.Contains(body, "フェイク") {
+		t.Fatalf("%v %q", err, body)
+	}
+	args, _ := os.ReadFile(argsFile)
+	if !strings.Contains(string(args), "daily-report") || !strings.Contains(string(args), "Read,Write") || strings.Contains(string(args), "Bash") {
+		t.Errorf("%s", args)
+	}
+	for _, mode := range []string{"fail", "nooutput"} {
+		t.Setenv("FAKE_CLAUDE_MODE", mode)
+		if _, err := newRunner(t).RunDailyReport(context.Background(), DailyInput{}); err == nil {
+			t.Errorf("%s: エラーになるべき", mode)
+		}
+	}
+}
+
 func TestValidSkillRelPath(t *testing.T) {
 	cases := map[string]bool{
 		"SKILL.md": true, "knowledge/a.md": true, "a/b/c.md": true,

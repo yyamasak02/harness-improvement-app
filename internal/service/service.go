@@ -16,6 +16,7 @@ import (
 	"harness-app/internal/digest"
 	"harness-app/internal/masking"
 	"harness-app/internal/runner"
+	"harness-app/internal/scheduler"
 	"harness-app/internal/store"
 	"harness-app/internal/targets"
 )
@@ -39,6 +40,9 @@ type Service struct {
 	mu      sync.Mutex
 	cancel  context.CancelFunc
 	reindex sync.Mutex // Reindex の同時実行を直列化する
+
+	reportBusy     bool      // 日報の定期生成中（mu で保護）
+	reportFailedAt time.Time // 直近の定期生成の失敗時刻（mu で保護）
 }
 
 // New は設定を読み DB を開く。
@@ -76,7 +80,14 @@ func (s *Service) now() time.Time {
 // ---- 設定 ----
 
 // Settings は現在の設定。
-func (s *Service) Settings() config.Config { return s.cfg }
+func (s *Service) Settings() config.Config { return s.config() }
+
+// config は設定のスナップショット（スケジューラなど別 goroutine からも安全に読める）。
+func (s *Service) config() config.Config {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+	return s.cfg
+}
 
 // SaveSettings は設定を検証して保存する（不正なマスキング正規表現は拒否）。
 func (s *Service) SaveSettings(c config.Config) error {
@@ -86,10 +97,17 @@ func (s *Service) SaveSettings(c config.Config) error {
 	if c.TimeoutSeconds <= 0 {
 		c.TimeoutSeconds = 300
 	}
+	if c.DailyReportTime != "" {
+		if _, _, err := scheduler.ParseClock(c.DailyReportTime); err != nil {
+			return err
+		}
+	}
 	if err := config.Save(s.env.DataDir, c); err != nil {
 		return err
 	}
+	s.mu.Lock()
 	s.cfg = c
+	s.mu.Unlock()
 	return nil
 }
 
@@ -112,10 +130,11 @@ func (s *Service) Reindex(rebuild bool, progress func(done, total int)) (collect
 			return collector.Stats{}, err
 		}
 	}
+	cfg := s.config()
 	return collector.Ingest(s.st, collector.Options{
 		ClaudeDir:          s.env.ClaudeDir,
-		CorrectionPatterns: s.cfg.CorrectionPatterns,
-		ExcludedProjects:   s.cfg.ExcludedProjects,
+		CorrectionPatterns: cfg.CorrectionPatterns,
+		ExcludedProjects:   cfg.ExcludedProjects,
 		Progress:           progress,
 		Force:              rebuild,
 	})
@@ -132,7 +151,8 @@ type ClaudeStatus struct {
 
 // CheckClaude は claude バイナリを解決する。
 func (s *Service) CheckClaude() ClaudeStatus {
-	p, err := runner.ResolveClaude(runner.ResolveOptions{Configured: s.cfg.ClaudePath, ShellLookup: s.env.ShellLookup, Home: s.env.Home})
+	cfg := s.config()
+	p, err := runner.ResolveClaude(runner.ResolveOptions{Configured: cfg.ClaudePath, ShellLookup: s.env.ShellLookup, Home: s.env.Home})
 	if err != nil {
 		return ClaudeStatus{Error: err.Error()}
 	}
@@ -231,7 +251,7 @@ func (s *Service) ReadTarget(path string) (TargetContent, error) {
 
 // BuildDigest は masking 済みの digest を返す。
 func (s *Service) BuildDigest(project string, days int) (string, error) {
-	m, err := s.masker(s.cfg)
+	m, err := s.masker(s.config())
 	if err != nil {
 		return "", err
 	}
@@ -267,7 +287,7 @@ func (s *Service) GenerateProposal(ctx context.Context, req ProposalRequest) (*P
 	if err != nil {
 		return nil, err
 	}
-	m, err := s.masker(s.cfg)
+	m, err := s.masker(s.config())
 	if err != nil {
 		return nil, err
 	}
@@ -290,14 +310,23 @@ func (s *Service) GenerateProposal(ctx context.Context, req ProposalRequest) (*P
 		Rationale: res.Rationale, Digest: d, JobID: res.JobID}, nil
 }
 
+// newRunner は設定のスナップショットから Runner を作る（キャンセル登録はしない）。
+func (s *Service) newRunner() (*runner.Runner, error) {
+	cfg := s.config()
+	bin, err := runner.ResolveClaude(runner.ResolveOptions{Configured: cfg.ClaudePath, ShellLookup: s.env.ShellLookup, Home: s.env.Home})
+	if err != nil {
+		return nil, err
+	}
+	return &runner.Runner{ClaudePath: bin, WorkDir: filepath.Join(s.env.DataDir, "work"), Model: cfg.Model,
+		Timeout: time.Duration(cfg.TimeoutSeconds) * time.Second}, nil
+}
+
 // startRunner は claude の解決とキャンセル登録を行う。done は必ず呼ぶ。
 func (s *Service) startRunner(ctx context.Context) (*runner.Runner, context.Context, func(), error) {
-	bin, err := runner.ResolveClaude(runner.ResolveOptions{Configured: s.cfg.ClaudePath, ShellLookup: s.env.ShellLookup, Home: s.env.Home})
+	r, err := s.newRunner()
 	if err != nil {
 		return nil, nil, nil, err
 	}
-	r := &runner.Runner{ClaudePath: bin, WorkDir: filepath.Join(s.env.DataDir, "work"), Model: s.cfg.Model,
-		Timeout: time.Duration(s.cfg.TimeoutSeconds) * time.Second}
 	cctx, cancel := context.WithCancel(ctx)
 	s.mu.Lock()
 	s.cancel = cancel
