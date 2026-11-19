@@ -10,6 +10,10 @@ export function BuildDigest(arg1, arg2) {
   return window['go']['main']['App']['BuildDigest'](arg1, arg2);
 }
 
+export function ApplySkill(arg1, arg2) {
+  return window['go']['main']['App']['ApplySkill'](arg1, arg2);
+}
+
 export function CancelGeneration() {
   return window['go']['main']['App']['CancelGeneration']();
 }
@@ -20,6 +24,10 @@ export function CheckClaude() {
 
 export function GenerateProposal(arg1) {
   return window['go']['main']['App']['GenerateProposal'](arg1);
+}
+
+export function GenerateSkill(arg1) {
+  return window['go']['main']['App']['GenerateSkill'](arg1);
 }
 
 export function GetBackup(arg1) {

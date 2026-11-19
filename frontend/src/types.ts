@@ -40,6 +40,10 @@ export interface Proposal {
   targetPath: string; baseHash: string; original: string; output: string
   rationale: string; digest: string; jobId: string
 }
+export interface SkillRequest { name: string; memoryPaths: string[]; project: string; days: number; instruction: string }
+export interface SkillFileProposal { path: string; absPath: string; original: string; content: string; baseHash: string }
+export interface SkillProposal { name: string; dir: string; files: SkillFileProposal[]; rationale: string; jobId: string }
+export interface SkillApplyFile { path: string; content: string; baseHash: string }
 export interface Manifest {
   id: string; path: string; op: string; time: string; existed: boolean
   oldHash: string; newHash: string; rollbackOf?: string

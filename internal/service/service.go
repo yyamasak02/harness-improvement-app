@@ -271,20 +271,13 @@ func (s *Service) GenerateProposal(ctx context.Context, req ProposalRequest) (*P
 	if err != nil {
 		return nil, err
 	}
-	bin, err := runner.ResolveClaude(runner.ResolveOptions{Configured: s.cfg.ClaudePath, ShellLookup: s.env.ShellLookup, Home: s.env.Home})
+	r, ctx, done, err := s.startRunner(ctx)
 	if err != nil {
 		return nil, err
 	}
-	r := &runner.Runner{ClaudePath: bin, WorkDir: filepath.Join(s.env.DataDir, "work"), Model: s.cfg.Model,
-		Timeout: time.Duration(s.cfg.TimeoutSeconds) * time.Second}
+	defer done()
 
-	cctx, cancel := context.WithCancel(ctx)
-	s.mu.Lock()
-	s.cancel = cancel
-	s.mu.Unlock()
-	defer func() { cancel(); s.mu.Lock(); s.cancel = nil; s.mu.Unlock() }()
-
-	res, err := r.Run(cctx, runner.Input{
+	res, err := r.Run(ctx, runner.Input{
 		Digest:          d,
 		CurrentClaudeMd: m.Mask(tc.Content), // 対象ファイル本文も masking を通して渡す
 		Instruction:     m.Mask(req.Instruction),
@@ -295,6 +288,21 @@ func (s *Service) GenerateProposal(ctx context.Context, req ProposalRequest) (*P
 	}
 	return &Proposal{TargetPath: tc.Target.Path, BaseHash: tc.Hash, Original: tc.Content, Output: res.Output,
 		Rationale: res.Rationale, Digest: d, JobID: res.JobID}, nil
+}
+
+// startRunner は claude の解決とキャンセル登録を行う。done は必ず呼ぶ。
+func (s *Service) startRunner(ctx context.Context) (*runner.Runner, context.Context, func(), error) {
+	bin, err := runner.ResolveClaude(runner.ResolveOptions{Configured: s.cfg.ClaudePath, ShellLookup: s.env.ShellLookup, Home: s.env.Home})
+	if err != nil {
+		return nil, nil, nil, err
+	}
+	r := &runner.Runner{ClaudePath: bin, WorkDir: filepath.Join(s.env.DataDir, "work"), Model: s.cfg.Model,
+		Timeout: time.Duration(s.cfg.TimeoutSeconds) * time.Second}
+	cctx, cancel := context.WithCancel(ctx)
+	s.mu.Lock()
+	s.cancel = cancel
+	s.mu.Unlock()
+	return r, cctx, func() { cancel(); s.mu.Lock(); s.cancel = nil; s.mu.Unlock() }, nil
 }
 
 // CancelGeneration は生成中のジョブをキャンセルする。

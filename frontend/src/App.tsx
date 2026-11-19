@@ -3,6 +3,7 @@ import Dashboard from './pages/Dashboard'
 import Sessions from './pages/Sessions'
 import Improve from './pages/Improve'
 import Memory from './pages/Memory'
+import Skills from './pages/Skills'
 import History from './pages/History'
 import Settings from './pages/Settings'
 
@@ -11,6 +12,7 @@ const nav = [
   {to: '/sessions', label: 'セッション'},
   {to: '/improve', label: 'CLAUDE.md 改善'},
   {to: '/memory', label: 'メモリ'},
+  {to: '/skills', label: 'ナレッジ生成'},
   {to: '/history', label: '変更履歴'},
   {to: '/settings', label: '設定'},
 ]
@@ -37,6 +39,7 @@ export default function App() {
             <Route path="/sessions" element={<Sessions />} />
             <Route path="/improve" element={<Improve />} />
             <Route path="/memory" element={<Memory />} />
+            <Route path="/skills" element={<Skills />} />
             <Route path="/history" element={<History />} />
             <Route path="/settings" element={<Settings />} />
           </Routes>

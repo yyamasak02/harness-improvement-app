@@ -95,6 +95,33 @@ export function mockApi(): Api {
       history = [m, ...history]
       return m
     },
+    generateSkill: (req) => new Promise((resolve, reject) => {
+      if (!/^[a-z0-9][a-z0-9-]{0,63}$/.test(req.name)) { reject(new Error('skill 名が不正です')); return }
+      if (req.memoryPaths.length === 0) { reject(new Error('メモリを 1 つ以上選んでください')); return }
+      const dir = `/home/demo/.claude/skills/${req.name}`
+      const mk = (path: string, content: string) => ({path, absPath: `${dir}/${path}`, original: files[`${dir}/${path}`] ?? '', content, baseHash: hashOf(`${dir}/${path}`)})
+      const t = setTimeout(() => {
+        cancelFn = null
+        resolve({name: req.name, dir, jobId: 'mock-skill-job', rationale: '- メモリに「応答は日本語」が繰り返し現れるため\n',
+          files: [mk('SKILL.md', `---\nname: ${req.name}\ndescription: mock の skill\n---\n\n# ${req.name}\n`), mk('knowledge/notes.md', '# メモ\n\n- 応答は日本語\n')]})
+      }, 300)
+      cancelFn = () => { clearTimeout(t); cancelFn = null; reject(new Error('claude の実行がキャンセルされました')) }
+    }),
+    applySkill: async (name, fs) => {
+      const dir = `/home/demo/.claude/skills/${name}`
+      if (!/^[a-z0-9][a-z0-9-]{0,63}$/.test(name) || fs.some((f) => !f.path.endsWith('.md') || f.path.includes('..'))) throw new Error('skill 名またはパスが不正です')
+      if (fs.some((f) => hashOf(`${dir}/${f.path}`) !== f.baseHash)) throw new Error('対象ファイルが改善案の生成後に変更されています。再生成してください')
+      const ms: T.Manifest[] = []
+      for (const f of fs) {
+        const p = `${dir}/${f.path}`
+        const m: T.BackupEntry = {id: `mock-${history.length + 1}`, path: p, op: 'apply', time: new Date().toISOString(),
+          existed: p in files, oldHash: f.baseHash, newHash: 'n', before: files[p] ?? '', after: f.content}
+        files[p] = f.content
+        history = [m, ...history]
+        ms.push(m)
+      }
+      return ms
+    },
     listBackups: () => delay(history.map((h) => ({...h, before: '', after: ''}))),
     getBackup: async (id) => {
       const h = history.find((x) => x.id === id)
