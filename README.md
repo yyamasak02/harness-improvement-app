@@ -60,7 +60,11 @@ Windows は、Wails の前提（WebView2 など）を満たした環境で `wail
 
 ### Linux / WSL（WSLg）
 
-Release には Linux 版を添付していません。ソースからビルドします（WSL2 + WSLg の Windows 11、または Linux デスクトップ）。
+#### .deb で入れる（Ubuntu 22.04 以降・Debian 系、リリース公開後）
+
+[Releases](../../releases) から `harness-app_<バージョン>_amd64.deb` をダウンロードし、`sudo apt install ./harness-app_*_amd64.deb` で入れます（`libgtk-3-0` と `libwebkit2gtk-4.1-0` は自動で入ります）。本パッケージは署名していません。apt リポジトリは提供していません（検討中: #124）。
+
+#### ソースからビルドする（WSL2 + WSLg の Windows 11、または Linux デスクトップ）
 
 ```sh
 sudo apt install build-essential libgtk-3-dev libwebkit2gtk-4.1-dev   # Ubuntu 22.04 以降

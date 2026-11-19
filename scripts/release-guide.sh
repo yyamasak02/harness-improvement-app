@@ -10,6 +10,7 @@ cat <<'EOF'
 |---|---|
 | macOS | `harness-app.dmg` |
 | Windows | `harness-app-amd64-installer.exe` |
+| Linux（Ubuntu 22.04 以降など） | `harness-app_<バージョン>_amd64.deb`（`sudo apt install ./ファイル名`） |
 
 インストーラが見当たらない場合は、ビルドが完了していない（数分〜十数分かかります）か失敗しています。Actions の実行結果を確認してください。
 

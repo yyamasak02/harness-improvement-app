@@ -266,6 +266,10 @@ done
 grep -q "artifacts/dist-macos/harness-app.dmg" .github/workflows/release.yml && grep -q "installer.exe" .github/workflows/release.yml \
   && echo "ok: release.yml の添付物が案内と一致（dmg とインストーラ）" || { echo "NG: release.yml の添付物が案内と食い違う"; fail=1; }
 grep -q "release-guide.sh" .github/workflows/release.yml && echo "ok: release.yml がダウンロード案内をノートに付ける" || { echo "NG: release.yml が案内を付けない"; fail=1; }
+# Linux .deb（#124）: release-guide の案内と release.yml の添付物が一致する
+case "$g" in *"_amd64.deb"*) echo "ok: release-guide が .deb を案内する" ;; *) echo "NG: release-guide に .deb が無い"; fail=1 ;; esac
+grep -q "artifacts/dist-linux/harness-app_\*_amd64.deb" .github/workflows/release.yml && grep -q "scripts/build-deb.sh" .github/workflows/release.yml \
+  && echo "ok: release.yml が .deb をビルドして添付する" || { echo "NG: release.yml が .deb を添付しない"; fail=1; }
 # release.yml: Release 画面からの起動・権限の最小化・外部由来の値を run: に直接埋め込まない（#136）
 rw=.github/workflows/release.yml
 grep -q "types: \[published\]" "$rw" && grep -q "tags: \['v\*'\]" "$rw" \
