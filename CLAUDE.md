@@ -30,7 +30,7 @@ Claude Code のハーネス（CLAUDE.md・rules・メモリ・skills）を、`~/
 - 実装を変えてテストを変えない（直さない・足さない）まま PR にしない。意味を失ったテストを放置しない。
 - リファクタ・テスト不足を見つけて黙って見送らない。今回やらないなら `type/tech-debt` / `type/test` の issue にする。
 - `main` に直接コミット・push しない（初期コミットを除く）。必ずブランチ → PR → squash マージ。
-- `feat` / `fix` の変更で `CHANGELOG.md` の `[Unreleased]` を更新しない。バージョンを `wails.json` 以外で勝手に変えない（出典は `wails.json`）。リリースタグの push・付け替え・削除をしない（`scripts/release.sh tag` でローカルに作り、push は人に依頼する）。
+- `feat` / `fix` の変更では `CHANGELOG.md` の `[Unreleased]` を必ず更新する（`.claude/rules/release.md`。CI が検査）。`[Unreleased]` を `[X.Y.Z]` に確定するのはリリース準備（`scripts/release.sh prepare`）だけ。バージョンを `wails.json` 以外で勝手に変えない（出典は `wails.json`）。リリースタグの push・付け替え・削除をしない（`scripts/release.sh tag` でローカルに作り、push は人に依頼する）。
 - force push、`git reset --hard`、`git clean`、`rm -rf`、履歴改変、タグ push、`gh release` をしない（タグ・リリースはユーザーが行う）。
 - 未着手・保留の課題を口頭 TODO や握りつぶしにしない。必ず issue にする（`create-issue` skill、ラベルは `.claude/rules/issues-labels.md`）。GitHub 既定ラベルは使わない。
 - **ユーザーの要求（機能追加・修正・方針変更・調査の依頼）を、issue にしないまま着手しない。** 受け取ったら最初に issue を作る（`create-issue` skill）。口頭のまま実装して後追いで起票しない。`[no-issue]` は依存更新・誤字修正・生成物の更新・リリース準備だけ。
