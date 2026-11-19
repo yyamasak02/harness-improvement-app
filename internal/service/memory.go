@@ -2,6 +2,7 @@ package service
 
 import (
 	"os"
+	"strings"
 	"time"
 
 	"harness-app/internal/memory"
@@ -47,10 +48,6 @@ func (s *Service) ListMemories() ([]MemoryItem, error) {
 }
 
 func projectOf(label string) string {
-	for i := 0; i < len(label); i++ {
-		if label[i] == '/' {
-			return label[:i]
-		}
-	}
-	return label
+	project, _, _ := strings.Cut(label, "/")
+	return project
 }

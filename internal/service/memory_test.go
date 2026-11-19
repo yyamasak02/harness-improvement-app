@@ -4,6 +4,7 @@ import (
 	"errors"
 	"os"
 	"path/filepath"
+	"runtime"
 	"strings"
 	"testing"
 
@@ -60,5 +61,102 @@ func TestMemoryListEditRollback(t *testing.T) {
 	// 許可リスト外（memory ディレクトリ配下でも .md 以外・発見されない新規ファイル）は拒否
 	if _, err := f.svc.ApplyProposal(filepath.Join(dir, "new.txt"), "x", applier.AbsentHash); !errors.Is(err, applier.ErrNotAllowed) {
 		t.Fatalf("未発見パスは拒否: %v", err)
+	}
+}
+
+func TestMemorySymlinkRejected(t *testing.T) {
+	if runtime.GOOS == "windows" {
+		t.Skip("Windows ではシンボリックリンク作成に権限が必要")
+	}
+	f := newFixture(t)
+	outside := filepath.Join(t.TempDir(), "outside.md")
+	if err := os.WriteFile(outside, []byte("外部の内容\n"), 0o644); err != nil {
+		t.Fatal(err)
+	}
+	link := filepath.Join(f.claudeDir, "projects", "-home-demo-app", "memory", "link.md")
+	if err := os.Symlink(outside, link); err != nil {
+		t.Fatal(err)
+	}
+	items, err := f.svc.ListMemories()
+	if err != nil {
+		t.Fatal(err)
+	}
+	for _, it := range items {
+		if it.Target.Path == link {
+			t.Fatal("シンボリックリンクが一覧に含まれる")
+		}
+	}
+	if _, err := f.svc.ReadTarget(link); err == nil {
+		t.Fatal("シンボリックリンクの読み取りが許可された")
+	}
+	if _, err := f.svc.ApplyProposal(link, "x", applier.HashBytes([]byte("外部の内容\n"))); !errors.Is(err, applier.ErrNotAllowed) {
+		t.Fatal("シンボリックリンクへの適用が許可された")
+	}
+	if got := read(t, outside); got != "外部の内容\n" {
+		t.Fatalf("外部ファイルが変更された: %q", got)
+	}
+}
+
+func TestMemoryDirSymlinkRejected(t *testing.T) {
+	if runtime.GOOS == "windows" {
+		t.Skip("Windows ではシンボリックリンク作成に権限が必要")
+	}
+	for _, name := range []string{"memory", "project"} {
+		t.Run(name, func(t *testing.T) {
+			f := newFixture(t)
+			outDir := t.TempDir()
+			outside := filepath.Join(outDir, "memory", "evil.md")
+			if err := os.MkdirAll(filepath.Dir(outside), 0o755); err != nil {
+				t.Fatal(err)
+			}
+			if err := os.WriteFile(outside, []byte("外部\n"), 0o644); err != nil {
+				t.Fatal(err)
+			}
+			projects := filepath.Join(f.claudeDir, "projects")
+			var linkPath, viaLink string
+			if name == "memory" {
+				d := filepath.Join(projects, "-home-demo-link")
+				if err := os.MkdirAll(d, 0o755); err != nil {
+					t.Fatal(err)
+				}
+				linkPath = filepath.Join(d, "memory")
+				if err := os.Symlink(filepath.Join(outDir, "memory"), linkPath); err != nil {
+					t.Fatal(err)
+				}
+				viaLink = filepath.Join(linkPath, "evil.md")
+			} else {
+				linkPath = filepath.Join(projects, "-home-demo-link")
+				if err := os.Symlink(outDir, linkPath); err != nil {
+					t.Fatal(err)
+				}
+				viaLink = filepath.Join(linkPath, "memory", "evil.md")
+			}
+			items, err := f.svc.ListMemories()
+			if err != nil {
+				t.Fatal(err)
+			}
+			for _, it := range items {
+				if it.Target.Path == viaLink {
+					t.Fatal("リンク先のファイルが一覧に含まれる")
+				}
+			}
+			if _, err := f.svc.ReadTarget(viaLink); err == nil {
+				t.Fatal("読み取りが許可された")
+			}
+			if _, err := f.svc.ApplyProposal(viaLink, "x", applier.HashBytes([]byte("外部\n"))); !errors.Is(err, applier.ErrNotAllowed) {
+				t.Fatalf("許可リストで拒否されるべき: %v", err)
+			}
+			if got := read(t, outside); got != "外部\n" {
+				t.Fatalf("外部ファイルが変更された: %q", got)
+			}
+		})
+	}
+}
+
+func TestProjectOf(t *testing.T) {
+	for in, want := range map[string]string{"p/a.md": "p", "plain": "plain", "": "", "a/b/c": "a"} {
+		if got := projectOf(in); got != want {
+			t.Errorf("%q: %q", in, got)
+		}
 	}
 }

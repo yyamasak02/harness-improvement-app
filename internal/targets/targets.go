@@ -116,10 +116,26 @@ func Memories(claudeDir string) []Target {
 	sort.Strings(files)
 	out := make([]Target, 0, len(files))
 	for _, f := range files {
+		// シンボリックリンクは辿らない（許可リスト外のファイルを読み書きさせない）
+		// ファイル・memory ディレクトリ・projects/<project> のいずれかがリンクなら除外する
+		memDir := filepath.Dir(f)
+		if anySymlink(f, memDir, filepath.Dir(memDir)) {
+			continue
+		}
 		proj := filepath.Base(filepath.Dir(filepath.Dir(f)))
 		out = append(out, Target{Kind: KindMemory, Path: f, Label: proj + "/" + filepath.Base(f), Exists: exists(f)})
 	}
 	return out
+}
+
+// anySymlink は paths のいずれかがシンボリックリンク（または stat 不能）なら true。
+func anySymlink(paths ...string) bool {
+	for _, p := range paths {
+		if st, err := os.Lstat(p); err != nil || st.Mode()&os.ModeSymlink != 0 {
+			return true
+		}
+	}
+	return false
 }
 
 // Allowed は path が書き込み許可リスト（発見済み対象、または skillsDir 配下）に含まれるかを返す。
