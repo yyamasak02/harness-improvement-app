@@ -20,6 +20,11 @@ func TestMask(t *testing.T) {
 		{"flag 空白区切り", "run --token abc123 now", "run --token [MASKED:secret] now"},
 		{"flag 等号", "--api-key=abc123", "--api-key=[MASKED:secret]"},
 		{"flag 他の語は対象外", "--tokens 5 --token-limit 3", "--tokens 5 --token-limit 3"},
+		{"flag 二重引用符", `--token "abc def" ok`, `--token [MASKED:secret] ok`},
+		{"flag 単引用符", `--password 'abc def' ok`, `--password [MASKED:secret] ok`},
+		{"flag 等号と引用符", `--api-key="abc def" ok`, `--api-key=[MASKED:secret] ok`},
+		{"語中のハイフンは対象外", "max-token 100 and multi-token sequences", "max-token 100 and multi-token sequences"},
+		{"行頭のフラグ", "--secret abc123", "--secret [MASKED:secret]"},
 		{"pem", "x\n-----BEGIN RSA PRIVATE KEY-----\nAAA\n-----END RSA PRIVATE KEY-----\ny", "x\n[MASKED:private-key]\ny"}, // privacy-allow: 検出テスト用のダミー
 		{"pem 終端なし", "-----BEGIN PRIVATE KEY-----\nAAA", "[MASKED:private-key]"},                                           // privacy-allow: 検出テスト用のダミー
 		{"custom", "see PRJ-42", "see [MASKED:proj]"},
