@@ -107,6 +107,21 @@ func allowed(found []Target, skillsDir, path string, fold bool) bool {
 	return skillsDir != "" && underDir(skillsDir, path, fold)
 }
 
+// KindMemory はプロジェクトメモリ（~/.claude/projects/<project>/memory/*.md）。
+const KindMemory Kind = "memory"
+
+// Memories は claudeDir/projects/*/memory/*.md を発見する。Label は プロジェクト名/ファイル名。
+func Memories(claudeDir string) []Target {
+	files, _ := filepath.Glob(filepath.Join(claudeDir, "projects", "*", "memory", "*.md"))
+	sort.Strings(files)
+	out := make([]Target, 0, len(files))
+	for _, f := range files {
+		proj := filepath.Base(filepath.Dir(filepath.Dir(f)))
+		out = append(out, Target{Kind: KindMemory, Path: f, Label: proj + "/" + filepath.Base(f), Exists: exists(f)})
+	}
+	return out
+}
+
 // Allowed は path が書き込み許可リスト（発見済み対象、または skillsDir 配下）に含まれるかを返す。
 func Allowed(found []Target, skillsDir, path string) bool {
 	return allowed(found, skillsDir, path, foldCase)

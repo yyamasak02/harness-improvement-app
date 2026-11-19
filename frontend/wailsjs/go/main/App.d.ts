@@ -25,6 +25,8 @@ export function InitError():Promise<string>;
 
 export function ListBackups():Promise<Array<applier.Entry>>;
 
+export function ListMemories():Promise<Array<service.MemoryItem>>;
+
 export function ListProjects():Promise<Array<service.ProjectStat>>;
 
 export function ListSessions(arg1:string,arg2:number,arg3:number):Promise<Array<store.Session>>;

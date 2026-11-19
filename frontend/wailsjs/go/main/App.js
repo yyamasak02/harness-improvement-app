@@ -38,6 +38,10 @@ export function ListBackups() {
   return window['go']['main']['App']['ListBackups']();
 }
 
+export function ListMemories() {
+  return window['go']['main']['App']['ListMemories']();
+}
+
 export function ListProjects() {
   return window['go']['main']['App']['ListProjects']();
 }

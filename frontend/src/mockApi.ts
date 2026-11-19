@@ -23,8 +23,15 @@ const targets: T.Target[] = [
   {kind: 'rule', path: '/home/demo/app/.claude/rules/go.md', label: '.claude/rules/go.md', exists: true},
 ]
 
+const memTargets: T.Target[] = [
+  {kind: 'memory', path: '/home/demo/.claude/projects/-home-demo-app/memory/feedback.md', label: '-home-demo-app/feedback.md', exists: true},
+  {kind: 'memory', path: '/home/demo/.claude/projects/-home-demo-app/memory/feedback-copy.md', label: '-home-demo-app/feedback-copy.md', exists: true},
+]
+
 export function mockApi(): Api {
   const files: Record<string, string> = {
+    [memTargets[0].path]: '---\nname: feedback\n---\n\n応答は日本語で行う。\n',
+    [memTargets[1].path]: '---\nname: feedback-copy\n---\n\n応答は日本語で行う。\n',
     '/home/demo/.claude/CLAUDE.md': '# グローバル\n\n- 応答は日本語\n',
     '/home/demo/app/CLAUDE.md': '# app\n\n- テストは go test\n',
     '/home/demo/app/.claude/rules/go.md': '# Go\n\n- エラーはラップする\n',
@@ -58,8 +65,11 @@ export function mockApi(): Api {
     search: async (q) => Object.values(messages).flat().filter((m) => q && m.text.includes(q)).map((m) => ({
       messageId: m.id, sessionId: m.sessionId, project: m.project, ts: m.ts, role: m.role, text: m.text})),
     listTargets: () => delay(targets),
+    listMemories: () => delay(memTargets.map((t, i) => ({
+      target: t, project: '-home-demo-app', size: files[t.path].length, modTime: '2026-11-01T00:00:00Z',
+      stale: i === 1, duplicateOf: [memTargets[1 - i].path]}))),
     readTarget: async (p) => {
-      const t = targets.find((x) => x.path === p)
+      const t = [...targets, ...memTargets].find((x) => x.path === p)
       if (!t) throw new Error('許可されていないパスです')
       return {target: t, content: files[p] ?? '', hash: hashOf(p)}
     },
@@ -76,7 +86,7 @@ export function mockApi(): Api {
     }),
     cancelGeneration: async () => { cancelFn?.() },
     applyProposal: async (p, c, h) => {
-      if (!targets.some((t) => t.path === p)) throw new Error('書き込みが許可されていないパスです')
+      if (![...targets, ...memTargets].some((t) => t.path === p)) throw new Error('書き込みが許可されていないパスです')
       if (hashOf(p) !== h) throw new Error('対象ファイルが改善案の生成後に変更されています。再生成してください')
       const before = files[p] ?? ''
       const m: T.BackupEntry = {id: `mock-${history.length + 1}`, path: p, op: 'apply', time: new Date().toISOString(),

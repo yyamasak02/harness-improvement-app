@@ -2,8 +2,24 @@ package targets
 
 import (
 	"path/filepath"
+	"strings"
 	"testing"
 )
+
+func TestMemories(t *testing.T) {
+	got := Memories(claudeDir)
+	if len(got) != 2 {
+		t.Fatalf("%+v", got)
+	}
+	for _, m := range got {
+		if m.Kind != KindMemory || !m.Exists || !strings.HasPrefix(m.Label, "-home-demo-app/") {
+			t.Errorf("%+v", m)
+		}
+	}
+	if len(Memories(t.TempDir())) != 0 {
+		t.Error("メモリが無ければ空")
+	}
+}
 
 const (
 	claudeDir = "../../testdata/claude"

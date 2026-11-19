@@ -169,8 +169,17 @@ func (s *Service) ListTargets() ([]targets.Target, error) {
 
 func (s *Service) skillsDir() string { return filepath.Join(s.env.ClaudeDir, "skills") }
 
-func (s *Service) allowed(path string) bool {
+// allTargets は ListTargets に発見済みのプロジェクトメモリを加えた、読み書きの許可リスト。
+func (s *Service) allTargets() ([]targets.Target, error) {
 	ts, err := s.ListTargets()
+	if err != nil {
+		return nil, err
+	}
+	return append(ts, targets.Memories(s.env.ClaudeDir)...), nil
+}
+
+func (s *Service) allowed(path string) bool {
+	ts, err := s.allTargets()
 	if err != nil {
 		return false
 	}
@@ -182,7 +191,7 @@ func (s *Service) applier() *applier.Applier {
 }
 
 func (s *Service) findTarget(path string) (targets.Target, error) {
-	ts, err := s.ListTargets()
+	ts, err := s.allTargets()
 	if err != nil {
 		return targets.Target{}, err
 	}

@@ -213,6 +213,46 @@ export namespace service {
 	        this.lastAt = source["lastAt"];
 	    }
 	}
+	export class MemoryItem {
+	    target: targets.Target;
+	    project: string;
+	    size: number;
+	    modTime: string;
+	    stale: boolean;
+	    duplicateOf: string[];
+
+	    static createFrom(source: any = {}) {
+	        return new MemoryItem(source);
+	    }
+
+	    constructor(source: any = {}) {
+	        if ('string' === typeof source) source = JSON.parse(source);
+	        this.target = this.convertValues(source["target"], targets.Target);
+	        this.project = source["project"];
+	        this.size = source["size"];
+	        this.modTime = source["modTime"];
+	        this.stale = source["stale"];
+	        this.duplicateOf = source["duplicateOf"];
+	    }
+
+		convertValues(a: any, classs: any, asMap: boolean = false): any {
+		    if (!a) {
+		        return a;
+		    }
+		    if (a.slice && a.map) {
+		        return (a as any[]).map(elem => this.convertValues(elem, classs));
+		    } else if ("object" === typeof a) {
+		        if (asMap) {
+		            for (const key of Object.keys(a)) {
+		                a[key] = new classs(a[key]);
+		            }
+		            return a;
+		        }
+		        return new classs(a);
+		    }
+		    return a;
+		}
+	}
 	export class Overview {
 	    sessions: number;
 	    messages: number;

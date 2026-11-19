@@ -29,9 +29,12 @@ export interface Overview {
   corrections: number; toolErrors: number; memoryFiles: number
   daily: DailyPoint[] | null; models: ModelStat[] | null; projects: ProjectStat[] | null
 }
-export type TargetKind = 'global' | 'project' | 'local' | 'rule'
+export type TargetKind = 'global' | 'project' | 'local' | 'rule' | 'memory'
 export interface Target { kind: TargetKind; path: string; label: string; exists: boolean }
-export interface TargetContent { target: Target; content: string; hash: string }
+export interface MemoryItem {
+  target: Target; project: string; size: number; modTime: string; stale: boolean; duplicateOf: string[]
+}
+export interface TargetContent{ target: Target; content: string; hash: string }
 export interface ProposalRequest { targetPath: string; project: string; days: number; instruction: string }
 export interface Proposal {
   targetPath: string; baseHash: string; original: string; output: string
