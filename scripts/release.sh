@@ -16,9 +16,10 @@ require_clean_main() {
 # コミット・タグの作者を noreply にする（実メールを公開履歴に残さない。ship.sh と同じ方針）。
 # git config は変更せず環境変数で上書きする。noreply は origin/main の最新コミットから得る。
 use_noreply_identity() {
-  local cfg nr nm
-  cfg=$(git config user.email 2>/dev/null || true)
-  if printf '%s' "$cfg" | grep -qiE '@users\.noreply\.github\.com$'; then return 0; fi
+  local ai ci nr nm
+  # 実効の作者・コミッター（環境変数・committer.email を含む）の両方が noreply ならそのまま使う
+  ai=$(git var GIT_AUTHOR_IDENT 2>/dev/null || true); ci=$(git var GIT_COMMITTER_IDENT 2>/dev/null || true)
+  if printf '%s' "$ai" | grep -qiE '@users\.noreply\.github\.com> ' && printf '%s' "$ci" | grep -qiE '@users\.noreply\.github\.com> '; then return 0; fi
   nr=$(git log origin/main -1 --format='%ae' 2>/dev/null || true)
   printf '%s' "$nr" | grep -qiE '@users\.noreply\.github\.com$' || {
     echo "noreply のメールを決められません。GIT_AUTHOR_EMAIL / GIT_COMMITTER_EMAIL に noreply を設定してください"; exit 1; }

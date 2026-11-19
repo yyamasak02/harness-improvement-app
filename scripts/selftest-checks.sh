@@ -464,6 +464,11 @@ printf '# Changelog\n\n## [Unreleased]\n\n### 追加\n- 機能 A\n' > "$rl/work/
   && PATH="$rl/bin:$PATH" bash scripts/release.sh prepare 0.3.0 >/dev/null 2>&1 \
   && [ "$(git log -1 --format=%ae)" = "t@users.noreply.github.com" ]) \
   && echo "ok: release.sh prepare は作者を noreply にする（git config が実メール相当でも）" || { echo "NG: release.sh prepare のコミットの作者が noreply ではない"; fail=1; }
+# user.email が noreply でも、環境変数のコミッターが実メール相当なら、実効の作者・コミッターを noreply に直す
+(cd "$rl/work" && git switch -q main && git config user.email t@users.noreply.github.com \
+  && GIT_COMMITTER_EMAIL=real-person@example.com PATH="$rl/bin:$PATH" bash scripts/release.sh prepare 0.3.1 >/dev/null 2>&1 \
+  && [ "$(git log -1 --format=%ce)" = "t@users.noreply.github.com" ]) \
+  && echo "ok: release.sh prepare は環境変数のコミッターが実メール相当でも noreply にする" || { echo "NG: コミッターが実メールのまま残る"; fail=1; }
 # noreply を決められない（origin/main の作者も noreply でない）なら、コミットを作らず止まる
 (cd "$rl/work" && git switch -q main && git config user.email real-person@example.com \
   && git -c user.email=real-person@example.com commit -q --amend --reset-author -m "feat: b" && git push -q -f origin main 2>/dev/null \
