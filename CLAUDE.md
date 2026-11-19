@@ -6,7 +6,7 @@ Claude Code のハーネス（CLAUDE.md・rules・メモリ・skills）を、`~/
 - 仕様: @docs/spec.md
 - タスク: @docs/tasks.md
 - 詳細ルール: `.claude/rules/`（safety / security / go / frontend / git-workflow / issues-labels / quality / session / release）、レビュー基準は `docs/review-guidelines.md`
-- 手順の再現: `.claude/skills/`（`implement-task` / `quality-gate` / `fix-bug` / `verify` / `open-pr` / `create-issue` / `review-pr` / `request-approval` / `resume` / `release` / `scout`）。着手できる issue が無いとき・大きな PR のマージ後は `scout`（改善提案の点検→issue 化）。タスク実装は必ず `implement-task` に従う
+- 手順の再現: `.claude/skills/`（`implement-task` / `quality-gate` / `fix-bug` / `verify` / `open-pr` / `create-issue` / `review-pr` / `request-approval` / `resume` / `release` / `scout` / `parallel-work`）。issue が無いとき・大きな PR のマージ後は `scout`、独立した issue が 2 件以上あれば `parallel-work`（並列実行）。タスク実装は必ず `implement-task` に従う
 
 ## セッション開始・再開時
 - **最初に `bash scripts/status.sh`**（SessionStart フックで要約が自動表示される）を確認し、`resume` skill でフェーズを判定して再開する。`docs/handoff.md` は参考で、現実（git・PR・issue）が優先。マージ・フェーズ変更・待ち状態の前に handoff を更新する（`.claude/rules/session.md`）。
