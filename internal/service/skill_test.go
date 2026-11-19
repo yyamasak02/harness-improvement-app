@@ -5,6 +5,7 @@ import (
 	"errors"
 	"os"
 	"path/filepath"
+	"runtime"
 	"strings"
 	"testing"
 
@@ -150,10 +151,13 @@ func TestSkillInputIsMasked(t *testing.T) {
 
 func TestApplySkillRejectsDuplicatePath(t *testing.T) {
 	f := newFixture(t)
-	for _, files := range [][]SkillApplyFile{
+	cases := [][]SkillApplyFile{
 		{{Path: "SKILL.md", Content: "a", BaseHash: applier.AbsentHash}, {Path: "SKILL.md", Content: "b", BaseHash: applier.AbsentHash}},
-		{{Path: "SKILL.md", Content: "a", BaseHash: applier.AbsentHash}, {Path: "skill.md", Content: "b", BaseHash: applier.AbsentHash}},
-	} {
+	}
+	if runtime.GOOS == "windows" { // 大文字小文字の扱いは targets.SamePath に従う
+		cases = append(cases, []SkillApplyFile{{Path: "SKILL.md", Content: "a", BaseHash: applier.AbsentHash}, {Path: "skill.md", Content: "b", BaseHash: applier.AbsentHash}})
+	}
+	for _, files := range cases {
 		if _, err := f.svc.ApplySkill("dup", files); err == nil || !strings.Contains(err.Error(), "重複") {
 			t.Errorf("重複は拒否: %v", err)
 		}

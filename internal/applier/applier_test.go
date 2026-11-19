@@ -225,10 +225,42 @@ func TestRollbackPrunesEmptyDirs(t *testing.T) {
 	if _, err := a.Rollback(m2.ID); err != nil {
 		t.Fatal(err)
 	}
-	if _, err := os.Stat(filepath.Join(skills, "s")); err == nil {
-		t.Error("空の skill ディレクトリが残っている")
+	// s は m1 の適用で作られたが、m1 のロールバック時は m2 のファイルがあり消えなかった。
+	// m2 は s を作っていないので、ここでは残る（適用で作った分だけ消す）。
+	if _, err := os.Stat(filepath.Join(skills, "s")); err != nil {
+		t.Error("m2 が作っていない s は消さない")
 	}
 	if _, err := os.Stat(skills); err != nil {
 		t.Error("許可範囲外の skills 自体は消さない")
+	}
+}
+
+func TestRollbackKeepsPreexistingEmptyDirs(t *testing.T) {
+	root := t.TempDir()
+	skills := filepath.Join(root, "skills")
+	a, _ := newApplier(t)
+	a.Allowed = func(p string) bool {
+		return len(p) > len(skills)+1 && p[:len(skills)+1] == skills+string(filepath.Separator)
+	}
+	pre := filepath.Join(skills, "s") // 適用前から存在する空ディレクトリ
+	if err := os.MkdirAll(pre, 0o755); err != nil {
+		t.Fatal(err)
+	}
+	f := filepath.Join(pre, "knowledge", "a.md")
+	m, err := a.Apply(Request{Path: f, Content: "a", ExpectedHash: AbsentHash})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if len(m.CreatedDirs) != 1 || m.CreatedDirs[0] != filepath.Dir(f) {
+		t.Fatalf("CreatedDirs: %v", m.CreatedDirs)
+	}
+	if _, err := a.Rollback(m.ID); err != nil {
+		t.Fatal(err)
+	}
+	if _, err := os.Stat(filepath.Dir(f)); err == nil {
+		t.Error("新規作成した knowledge は消える")
+	}
+	if _, err := os.Stat(pre); err != nil {
+		t.Error("適用前から存在した空ディレクトリが消えた")
 	}
 }
