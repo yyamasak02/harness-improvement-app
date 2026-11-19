@@ -195,3 +195,40 @@ func TestSameTimestampNoCollision(t *testing.T) {
 		t.Fatalf("履歴: %d", len(hist))
 	}
 }
+
+func TestRollbackPrunesEmptyDirs(t *testing.T) {
+	root := t.TempDir()
+	skills := filepath.Join(root, "skills")
+	a, _ := newApplier(t)
+	a.Allowed = func(p string) bool {
+		return len(p) > len(skills)+1 && p[:len(skills)+1] == skills+string(filepath.Separator)
+	}
+	f1 := filepath.Join(skills, "s", "knowledge", "a.md")
+	f2 := filepath.Join(skills, "s", "SKILL.md")
+	m1, err := a.Apply(Request{Path: f1, Content: "a", ExpectedHash: AbsentHash})
+	if err != nil {
+		t.Fatal(err)
+	}
+	m2, err := a.Apply(Request{Path: f2, Content: "b", ExpectedHash: AbsentHash})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if _, err := a.Rollback(m1.ID); err != nil {
+		t.Fatal(err)
+	}
+	if _, err := os.Stat(filepath.Dir(f1)); err == nil {
+		t.Error("空の knowledge ディレクトリが残っている")
+	}
+	if _, err := os.Stat(f2); err != nil {
+		t.Error("他のファイルがある skill ディレクトリは残る")
+	}
+	if _, err := a.Rollback(m2.ID); err != nil {
+		t.Fatal(err)
+	}
+	if _, err := os.Stat(filepath.Join(skills, "s")); err == nil {
+		t.Error("空の skill ディレクトリが残っている")
+	}
+	if _, err := os.Stat(skills); err != nil {
+		t.Error("許可範囲外の skills 自体は消さない")
+	}
+}

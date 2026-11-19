@@ -147,3 +147,27 @@ func TestSkillInputIsMasked(t *testing.T) {
 		t.Fatal("input.json が無い")
 	}
 }
+
+func TestApplySkillRejectsDuplicatePath(t *testing.T) {
+	f := newFixture(t)
+	for _, files := range [][]SkillApplyFile{
+		{{Path: "SKILL.md", Content: "a", BaseHash: applier.AbsentHash}, {Path: "SKILL.md", Content: "b", BaseHash: applier.AbsentHash}},
+		{{Path: "SKILL.md", Content: "a", BaseHash: applier.AbsentHash}, {Path: "skill.md", Content: "b", BaseHash: applier.AbsentHash}},
+	} {
+		if _, err := f.svc.ApplySkill("dup", files); err == nil || !strings.Contains(err.Error(), "重複") {
+			t.Errorf("重複は拒否: %v", err)
+		}
+	}
+	if _, err := os.Stat(filepath.Join(f.claudeDir, "skills", "dup")); err == nil {
+		t.Error("拒否時は何も書かない")
+	}
+}
+
+func TestGenerateSkillRejectsNonMemory(t *testing.T) {
+	f := newFixture(t)
+	g := filepath.Join(f.claudeDir, "CLAUDE.md")
+	_, err := f.svc.GenerateSkill(context.Background(), SkillRequest{Name: "ok-name", MemoryPaths: []string{g}})
+	if err == nil || !strings.Contains(err.Error(), "メモリ") {
+		t.Errorf("メモリ以外は拒否: %v", err)
+	}
+}

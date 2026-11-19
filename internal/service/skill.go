@@ -7,9 +7,11 @@ import (
 	"os"
 	"path/filepath"
 	"regexp"
+	"strings"
 
 	"harness-app/internal/applier"
 	"harness-app/internal/runner"
+	"harness-app/internal/targets"
 )
 
 var skillNameRe = regexp.MustCompile(`^[a-z0-9][a-z0-9-]{0,63}$`)
@@ -85,6 +87,9 @@ func (s *Service) GenerateSkill(ctx context.Context, req SkillRequest) (*SkillPr
 		if err != nil {
 			return nil, err
 		}
+		if tc.Target.Kind != targets.KindMemory {
+			return nil, fmt.Errorf("生成元にはメモリだけを選べます: %s", p)
+		}
 		in.Memories = append(in.Memories, runner.MemoryInput{Label: tc.Target.Label, Content: m.Mask(tc.Content)})
 	}
 	if req.Days > 0 {
@@ -124,12 +129,19 @@ func (s *Service) GenerateSkill(ctx context.Context, req SkillRequest) (*SkillPr
 // 途中で失敗したら、それまでに適用した分をロールバックする。
 func (s *Service) ApplySkill(name string, files []SkillApplyFile) ([]applier.Manifest, error) {
 	paths := make([]string, len(files))
+	seen := map[string]bool{}
 	hasSkillMd := false
 	for i, f := range files {
 		p, err := s.skillPath(name, f.Path)
 		if err != nil {
 			return nil, err
 		}
+		// 大文字小文字を区別しないファイルシステム（macOS / Windows）でも同一とみなす
+		key := strings.ToLower(p)
+		if seen[key] {
+			return nil, fmt.Errorf("適用するファイルのパスが重複しています: %q", f.Path)
+		}
+		seen[key] = true
 		paths[i] = p
 		hasSkillMd = hasSkillMd || f.Path == "SKILL.md"
 	}
