@@ -9,6 +9,7 @@ export namespace applier {
 	    oldHash: string;
 	    newHash: string;
 	    rollbackOf?: string;
+	    createdDirs?: string[];
 	    before: string;
 	    after: string;
 	
@@ -26,6 +27,7 @@ export namespace applier {
 	        this.oldHash = source["oldHash"];
 	        this.newHash = source["newHash"];
 	        this.rollbackOf = source["rollbackOf"];
+	        this.createdDirs = source["createdDirs"];
 	        this.before = source["before"];
 	        this.after = source["after"];
 	    }
@@ -39,6 +41,7 @@ export namespace applier {
 	    oldHash: string;
 	    newHash: string;
 	    rollbackOf?: string;
+	    createdDirs?: string[];
 	
 	    static createFrom(source: any = {}) {
 	        return new Manifest(source);
@@ -54,6 +57,7 @@ export namespace applier {
 	        this.oldHash = source["oldHash"];
 	        this.newHash = source["newHash"];
 	        this.rollbackOf = source["rollbackOf"];
+	        this.createdDirs = source["createdDirs"];
 	    }
 	}
 
@@ -148,57 +152,23 @@ export namespace config {
 }
 
 export namespace extensions {
-
+	
 	export class Hook {
 	    event: string;
 	    matcher: string;
 	    type: string;
 	    command: string;
-
+	
 	    static createFrom(source: any = {}) {
 	        return new Hook(source);
 	    }
-
+	
 	    constructor(source: any = {}) {
 	        if ('string' === typeof source) source = JSON.parse(source);
 	        this.event = source["event"];
 	        this.matcher = source["matcher"];
 	        this.type = source["type"];
 	        this.command = source["command"];
-	    }
-	}
-	export class Skill {
-	    name: string;
-	    description: string;
-	    path: string;
-
-	    static createFrom(source: any = {}) {
-	        return new Skill(source);
-	    }
-
-	    constructor(source: any = {}) {
-	        if ('string' === typeof source) source = JSON.parse(source);
-	        this.name = source["name"];
-	        this.description = source["description"];
-	        this.path = source["path"];
-	    }
-	}
-	export class Plugin {
-	    id: string;
-	    version: string;
-	    scope: string;
-	    enabled: boolean;
-
-	    static createFrom(source: any = {}) {
-	        return new Plugin(source);
-	    }
-
-	    constructor(source: any = {}) {
-	        if ('string' === typeof source) source = JSON.parse(source);
-	        this.id = source["id"];
-	        this.version = source["version"];
-	        this.scope = source["scope"];
-	        this.enabled = source["enabled"];
 	    }
 	}
 	export class MCPServer {
@@ -210,11 +180,11 @@ export namespace extensions {
 	    args: string[];
 	    url: string;
 	    envKeys: string[];
-
+	
 	    static createFrom(source: any = {}) {
 	        return new MCPServer(source);
 	    }
-
+	
 	    constructor(source: any = {}) {
 	        if ('string' === typeof source) source = JSON.parse(source);
 	        this.name = source["name"];
@@ -227,45 +197,83 @@ export namespace extensions {
 	        this.envKeys = source["envKeys"];
 	    }
 	}
+	export class Plugin {
+	    id: string;
+	    version: string;
+	    scope: string;
+	    enabled: boolean;
+	
+	    static createFrom(source: any = {}) {
+	        return new Plugin(source);
+	    }
+	
+	    constructor(source: any = {}) {
+	        if ('string' === typeof source) source = JSON.parse(source);
+	        this.id = source["id"];
+	        this.version = source["version"];
+	        this.scope = source["scope"];
+	        this.enabled = source["enabled"];
+	    }
+	}
+	export class Skill {
+	    name: string;
+	    description: string;
+	    path: string;
+	
+	    static createFrom(source: any = {}) {
+	        return new Skill(source);
+	    }
+	
+	    constructor(source: any = {}) {
+	        if ('string' === typeof source) source = JSON.parse(source);
+	        this.name = source["name"];
+	        this.description = source["description"];
+	        this.path = source["path"];
+	    }
+	}
 	export class Report {
 	    mcp: MCPServer[];
 	    plugins: Plugin[];
 	    skills: Skill[];
 	    hooks: Hook[];
 	    warnings: string[];
-
+	
 	    static createFrom(source: any = {}) {
 	        return new Report(source);
 	    }
-
+	
 	    constructor(source: any = {}) {
 	        if ('string' === typeof source) source = JSON.parse(source);
-	        this.mcp = (source["mcp"] ?? []).map((e: any) => new MCPServer(e));
-	        this.plugins = (source["plugins"] ?? []).map((e: any) => new Plugin(e));
-	        this.skills = (source["skills"] ?? []).map((e: any) => new Skill(e));
-	        this.hooks = (source["hooks"] ?? []).map((e: any) => new Hook(e));
+	        this.mcp = this.convertValues(source["mcp"], MCPServer);
+	        this.plugins = this.convertValues(source["plugins"], Plugin);
+	        this.skills = this.convertValues(source["skills"], Skill);
+	        this.hooks = this.convertValues(source["hooks"], Hook);
 	        this.warnings = source["warnings"];
 	    }
+	
+		convertValues(a: any, classs: any, asMap: boolean = false): any {
+		    if (!a) {
+		        return a;
+		    }
+		    if (a.slice && a.map) {
+		        return (a as any[]).map(elem => this.convertValues(elem, classs));
+		    } else if ("object" === typeof a) {
+		        if (asMap) {
+		            for (const key of Object.keys(a)) {
+		                a[key] = new classs(a[key]);
+		            }
+		            return a;
+		        }
+		        return new classs(a);
+		    }
+		    return a;
+		}
 	}
 
 }
 
 export namespace service {
 	
-	export class ReportInfo {
-	    date: string;
-	    path: string;
-	
-	    static createFrom(source: any = {}) {
-	        return new ReportInfo(source);
-	    }
-	
-	    constructor(source: any = {}) {
-	        if ('string' === typeof source) source = JSON.parse(source);
-	        this.date = source["date"];
-	        this.path = source["path"];
-	    }
-	}
 	export class ClaudeStatus {
 	    found: boolean;
 	    path: string;
@@ -297,6 +305,46 @@ export namespace service {
 	        this.sessions = source["sessions"];
 	        this.messages = source["messages"];
 	    }
+	}
+	export class MemoryItem {
+	    target: targets.Target;
+	    project: string;
+	    size: number;
+	    modTime: string;
+	    stale: boolean;
+	    duplicateOf: string[];
+	
+	    static createFrom(source: any = {}) {
+	        return new MemoryItem(source);
+	    }
+	
+	    constructor(source: any = {}) {
+	        if ('string' === typeof source) source = JSON.parse(source);
+	        this.target = this.convertValues(source["target"], targets.Target);
+	        this.project = source["project"];
+	        this.size = source["size"];
+	        this.modTime = source["modTime"];
+	        this.stale = source["stale"];
+	        this.duplicateOf = source["duplicateOf"];
+	    }
+	
+		convertValues(a: any, classs: any, asMap: boolean = false): any {
+		    if (!a) {
+		        return a;
+		    }
+		    if (a.slice && a.map) {
+		        return (a as any[]).map(elem => this.convertValues(elem, classs));
+		    } else if ("object" === typeof a) {
+		        if (asMap) {
+		            for (const key of Object.keys(a)) {
+		                a[key] = new classs(a[key]);
+		            }
+		            return a;
+		        }
+		        return new classs(a);
+		    }
+		    return a;
+		}
 	}
 	export class ModelStat {
 	    model: string;
@@ -333,46 +381,6 @@ export namespace service {
 	        this.sessions = source["sessions"];
 	        this.lastAt = source["lastAt"];
 	    }
-	}
-	export class MemoryItem {
-	    target: targets.Target;
-	    project: string;
-	    size: number;
-	    modTime: string;
-	    stale: boolean;
-	    duplicateOf: string[];
-
-	    static createFrom(source: any = {}) {
-	        return new MemoryItem(source);
-	    }
-
-	    constructor(source: any = {}) {
-	        if ('string' === typeof source) source = JSON.parse(source);
-	        this.target = this.convertValues(source["target"], targets.Target);
-	        this.project = source["project"];
-	        this.size = source["size"];
-	        this.modTime = source["modTime"];
-	        this.stale = source["stale"];
-	        this.duplicateOf = source["duplicateOf"];
-	    }
-
-		convertValues(a: any, classs: any, asMap: boolean = false): any {
-		    if (!a) {
-		        return a;
-		    }
-		    if (a.slice && a.map) {
-		        return (a as any[]).map(elem => this.convertValues(elem, classs));
-		    } else if ("object" === typeof a) {
-		        if (asMap) {
-		            for (const key of Object.keys(a)) {
-		                a[key] = new classs(a[key]);
-		            }
-		            return a;
-		        }
-		        return new classs(a);
-		    }
-		    return a;
-		}
 	}
 	export class Overview {
 	    sessions: number;
@@ -465,6 +473,20 @@ export namespace service {
 	        this.instruction = source["instruction"];
 	    }
 	}
+	export class ReportInfo {
+	    date: string;
+	    path: string;
+	
+	    static createFrom(source: any = {}) {
+	        return new ReportInfo(source);
+	    }
+	
+	    constructor(source: any = {}) {
+	        if ('string' === typeof source) source = JSON.parse(source);
+	        this.date = source["date"];
+	        this.path = source["path"];
+	    }
+	}
 	export class SessionDetail {
 	    session: store.Session;
 	    messages: store.Message[];
@@ -552,7 +574,7 @@ export namespace service {
 	        this.rationale = source["rationale"];
 	        this.jobId = source["jobId"];
 	    }
-
+	
 		convertValues(a: any, classs: any, asMap: boolean = false): any {
 		    if (!a) {
 		        return a;
