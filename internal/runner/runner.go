@@ -32,6 +32,9 @@ var (
 // 日本語など非 ASCII はコードページで文字化けしうる。そのため ASCII のみ・特殊文字なしにする（skill 名とファイル名で足りる）。
 const prompt = "Follow the claudemd-improve skill: process input.json in the current directory and write output.md and rationale.md."
 
+// skillPrompt は skill-generate 用（同じ理由で ASCII のみ）。
+const skillPrompt = "Follow the skill-generate skill: process input.json in the current directory and write files under the output directory and rationale.md."
+
 // Input は skill への入力（input.json）。
 type Input struct {
 	Digest          string `json:"digest"`
@@ -65,6 +68,26 @@ func newJobID() string {
 
 // Run はジョブディレクトリを作り claude を実行する。cwd は常にジョブディレクトリ。
 func (r *Runner) Run(ctx context.Context, in Input) (*Result, error) {
+	res, err := r.execute(ctx, prompt, in)
+	if err != nil {
+		return res, err
+	}
+	out, err := os.ReadFile(filepath.Join(res.JobDir, "output.md"))
+	if err != nil {
+		return res, fmt.Errorf("output.md が生成されませんでした: %w", err)
+	}
+	res.Output = string(out)
+	res.Rationale = readOptional(filepath.Join(res.JobDir, "rationale.md"))
+	return res, nil
+}
+
+func readOptional(path string) string {
+	b, _ := os.ReadFile(path)
+	return string(b)
+}
+
+// execute はジョブディレクトリを作り、input.json と skill を置いて claude -p を実行する（出力の読み取りは呼び出し側）。
+func (r *Runner) execute(ctx context.Context, promptText string, in any) (*Result, error) {
 	if r.ClaudePath == "" {
 		return nil, ErrClaudeNotFound
 	}
@@ -95,7 +118,7 @@ func (r *Runner) Run(ctx context.Context, in Input) (*Result, error) {
 	cctx, cancel := context.WithTimeout(ctx, timeout)
 	defer cancel()
 
-	args := []string{"-p", prompt, "--allowedTools", AllowedTools, "--output-format", "json"}
+	args := []string{"-p", promptText, "--allowedTools", AllowedTools, "--output-format", "json"}
 	if r.Model != "" {
 		args = append(args, "--model", r.Model)
 	}
@@ -120,14 +143,6 @@ func (r *Runner) Run(ctx context.Context, in Input) (*Result, error) {
 		return res, ErrCanceled
 	case runErr != nil:
 		return res, fmt.Errorf("claude の実行に失敗: %w（ログ: %s）", runErr, tail(res.Log))
-	}
-	out, err := os.ReadFile(filepath.Join(dir, "output.md"))
-	if err != nil {
-		return res, fmt.Errorf("output.md が生成されませんでした: %w", err)
-	}
-	res.Output = string(out)
-	if rb, err := os.ReadFile(filepath.Join(dir, "rationale.md")); err == nil {
-		res.Rationale = string(rb)
 	}
 	return res, nil
 }

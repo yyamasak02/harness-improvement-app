@@ -376,6 +376,100 @@ export namespace service {
 		    return a;
 		}
 	}
+	export class SkillApplyFile {
+	    path: string;
+	    content: string;
+	    baseHash: string;
+	
+	    static createFrom(source: any = {}) {
+	        return new SkillApplyFile(source);
+	    }
+	
+	    constructor(source: any = {}) {
+	        if ('string' === typeof source) source = JSON.parse(source);
+	        this.path = source["path"];
+	        this.content = source["content"];
+	        this.baseHash = source["baseHash"];
+	    }
+	}
+	export class SkillFileProposal {
+	    path: string;
+	    absPath: string;
+	    original: string;
+	    content: string;
+	    baseHash: string;
+	
+	    static createFrom(source: any = {}) {
+	        return new SkillFileProposal(source);
+	    }
+	
+	    constructor(source: any = {}) {
+	        if ('string' === typeof source) source = JSON.parse(source);
+	        this.path = source["path"];
+	        this.absPath = source["absPath"];
+	        this.original = source["original"];
+	        this.content = source["content"];
+	        this.baseHash = source["baseHash"];
+	    }
+	}
+	export class SkillProposal {
+	    name: string;
+	    dir: string;
+	    files: SkillFileProposal[];
+	    rationale: string;
+	    jobId: string;
+	
+	    static createFrom(source: any = {}) {
+	        return new SkillProposal(source);
+	    }
+	
+	    constructor(source: any = {}) {
+	        if ('string' === typeof source) source = JSON.parse(source);
+	        this.name = source["name"];
+	        this.dir = source["dir"];
+	        this.files = this.convertValues(source["files"], SkillFileProposal);
+	        this.rationale = source["rationale"];
+	        this.jobId = source["jobId"];
+	    }
+
+		convertValues(a: any, classs: any, asMap: boolean = false): any {
+		    if (!a) {
+		        return a;
+		    }
+		    if (a.slice && a.map) {
+		        return (a as any[]).map(elem => this.convertValues(elem, classs));
+		    } else if ("object" === typeof a) {
+		        if (asMap) {
+		            for (const key of Object.keys(a)) {
+		                a[key] = new classs(a[key]);
+		            }
+		            return a;
+		        }
+		        return new classs(a);
+		    }
+		    return a;
+		}
+	}
+	export class SkillRequest {
+	    name: string;
+	    memoryPaths: string[];
+	    project: string;
+	    days: number;
+	    instruction: string;
+	
+	    static createFrom(source: any = {}) {
+	        return new SkillRequest(source);
+	    }
+	
+	    constructor(source: any = {}) {
+	        if ('string' === typeof source) source = JSON.parse(source);
+	        this.name = source["name"];
+	        this.memoryPaths = source["memoryPaths"];
+	        this.project = source["project"];
+	        this.days = source["days"];
+	        this.instruction = source["instruction"];
+	    }
+	}
 	export class TargetContent {
 	    target: targets.Target;
 	    content: string;

@@ -270,6 +270,47 @@ func TestPickWindowsCandidate(t *testing.T) {
 	}
 }
 
+func TestRunSkillGenerate(t *testing.T) {
+	argsFile := filepath.Join(t.TempDir(), "args")
+	t.Setenv("FAKE_CLAUDE_ARGS_FILE", argsFile)
+	r := newRunner(t)
+	res, err := r.RunSkillGenerate(context.Background(), SkillInput{SkillName: "s", Memories: []MemoryInput{{Label: "l", Content: "c"}}})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if len(res.Files) != 2 || res.Files[0].Path != "SKILL.md" || res.Files[1].Path != "knowledge/notes.md" || !strings.Contains(res.Rationale, "固定") {
+		t.Fatalf("%+v", res)
+	}
+	args, _ := os.ReadFile(argsFile)
+	if !strings.Contains(string(args), "Read,Write") || strings.Contains(string(args), "Bash") {
+		t.Errorf("許可ツールは Read,Write のみ:\n%s", args)
+	}
+}
+
+func TestRunSkillGenerateErrors(t *testing.T) {
+	for _, mode := range []string{"badskill", "fail", "nooutput"} {
+		t.Run(mode, func(t *testing.T) {
+			t.Setenv("FAKE_CLAUDE_MODE", mode)
+			if _, err := newRunner(t).RunSkillGenerate(context.Background(), SkillInput{SkillName: "s"}); err == nil {
+				t.Fatal("エラーになるべき")
+			}
+		})
+	}
+}
+
+func TestValidSkillRelPath(t *testing.T) {
+	cases := map[string]bool{
+		"SKILL.md": true, "knowledge/a.md": true, "a/b/c.md": true,
+		"": false, "../a.md": false, "/a.md": false, "a/../b.md": false, "a//b.md": false, ".hidden.md": false,
+		"x.sh": false, `a\b.md`: false, "C:/a.md": false, "a/.git/b.md": false,
+	}
+	for p, want := range cases {
+		if got := ValidSkillRelPath(p); got != want {
+			t.Errorf("%q: got %v want %v", p, got, want)
+		}
+	}
+}
+
 func TestMain(m *testing.M) {
 	code := m.Run()
 	testutil.Cleanup() // フェイク claude の一時ディレクトリを消す
