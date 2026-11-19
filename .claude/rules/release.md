@@ -1,4 +1,5 @@
 ---
+paths: ["CHANGELOG.md", "wails.json", "scripts/release.sh", "scripts/check-version.sh", ".github/workflows/release.yml"]
 description: バージョン・CHANGELOG・リリースタグの規則（リリースに関わる作業で必ず従う）
 ---
 # リリース規則

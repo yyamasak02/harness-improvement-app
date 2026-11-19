@@ -3,8 +3,7 @@
 Claude Code のハーネス（CLAUDE.md・rules・メモリ・skills）を、`~/.claude` のセッションログから継続改善する **ローカル完結デスクトップアプリ**（Wails v2 / Go / React+TS）。
 外部通信は `claude -p` の実行時のみ。外部共有機能は持たない。
 
-- 仕様: @docs/spec.md
-- タスク: @docs/tasks.md
+- 仕様: `docs/spec.md`、タスク: `docs/tasks.md`（常時ロードしない。実装・仕様確認の必要時に Read する）
 - 詳細ルール: `.claude/rules/`（safety / security / go / frontend / git-workflow / issues-labels / quality / session / release）、レビュー基準は `docs/review-guidelines.md`
 - 手順の再現: `.claude/skills/`（`implement-task` / `quality-gate` / `fix-bug` / `verify` / `open-pr` / `create-issue` / `review-pr` / `request-approval` / `resume` / `release` / `scout`）。着手できる issue が無いとき・大きな PR のマージ後は `scout`（改善提案の点検→issue 化）。タスク実装は必ず `implement-task` に従う
 

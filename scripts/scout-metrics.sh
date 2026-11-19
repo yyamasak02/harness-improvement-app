@@ -16,10 +16,10 @@ while read -r f; do
 done < <(grep -oE '@docs/[A-Za-z0-9_./-]+' CLAUDE.md | sed 's/^@//' | sort -u)
 rules=0
 for f in .claude/rules/*.md; do rules=$((rules + $(size "$f"))); done
-status=$(bash scripts/status.sh 2>/dev/null | wc -c | tr -d ' ')
+status=$(bash scripts/status.sh --brief 2>/dev/null | wc -c | tr -d ' ')
 printf '  %-40s %6d\n' "CLAUDE.md 本体" "$claude_md"
 printf '  %-40s %6d\n' ".claude/rules/*.md 合計" "$rules"
-printf '  %-40s %6d\n' "status.sh 出力（SessionStart）" "$status"
+printf '  %-40s %6d\n' "status.sh --brief 出力（SessionStart）" "$status"
 printf '  %-40s %6d\n' "合計（概算）" $((claude_md + imports + rules + status))
 
 echo "== 大きいファイル（行数の上位 5。分割・可読性の候補）"
