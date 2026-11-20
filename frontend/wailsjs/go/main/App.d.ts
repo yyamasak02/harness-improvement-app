@@ -4,10 +4,10 @@ import {applier} from '../models';
 import {service} from '../models';
 import {extensions} from '../models';
 import {logmodel} from '../models';
-import {store} from '../models';
 import {targets} from '../models';
 import {collector} from '../models';
 import {config} from '../models';
+import {store} from '../models';
 
 export function ApplyProposal(arg1:string,arg2:string,arg3:string):Promise<applier.Manifest>;
 
