@@ -103,12 +103,15 @@ func TestResolveClaudeInjectedHost(t *testing.T) {
 		}
 	})
 	t.Run("SHELL 未設定ならシェルを呼ばない", func(t *testing.T) {
-		_, _ = ResolveClaude(ResolveOptions{GOOS: "linux", Home: home, FixedPaths: none,
+		_, err := ResolveClaude(ResolveOptions{GOOS: "linux", Home: home, FixedPaths: none,
 			Env: func(string) string { return "" },
 			Exec: func(string, ...string) ([]byte, error) {
 				t.Fatal("呼ばれてはならない")
 				return nil, nil
 			}})
+		if !errors.Is(err, ErrClaudeNotFound) { // 現行の挙動: シェル探索は空、固定パスも無いので見つからない
+			t.Fatalf("got %v", err)
+		}
 	})
 	t.Run("固定パスの差し替え", func(t *testing.T) {
 		skipNoExecBit(t)
@@ -138,4 +141,47 @@ func TestResolveClaudeInjectedHost(t *testing.T) {
 			t.Fatalf("got %q %v", got, err)
 		}
 	})
+}
+
+// shellLookup は GOOS ごとの探索コマンドと出力の解釈を、Env と Exec を注入して検証する（実シェルは起動しない）。
+func TestShellLookup(t *testing.T) {
+	envSH := func(k string) string {
+		if k == "SHELL" {
+			return "/bin/fakesh"
+		}
+		return ""
+	}
+	tests := []struct {
+		name     string
+		goos     string
+		env      func(string) string
+		out      string
+		execErr  error
+		want     string
+		wantName string
+		wantArgs []string
+	}{
+		{"windows: where の出力から exe を選ぶ", "windows", envSH, "C:\\npm\\claude\r\nC:\\bin\\claude.exe\r\n", nil, "C:\\bin\\claude.exe", "where", []string{"claude"}},
+		{"windows: where が失敗なら空", "windows", envSH, "", errors.New("no where"), "", "where", []string{"claude"}},
+		{"linux: 最終行を採用し空白を除く", "linux", envSH, "noise\n /usr/bin/claude \n", nil, "/usr/bin/claude", "/bin/fakesh", []string{"-lc", "command -v claude"}},
+		{"darwin: 単一行", "darwin", envSH, "/opt/homebrew/bin/claude\n", nil, "/opt/homebrew/bin/claude", "/bin/fakesh", []string{"-lc", "command -v claude"}},
+		{"linux: シェルが失敗なら空", "linux", envSH, "", errors.New("exit 1"), "", "/bin/fakesh", []string{"-lc", "command -v claude"}},
+		{"linux: SHELL 未設定なら空で exec しない", "linux", func(string) string { return "" }, "", nil, "", "", nil},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			var gotName string
+			var gotArgs []string
+			o := ResolveOptions{Env: tt.env, Exec: func(name string, args ...string) ([]byte, error) {
+				gotName, gotArgs = name, args
+				return []byte(tt.out), tt.execErr
+			}}
+			if got := o.shellLookup(tt.goos); got != tt.want {
+				t.Fatalf("got %q want %q", got, tt.want)
+			}
+			if gotName != tt.wantName || !reflect.DeepEqual(gotArgs, tt.wantArgs) {
+				t.Fatalf("exec %q %v want %q %v", gotName, gotArgs, tt.wantName, tt.wantArgs)
+			}
+		})
+	}
 }

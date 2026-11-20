@@ -49,6 +49,9 @@ type Runner struct {
 	WorkDir    string // ジョブディレクトリの親（アプリの作業ディレクトリ）
 	Model      string
 	Timeout    time.Duration // 0 なら 5 分
+	// Env は claude に追加する環境変数（"KEY=VALUE"）。空なら親プロセスの環境をそのまま引き継ぐ（従来どおり）。
+	// 指定時は親の環境に追記する（同名キーは Env が優先）。テストが t.Setenv に頼らず FakeClaude を制御するために使う。
+	Env []string
 }
 
 // Result は実行結果。
@@ -116,6 +119,9 @@ func (r *Runner) execute(ctx context.Context, promptText string, in any) (*Resul
 
 	cmd := exec.CommandContext(cctx, r.ClaudePath, buildArgs(promptText, r.Model)...)
 	cmd.Dir = dir
+	if len(r.Env) > 0 {
+		cmd.Env = append(os.Environ(), r.Env...)
+	}
 	configureProc(cmd)
 	cmd.WaitDelay = 2 * time.Second
 	logf, err := os.Create(filepath.Join(dir, "job.log"))
