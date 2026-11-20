@@ -66,12 +66,11 @@ var onlyImports = map[string][]string{
 
 // allowlistCap は許容リストの件数の固定上限。増やす変更は禁止（違反は直す）。
 // リストを減らしたら、この値も同じだけ下げる（件数が一致しないと失敗する）。目標は 0。
-const allowlistCap = 2
+const allowlistCap = 1
 
 // allowlist は現状の違反（"from -> to"）と理由。リファクタリング（docs/architecture.md の移行計画）で 0 にする。
 var allowlist = map[string]string{
-	". -> internal/applier":   "エントリが service を介さずに applier を直接使う。M3 で service に集約して解消",
-	". -> internal/collector": "同上（collector）。M3 で解消",
+	". -> internal/applier": "エントリが service を介さずに applier を直接使う。M3 で service に集約して解消",
 }
 
 type pkgInfo struct {
