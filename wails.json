@@ -9,7 +9,7 @@
   "info": {
     "companyName": "harness-app",
     "productName": "harness-app",
-    "productVersion": "0.1.0-rc.2",
+    "productVersion": "0.1.0-rc.3",
     "copyright": "Copyright © 2026 harness-app",
     "comments": "Claude Code のハーネスをセッションログから継続改善するローカルアプリ"
   }
