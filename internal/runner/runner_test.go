@@ -3,6 +3,7 @@ package runner
 import (
 	"context"
 	"errors"
+	"fmt"
 	"os"
 	"path/filepath"
 	"runtime"
@@ -31,16 +32,16 @@ func newRunner(t *testing.T, env ...string) *Runner {
 
 // waitForFile は path が非空で現れるまで短間隔でポーリングする（固定 sleep を避ける）。FakeClaude は起動直後に
 // FAKE_CLAUDE_ARGS_FILE へ書くので、その出現を「起動した」マーカーとして使う。
-func waitForFile(t *testing.T, path string) {
-	t.Helper()
+// goroutine からも呼べるよう、t.Fatal ではなくエラーを返す。
+func waitForFile(path string) error {
 	deadline := time.Now().Add(30 * time.Second)
 	for time.Now().Before(deadline) {
 		if st, err := os.Stat(path); err == nil && st.Size() > 0 {
-			return
+			return nil
 		}
 		time.Sleep(5 * time.Millisecond)
 	}
-	t.Fatalf("FakeClaude の起動マーカー %s が現れない", path)
+	return fmt.Errorf("FakeClaude の起動マーカー %s が現れない", path)
 }
 
 func TestRunOK(t *testing.T) {
@@ -129,8 +130,16 @@ func TestCancel(t *testing.T) {
 	r.Timeout = time.Minute // タイムアウトではなくキャンセルで終わることを確かめる
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
-	go func() { waitForFile(t, started); cancel() }()
+	waitErr := make(chan error, 1)
+	go func() {
+		err := waitForFile(started)
+		cancel() // 待機に失敗しても Run を止めてテストが固まらないようにする
+		waitErr <- err
+	}()
 	_, err := r.Run(ctx, Input{})
+	if werr := <-waitErr; werr != nil {
+		t.Fatal(werr)
+	}
 	if !errors.Is(err, ErrCanceled) {
 		t.Fatalf("err=%v", err)
 	}
