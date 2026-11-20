@@ -15,6 +15,7 @@ import (
 	"harness-app/internal/config"
 	"harness-app/internal/digest"
 	"harness-app/internal/masking"
+	"harness-app/internal/osutil"
 	"harness-app/internal/runner"
 	"harness-app/internal/scheduler"
 	"harness-app/internal/store"
@@ -91,6 +92,9 @@ type Config = config.Config
 
 // DefaultDataDir は OS 標準のアプリデータディレクトリを返す。
 func DefaultDataDir() (string, error) { return config.DataDir("") }
+
+// OpenPath は path を OS のファイラで開く（osutil.OpenPath への委譲。エントリが osutil を直接 import しないための公開）。
+func OpenPath(path string) error { return osutil.OpenPath(path) }
 
 // Settings は現在の設定。
 func (s *Service) Settings() config.Config { return s.config() }

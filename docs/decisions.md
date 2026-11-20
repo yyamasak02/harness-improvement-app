@@ -37,3 +37,4 @@
 - 2026-11-21 依存検査の方式（#175）: go list の実行ではなく go/parser で import を静的に読む（外部プロセス・実ホーム不要で CI の test-go にそのまま載る）。現状の違反 8 件（Go）と 1 件（フロント）は理由付き許容リストに登録し、件数の固定上限と一致しないと失敗させる（増やす・消し忘れの両方を検出）。新規依存は追加しない。パッケージ移動は後続のリファクタリング（移行計画 F1・M1〜M5）で行い、この PR ではコードを変えない
 - 2026-11-21 M3 第1段階の方式（#183）: app.go の config 直接依存は、service.Config を config.Config の型エイリアスにして外す。型の形は service が所有しておらず、依存の向きの整備としては半分。独立した設定 DTO（service.Settings）と変換関数に置き換える案は、wailsjs の型の再生成が要るため、挙動不変の PR には向かず、M3 の最後（または M4 の分割時）に検討する
 - 2026-11-21 M3 第2段階（#183）: targets・extensions も同じく型エイリアス（service.Target / service.ExtensionsReport）で app.go の import を外す。wailsjs は変わらない
+- 2026-11-21 M3 第3段階（#183）: osutil は型が無いため service.OpenPath（関数の委譲）で app.go の import を外す。wailsjs は変わらない（App のメソッドは不変）

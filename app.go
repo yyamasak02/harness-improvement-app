@@ -11,7 +11,6 @@ import (
 
 	"harness-app/internal/applier"
 	"harness-app/internal/collector"
-	"harness-app/internal/osutil"
 	"harness-app/internal/service"
 	"harness-app/internal/store"
 )
@@ -336,5 +335,5 @@ func (a *App) OpenDataDir() error {
 	if err != nil {
 		return err
 	}
-	return osutil.OpenPath(dir)
+	return service.OpenPath(dir)
 }
