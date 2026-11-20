@@ -14,3 +14,5 @@ __pycache__/
 
 # parallel-work のサブエージェントの worktree
 .claude/worktrees/
+frontend/test-results/
+frontend/playwright-report/

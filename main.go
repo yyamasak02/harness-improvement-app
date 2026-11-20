@@ -20,6 +20,9 @@ func main() {
 		Title:  "harness-app",
 		Width:  1024,
 		Height: 768,
+		// 小さいウィンドウでも UI が枠からはみ出さない下限（E2E で検証している最小サイズ）
+		MinWidth:  640,
+		MinHeight: 480,
 		AssetServer: &assetserver.Options{
 			Assets: assets,
 		},

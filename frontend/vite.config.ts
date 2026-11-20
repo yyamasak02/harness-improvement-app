@@ -13,6 +13,7 @@ const keepDist = () => ({
 export default defineConfig({
   plugins: [react(), keepDist()],
   test: {
+    exclude: ['e2e/**', 'node_modules/**', 'dist/**'],
     environment: 'jsdom',
     setupFiles: ['./src/test-setup.ts'],
     globals: true,
