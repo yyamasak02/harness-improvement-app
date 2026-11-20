@@ -20,6 +20,47 @@ type ResolveOptions struct {
 	Home        string        // ③ 候補パスの基準（~ / %USERPROFILE% 相当）
 	AppData     string        // Windows の %APPDATA%（npm グローバルの shim 置き場）。空なら環境変数を使う
 	GOOS        string        // テスト用。空なら runtime.GOOS
+
+	Env        func(string) string                               // 環境変数の取得（SHELL・APPDATA）。nil なら os.Getenv
+	Exec       func(name string, args ...string) ([]byte, error) // 外部コマンドの実行（標準出力を返す）。nil なら os/exec
+	FixedPaths func(home string) []string                        // 非 Windows の「~/.claude/local・~/.local/bin」より後ろの候補。nil なら既定（/opt/homebrew/bin/claude など）
+}
+
+func (o ResolveOptions) env(key string) string {
+	if o.Env != nil {
+		return o.Env(key)
+	}
+	return os.Getenv(key)
+}
+
+func (o ResolveOptions) exec(name string, args ...string) ([]byte, error) {
+	if o.Exec != nil {
+		return o.Exec(name, args...)
+	}
+	return defaultExec(name, args...)
+}
+
+func (o ResolveOptions) fixedPaths(home string) []string {
+	if o.FixedPaths != nil {
+		return o.FixedPaths(home)
+	}
+	return defaultFixedPaths(home)
+}
+
+// defaultFixedPaths は非 Windows の既知のインストール先（優先順）。
+func defaultFixedPaths(home string) []string {
+	return []string{
+		"/opt/homebrew/bin/claude",
+		"/usr/local/bin/claude",
+		filepath.Join(home, ".npm-global", "bin", "claude"),
+		"/usr/bin/claude", // Linux（パッケージ・WSL）
+	}
+}
+
+func defaultExec(name string, args ...string) ([]byte, error) {
+	cmd := exec.Command(name, args...)
+	hideWindow(cmd)
+	return cmd.Output()
 }
 
 func (o ResolveOptions) goos() string {
@@ -51,23 +92,21 @@ func isExecutable(goos, path string) bool {
 }
 
 // DefaultShellLookup は GUI 起動で PATH が最小限でも claude を見つけるための既定探索。
-func DefaultShellLookup() string { return shellLookup(runtime.GOOS) }
+func DefaultShellLookup() string { return ResolveOptions{}.shellLookup(runtime.GOOS) }
 
-func shellLookup(goos string) string {
+func (o ResolveOptions) shellLookup(goos string) string {
 	if goos == "windows" {
-		cmd := exec.Command("where", "claude")
-		hideWindow(cmd)
-		out, err := cmd.Output()
+		out, err := o.exec("where", "claude")
 		if err != nil {
 			return ""
 		}
 		return pickWindowsCandidate(string(out))
 	}
-	sh := os.Getenv("SHELL")
+	sh := o.env("SHELL")
 	if sh == "" {
 		return ""
 	}
-	out, err := exec.Command(sh, "-lc", "command -v claude").Output()
+	out, err := o.exec(sh, "-lc", "command -v claude")
 	if err != nil {
 		return ""
 	}
@@ -96,6 +135,11 @@ func pickWindowsCandidate(out string) string {
 
 // candidates は既知のインストール先（優先順）。
 func candidates(goos, home, appData string) []string {
+	return candidatesWith(goos, home, appData, defaultFixedPaths)
+}
+
+// candidatesWith は candidates の固定パス部分（非 Windows）を差し替え可能にしたもの。
+func candidatesWith(goos, home, appData string, fixed func(home string) []string) []string {
 	if goos == "windows" {
 		if appData == "" {
 			appData = filepath.Join(home, "AppData", "Roaming")
@@ -107,14 +151,10 @@ func candidates(goos, home, appData string) []string {
 			filepath.Join(home, ".npm-global", "claude.cmd"),
 		}
 	}
-	return []string{
+	return append([]string{
 		filepath.Join(home, ".claude", "local", "claude"),
 		filepath.Join(home, ".local", "bin", "claude"),
-		"/opt/homebrew/bin/claude",
-		"/usr/local/bin/claude",
-		filepath.Join(home, ".npm-global", "bin", "claude"),
-		"/usr/bin/claude", // Linux（パッケージ・WSL）
-	}
+	}, fixed(home)...)
 }
 
 // ResolveClaude は ①設定値 ②ログインシェル（Windows は where）③既知の場所 の順で claude を探す。
@@ -128,16 +168,16 @@ func ResolveClaude(o ResolveOptions) (string, error) {
 	}
 	lookup := o.ShellLookup
 	if lookup == nil {
-		lookup = func() string { return shellLookup(goos) }
+		lookup = func() string { return o.shellLookup(goos) }
 	}
 	if p := lookup(); p != "" && isExecutable(goos, p) {
 		return p, nil
 	}
 	appData := o.AppData
 	if appData == "" && goos == "windows" {
-		appData = os.Getenv("APPDATA")
+		appData = o.env("APPDATA")
 	}
-	for _, c := range candidates(goos, o.Home, appData) {
+	for _, c := range candidatesWith(goos, o.Home, appData, o.fixedPaths) {
 		if isExecutable(goos, c) {
 			return c, nil
 		}
