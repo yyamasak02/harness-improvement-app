@@ -12,7 +12,6 @@ import (
 	"harness-app/internal/applier"
 	"harness-app/internal/collector"
 	"harness-app/internal/service"
-	"harness-app/internal/store"
 )
 
 // App は Wails バインディング層。ロジックは internal/service に置く。
@@ -171,7 +170,7 @@ func (a *App) ListProjects() ([]service.ProjectStat, error) {
 	return a.svc.ListProjects()
 }
 
-func (a *App) ListSessions(project string, days, limit int) ([]store.Session, error) {
+func (a *App) ListSessions(project string, days, limit int) ([]service.Session, error) {
 	if err := a.ready(); err != nil {
 		return nil, err
 	}
@@ -185,7 +184,7 @@ func (a *App) GetSession(id string) (service.SessionDetail, error) {
 	return a.svc.GetSession(id)
 }
 
-func (a *App) Search(q string) ([]store.SearchHit, error) {
+func (a *App) Search(q string) ([]service.SearchHit, error) {
 	if err := a.ready(); err != nil {
 		return nil, err
 	}
