@@ -83,6 +83,12 @@ func (s *Service) now() time.Time {
 
 // ---- 設定 ----
 
+// Config はアプリ設定（config.Config の別名。エントリが config を直接 import しないための公開）。
+type Config = config.Config
+
+// DefaultDataDir は OS 標準のアプリデータディレクトリを返す。
+func DefaultDataDir() (string, error) { return config.DataDir("") }
+
 // Settings は現在の設定。
 func (s *Service) Settings() config.Config { return s.config() }
 
