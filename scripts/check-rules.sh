@@ -58,5 +58,26 @@ hits=$(git ls-files | grep -E '(^|/)__pycache__/|\.pyc$' || true)
 # 11. go:embed のプレースホルダーが追跡されていること（無いとクリーンな clone で go vet が失敗する）
 [ -n "$(git ls-files frontend/dist/.gitkeep)" ] || report "frontend/dist/.gitkeep が追跡されていません（main.go の go:embed が失敗します）" "git add -f frontend/dist/.gitkeep"
 
+# 13. 計測（UX 指標・#157）はテレメトリ・外部送信を配布物に持ち込まない。
+#     アプリ本体（frontend/src の非テスト）は外部送信 API・計測ライブラリを使わない。計測の依存（axe-core / playwright）は devDependencies のみ。
+#     E2E（frontend/e2e）の計測コードは localhost 以外の URL を持たない。
+hits=$(grep -rnE 'sendBeacon|XMLHttpRequest|new (WebSocket|EventSource)\(|\bfetch *\(|PerformanceObserver|axe-core|@playwright|ux-metrics' \
+  --include='*.ts' --include='*.tsx' frontend/src | grep -vE '\.test\.tsx?:' || true)
+[ -z "$hits" ] || report "アプリ本体に外部送信・計測のコードがあります（計測は frontend/e2e の開発用だけに置くこと）" "$hits"
+pkg="${HARNESS_PKG_JSON:-frontend/package.json}"
+if [ -f "$pkg" ]; then
+  hits=$(python3 - "$pkg" <<'PY'
+import json, sys
+deps = json.load(open(sys.argv[1])).get("dependencies", {})
+for name in deps:
+    if "axe-core" in name or "playwright" in name or "telemetry" in name or "analytics" in name or "sentry" in name:
+        print(name)
+PY
+)
+  [ -z "$hits" ] || report "計測・テスト用の依存が dependencies にあります（devDependencies に置くこと）" "$hits"
+fi
+hits=$(grep -rnE 'https?://' frontend/e2e 2>/dev/null | grep -vE 'https?://(127\.0\.0\.1|localhost)' || true)
+[ -z "$hits" ] || report "E2E の計測コードに localhost 以外の URL があります（外部送信禁止）" "$hits"
+
 [ $fail -eq 0 ] && echo "check-rules OK"
 exit $fail

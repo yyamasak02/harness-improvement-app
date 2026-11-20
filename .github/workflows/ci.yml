@@ -221,6 +221,30 @@ jobs:
       - name: E2E（vite のビルド結果を mockApi で動かす。実 ~/.claude・実 claude は使わない）
         run: cd frontend && npm run e2e
 
+  ux-metrics:
+    name: ux-metrics（ユーザー体験の計測・予算超過で失敗）
+    runs-on: ubuntu-latest
+    needs: [test-frontend]
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: npm
+          cache-dependency-path: frontend/package-lock.json
+      - run: cd frontend && npm ci
+      - name: ブラウザ（chromium）を取得
+        run: cd frontend && npx playwright install --with-deps chromium
+      - name: UX 指標を計測（mockApi・合成データ。結果はジョブサマリーに出る。docs/ux-metrics.md）
+        run: cd frontend && npm run e2e:ux
+      - name: 結果 JSON をアーティファクトに保存（推移の確認用）
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: ux-metrics
+          path: frontend/ux-metrics-results/
+          if-no-files-found: warn
+
   linux-build-smoke:
     name: linux-build-smoke（WSL・Linux 用バイナリ）
     runs-on: ubuntu-latest
