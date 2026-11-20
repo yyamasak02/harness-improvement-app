@@ -1,6 +1,6 @@
 import {useEffect, useState} from 'react'
 import {api} from '../api'
-import {Card, ErrorBox, Loading} from '../components'
+import {Busy, Card, ErrorBox, Loading, LoadingButton} from '../components'
 import {useAsync} from '../hooks'
 import type {Config, MaskPattern} from '../types'
 
@@ -18,6 +18,8 @@ export default function Settings() {
   const [cfg, setCfg] = useState<Config | null>(null)
   const [error, setError] = useState('')
   const [notice, setNotice] = useState('')
+  const [saving, setSaving] = useState(false)
+  const [rebuilding, setRebuilding] = useState(false)
 
   useEffect(() => { if (loaded.data) setCfg(loaded.data) }, [loaded.data])
 
@@ -28,15 +30,15 @@ export default function Settings() {
   const badRegex = cfg.maskPatterns.some((p) => regexError(p))
 
   async function save() {
-    setError(''); setNotice('')
-    try { await api.saveSettings(cfg as Config); setNotice('保存しました'); } catch (e) { setError(e instanceof Error ? e.message : String(e)) }
+    setError(''); setNotice(''); setSaving(true)
+    try { await api.saveSettings(cfg as Config); setNotice('保存しました'); } catch (e) { setError(e instanceof Error ? e.message : String(e)) } finally { setSaving(false) }
   }
   async function rebuild() {
-    setError(''); setNotice('')
+    setError(''); setNotice(''); setRebuilding(true)
     try {
       const s = await api.reindex(true)
       setNotice(`インデックスを再構築しました（取り込み ${s.Ingested} 件、壊れた行 ${s.BrokenLines}）`)
-    } catch (e) { setError(e instanceof Error ? e.message : String(e)) }
+    } catch (e) { setError(e instanceof Error ? e.message : String(e)) } finally { setRebuilding(false) }
   }
 
   return (
@@ -83,6 +85,7 @@ export default function Settings() {
           生成には claude を使うためトークンを消費します。前回の試行から 24 時間以上たち、新しいセッションがあるときだけ実行します（失敗しても 24 時間は再試行しません）。
           自動で作るのは提案までです。「CLAUDE.md 改善」画面で差分を確認し、「適用」を押したときだけ書き込まれます。
         </p>
+        {suggest.data?.running && <Busy label="自動提案を実行中…" />}
         {suggest.data?.lastAttemptAt && <p className="mt-1 text-xs text-gray-500">前回の試行: {new Date(suggest.data.lastAttemptAt).toLocaleString('ja-JP')}</p>}
         {suggest.data?.hasProposal && <p className="mt-1 text-xs text-green-700">未確認の提案があります（「CLAUDE.md 改善」画面で確認できます）。</p>}
         <ErrorBox message={suggest.data?.lastError ? `前回の自動生成に失敗しました: ${suggest.data.lastError}` : ''} />
@@ -118,8 +121,8 @@ export default function Settings() {
       </Card>
 
       <div className="flex flex-wrap gap-2">
-        <button className="rounded bg-blue-600 px-4 py-1.5 text-sm text-white disabled:opacity-50" disabled={badRegex} onClick={() => void save()}>保存</button>
-        <button className="rounded border px-4 py-1.5 text-sm" onClick={() => void rebuild()}>インデックスを再構築</button>
+        <LoadingButton className="rounded bg-blue-600 px-4 py-1.5 text-sm text-white disabled:opacity-50" busy={saving} busyLabel="保存中…" disabled={badRegex || rebuilding} onClick={() => void save()}>保存</LoadingButton>
+        <LoadingButton className="rounded border px-4 py-1.5 text-sm disabled:opacity-50" busy={rebuilding} busyLabel="再構築中…" disabled={saving} onClick={() => void rebuild()}>インデックスを再構築</LoadingButton>
         <button className="rounded border px-4 py-1.5 text-sm" onClick={() => void api.openDataDir()}>データディレクトリを開く</button>
       </div>
     </div>

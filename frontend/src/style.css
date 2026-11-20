@@ -7,3 +7,12 @@
   main .grid > * { min-width: 0; }
   main pre, main code { overflow-wrap: anywhere; }
 }
+
+/* スピナー。動きを減らす設定のときは回転せず静止させる */
+@layer utilities {
+  .spinner { animation: spinner-rotate 0.8s linear infinite; }
+  @media (prefers-reduced-motion: reduce) {
+    .spinner { animation: none; }
+  }
+}
+@keyframes spinner-rotate { to { transform: rotate(360deg); } }

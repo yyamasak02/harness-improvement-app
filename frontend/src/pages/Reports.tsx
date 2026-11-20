@@ -1,7 +1,7 @@
 import {useEffect, useState} from 'react'
 import Markdown from 'react-markdown'
 import {api} from '../api'
-import {Card, ErrorBox} from '../components'
+import {Card, ErrorBox, LoadingButton} from '../components'
 import {useAsync} from '../hooks'
 
 export default function Reports() {
@@ -53,9 +53,7 @@ export default function Reports() {
       <ErrorBox message={error || list.error} />
       {notice && <p role="status" className="rounded border border-green-300 bg-green-50 p-2 text-sm">{notice}</p>}
       <div className="flex gap-2">
-        <button className="rounded bg-blue-600 px-3 py-1 text-sm text-white disabled:opacity-50" disabled={busy} onClick={generate}>
-          {busy ? '生成中…' : '今日の日報を生成'}
-        </button>
+        <LoadingButton className="rounded bg-blue-600 px-3 py-1 text-sm text-white disabled:opacity-50" busy={busy} busyLabel="生成中…" onClick={generate}>今日の日報を生成</LoadingButton>
         <button className="rounded border px-3 py-1 text-sm" onClick={showPlist}>launchd の plist を生成</button>
       </div>
       {plist && (

@@ -1,7 +1,7 @@
 import {useState} from 'react'
 import Markdown from 'react-markdown'
 import {api} from '../api'
-import {Card, ErrorBox} from '../components'
+import {Busy, Card, ErrorBox, LoadingButton} from '../components'
 import DiffView from '../DiffView'
 import {useAsync} from '../hooks'
 import type {Manifest, SkillProposal} from '../types'
@@ -83,10 +83,10 @@ export default function Skills() {
             </label>
           </fieldset>
           <div className="mt-3 flex gap-2">
-            <button className="rounded bg-blue-600 px-3 py-1 text-sm text-white disabled:opacity-50" disabled={!name || picked.length === 0 || phase === 'generating'} onClick={() => void generate()}>生成</button>
+            <LoadingButton className="rounded bg-blue-600 px-3 py-1 text-sm text-white disabled:opacity-50" busy={phase === 'generating'} busyLabel="生成中…" disabled={!name || picked.length === 0} onClick={() => void generate()}>生成</LoadingButton>
             {phase === 'generating' && <button className="rounded border border-red-400 px-3 py-1 text-sm text-red-700" onClick={() => void api.cancelGeneration()}>キャンセル</button>}
           </div>
-          {phase === 'generating' && <p className="mt-2 text-sm text-gray-600" role="status">生成中…（claude を実行しています）</p>}
+          {phase === 'generating' && <Busy label="生成中…（claude を実行しています）" />}
         </Card>
       )}
 
@@ -107,8 +107,8 @@ export default function Skills() {
           ))}
           <div className="flex gap-2">
             <span className="flex-1" />
-            <button className="rounded border px-3 py-1 text-sm" onClick={discard}>破棄</button>
-            <button className="rounded bg-green-600 px-3 py-1 text-sm text-white disabled:opacity-50" disabled={busy} onClick={() => void apply()}>適用</button>
+            <button className="rounded border px-3 py-1 text-sm disabled:opacity-50" disabled={busy} onClick={discard}>破棄</button>
+            <LoadingButton className="rounded bg-green-600 px-3 py-1 text-sm text-white disabled:opacity-50" busy={busy} busyLabel="適用中…" onClick={() => void apply()}>適用</LoadingButton>
           </div>
         </>
       )}
