@@ -28,6 +28,8 @@ type Config struct {
 	// 日次振り返り（F6）。DailyReportTime は "HH:MM"（空なら 21:00）。
 	DailyReportEnabled bool   `json:"dailyReportEnabled"`
 	DailyReportTime    string `json:"dailyReportTime"`
+	// 改善案の自動生成（既定オフ。claude -p を使うためトークンを消費する）。生成までで、適用は人の操作が必須。
+	AutoSuggestEnabled bool `json:"autoSuggestEnabled"`
 }
 
 // Clone はスライスも含めて複製する（共有による data race を避けるため）。

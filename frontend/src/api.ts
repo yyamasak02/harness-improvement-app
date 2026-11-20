@@ -17,6 +17,10 @@ export interface Api {
   listMemories(): Promise<T.MemoryItem[]>
   listExtensions(): Promise<T.ExtensionsReport>
   readTarget(path: string): Promise<T.TargetContent>
+  autoSuggestStatus(): Promise<T.AutoSuggestStatus>
+  /** 自動生成された未確認の提案（無ければ null）。適用はしない。 */
+  autoSuggestion(): Promise<T.Proposal | null>
+  dismissAutoSuggestion(): Promise<void>
   buildDigest(project: string, days: number): Promise<string>
   generateProposal(req: T.ProposalRequest): Promise<T.Proposal>
   cancelGeneration(): Promise<void>
@@ -51,6 +55,9 @@ export const wailsApi: Api = {
   listMemories: () => cast(App.ListMemories()),
   listExtensions: () => cast(App.ListExtensions()),
   readTarget: (p) => cast(App.ReadTarget(p)),
+  autoSuggestStatus: () => cast(App.AutoSuggestStatus()),
+  autoSuggestion: () => cast(App.AutoSuggestion()),
+  dismissAutoSuggestion: () => App.DismissAutoSuggestion(),
   buildDigest: (p, d) => App.BuildDigest(p, d),
   generateProposal: (r) => cast(App.GenerateProposal(r as never)),
   cancelGeneration: () => App.CancelGeneration(),

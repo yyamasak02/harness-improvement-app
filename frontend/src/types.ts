@@ -9,6 +9,10 @@ export interface Config {
   timeoutSeconds: number
   dailyReportEnabled: boolean
   dailyReportTime: string
+  autoSuggestEnabled: boolean
+}
+export interface AutoSuggestStatus {
+  enabled: boolean; running: boolean; lastAttemptAt: string; lastError: string; hasProposal: boolean
 }
 export interface ReportInfo { date: string; path: string }
 export interface Session {

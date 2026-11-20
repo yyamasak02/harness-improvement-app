@@ -12,11 +12,17 @@ export function ApplyProposal(arg1:string,arg2:string,arg3:string):Promise<appli
 
 export function ApplySkill(arg1:string,arg2:Array<service.SkillApplyFile>):Promise<Array<applier.Manifest>>;
 
+export function AutoSuggestStatus():Promise<service.AutoSuggestStatus>;
+
+export function AutoSuggestion():Promise<service.Proposal>;
+
 export function BuildDigest(arg1:string,arg2:number):Promise<string>;
 
 export function CancelGeneration():Promise<void>;
 
 export function CheckClaude():Promise<service.ClaudeStatus>;
+
+export function DismissAutoSuggestion():Promise<void>;
 
 export function GenerateProposal(arg1:service.ProposalRequest):Promise<service.Proposal>;
 

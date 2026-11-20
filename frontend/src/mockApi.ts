@@ -38,7 +38,7 @@ export function mockApi(): Api {
   }
   const hashOf = (p: string) => (p in files ? 'h:' + files[p].length + ':' + files[p].slice(0, 8) : 'absent')
   let history: T.BackupEntry[] = []
-  let cfg: T.Config = {claudePath: '', model: '', excludedProjects: [], correctionPatterns: ['違う', "don't"], maskPatterns: [], timeoutSeconds: 300, dailyReportEnabled: false, dailyReportTime: ''}
+  let cfg: T.Config = {claudePath: '', model: '', excludedProjects: [], correctionPatterns: ['違う', "don't"], maskPatterns: [], timeoutSeconds: 300, dailyReportEnabled: false, dailyReportTime: '', autoSuggestEnabled: false}
   const reports: Record<string, string> = {}
   let cancelFn: (() => void) | null = null
   const delay = <V,>(v: V, ms = 0) => new Promise<V>((res) => setTimeout(() => res(v), ms))
@@ -88,6 +88,9 @@ export function mockApi(): Api {
       return {target: t, content: files[p] ?? '', hash: hashOf(p)}
     },
     buildDigest: (p, d) => delay(`# セッション digest\n\n- 対象: ${p || '全プロジェクト'}\n- 期間: 直近 ${d} 日\n\n## 統計\n\n| セッション数 | 2 |\n\n## 訂正発言の抜粋\n\n- 違う、そうじゃなくて先に go vet を実行して\n`),
+    autoSuggestStatus: async () => ({enabled: cfg.autoSuggestEnabled, running: false, lastAttemptAt: '', lastError: '', hasProposal: false}),
+    autoSuggestion: async () => null,
+    dismissAutoSuggestion: async () => {},
     generateProposal: (req) => new Promise((resolve, reject) => {
       const t = setTimeout(() => {
         cancelFn = null
