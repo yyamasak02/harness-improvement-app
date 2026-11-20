@@ -12,6 +12,8 @@ type Phase = 'select' | 'generating' | 'review' | 'applied'
 export default function Improve() {
   const targets = useAsync(() => api.listTargets(), [])
   const projects = useAsync(() => api.listProjects(), [])
+  const auto = useAsync(() => api.autoSuggestion(), [])
+  const [autoHidden, setAutoHidden] = useState(false)
   const [path, setPath] = useState('')
   const [days, setDays] = useState(30)
   const [instruction, setInstruction] = useState('')
@@ -60,8 +62,18 @@ export default function Improve() {
     setError(''); setBusy(true)
     try {
       setApplied(await api.applyProposal(proposal.targetPath, edited, proposal.baseHash))
+      if (auto.data && auto.data.jobId === proposal.jobId) await api.dismissAutoSuggestion()
       setPhase('applied')
     } catch (e) { fail(e) } finally { setBusy(false) }
+  }
+
+  /** 自動生成された提案を確認画面に開く（適用は差分を見て人が押す）。 */
+  function openAuto(p: Proposal) {
+    setPath(p.targetPath); setProposal(p); setEdited(p.output); setEditing(false); setError(''); setPhase('review'); setAutoHidden(true)
+  }
+
+  async function dismissAuto() {
+    try { await api.dismissAutoSuggestion(); setAutoHidden(true) } catch (e) { fail(e) }
   }
 
   function discard() {
@@ -73,6 +85,16 @@ export default function Improve() {
       <h2 className="text-xl font-bold">CLAUDE.md 改善</h2>
       <p className="text-sm text-gray-600">AI の出力は自動では保存されません。差分を確認して「適用」を押したときだけ書き込まれます（適用前に自動でバックアップされます）。</p>
       <ErrorBox message={error || targets.error} />
+
+      {auto.data && !autoHidden && phase === 'select' && (
+        <Card title="自動生成された提案があります">
+          <p className="text-sm">設定で有効にした自動生成により、{auto.data.targetPath} の改善案が作られています。まだ何も書き込まれていません。差分を確認して、よければ「適用」を押してください。</p>
+          <div className="mt-3 flex gap-2">
+            <button className="rounded bg-blue-600 px-3 py-1 text-sm text-white" onClick={() => openAuto(auto.data as Proposal)}>差分を確認する</button>
+            <button className="rounded border px-3 py-1 text-sm" onClick={() => void dismissAuto()}>破棄</button>
+          </div>
+        </Card>
+      )}
 
       {(phase === 'select' || phase === 'generating') && (
         <Card title="① 対象と条件">

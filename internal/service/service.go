@@ -43,6 +43,7 @@ type Service struct {
 
 	reportBusy     bool      // 日報の定期生成中（mu で保護）
 	reportFailedAt time.Time // 直近の定期生成の失敗時刻（mu で保護）
+	suggestBusy    bool      // 改善案の自動生成中（mu で保護）
 }
 
 // New は設定を読み DB を開く。
@@ -279,6 +280,16 @@ type Proposal struct {
 
 // GenerateProposal は digest を作り claude -p で改善案を生成する。ファイルは書き換えない。
 func (s *Service) GenerateProposal(ctx context.Context, req ProposalRequest) (*Proposal, error) {
+	r, ctx, done, err := s.startRunner(ctx)
+	if err != nil {
+		return nil, err
+	}
+	defer done()
+	return s.propose(ctx, r, req)
+}
+
+// propose は digest（masking 済み）と対象ファイルから claude -p で改善案を作る。手動・自動生成で共有する。
+func (s *Service) propose(ctx context.Context, r *runner.Runner, req ProposalRequest) (*Proposal, error) {
 	tc, err := s.ReadTarget(req.TargetPath)
 	if err != nil {
 		return nil, err
@@ -291,12 +302,6 @@ func (s *Service) GenerateProposal(ctx context.Context, req ProposalRequest) (*P
 	if err != nil {
 		return nil, err
 	}
-	r, ctx, done, err := s.startRunner(ctx)
-	if err != nil {
-		return nil, err
-	}
-	defer done()
-
 	res, err := r.Run(ctx, runner.Input{
 		Digest:          d,
 		CurrentClaudeMd: m.Mask(tc.Content), // 対象ファイル本文も masking を通して渡す
