@@ -11,6 +11,7 @@ import (
 	"os"
 	"path/filepath"
 	"sort"
+	"sync"
 	"time"
 
 	"harness-app/internal/fsutil"
@@ -27,6 +28,11 @@ var (
 	// ErrSymlink はシンボリックリンクへの書き込み拒否。
 	ErrSymlink = errors.New("シンボリックリンクには書き込めません")
 )
+
+// writeMu は Apply / Rollback を直列化する。service は呼び出しごとに Applier を作るため、
+// インスタンスではなくパッケージで持つ。照合（check・ハッシュ）から write の完了までを 1 つの排他に入れ、
+// TOCTOU を防ぐ。Apply と Rollback は互いを呼ばない（再入しない）ので、デッドロックしない。
+var writeMu sync.Mutex
 
 // Applier はバックアップ付きの書き込み器。
 type Applier struct {
@@ -211,6 +217,8 @@ func (a *Applier) removeCreatedDirs(dirs []string) {
 
 // Apply は改善案を適用する。
 func (a *Applier) Apply(r Request) (Manifest, error) {
+	writeMu.Lock()
+	defer writeMu.Unlock()
 	if err := a.check(r.Path); err != nil {
 		return Manifest{}, err
 	}
@@ -286,6 +294,8 @@ func (a *Applier) Get(id string) (Entry, error) {
 
 // Rollback は履歴 id の操作前の状態へ戻す。ロールバック自体もバックアップを取る。
 func (a *Applier) Rollback(id string) (Manifest, error) {
+	writeMu.Lock()
+	defer writeMu.Unlock()
 	e, err := a.Get(id)
 	if err != nil {
 		return Manifest{}, err
