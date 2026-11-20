@@ -47,6 +47,7 @@ export function mockApi(): Api {
 
   return {
     settings: () => delay(cfg),
+    settingsStatus: async () => ({newerFormat: false, message: ''}),
     saveSettings: async (c) => {
       for (const m of c.maskPatterns) new RegExp(m.regex) // 不正な正規表現は例外
       cfg = c

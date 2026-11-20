@@ -36,6 +36,8 @@ type Service struct {
 	env Env
 	st  *store.Store
 	cfg config.Config
+	// cfgNewer は config.json が新しい形式で読めなかった（既定値で動作中。Save は拒否される）。起動時に確定し不変。
+	cfgNewer bool
 
 	mu      sync.Mutex
 	cancel  context.CancelFunc
@@ -52,7 +54,8 @@ func New(env Env) (*Service, error) {
 		return nil, errors.New("ClaudeDir と DataDir は必須です")
 	}
 	cfg, err := config.Load(env.DataDir)
-	if err != nil {
+	newer := errors.Is(err, config.ErrNewerFormat)
+	if err != nil && !newer {
 		return nil, fmt.Errorf("設定の読み込み: %w", err)
 	}
 	if err := os.MkdirAll(env.DataDir, 0o755); err != nil {
@@ -62,7 +65,7 @@ func New(env Env) (*Service, error) {
 	if err != nil {
 		return nil, err
 	}
-	return &Service{env: env, st: st, cfg: cfg}, nil
+	return &Service{env: env, st: st, cfg: cfg, cfgNewer: newer}, nil
 }
 
 // Close は DB を閉じる。
@@ -82,6 +85,20 @@ func (s *Service) now() time.Time {
 
 // Settings は現在の設定。
 func (s *Service) Settings() config.Config { return s.config() }
+
+// SettingsStatus は設定ファイルの読み込み状態（画面の案内用）。
+type SettingsStatus struct {
+	NewerFormat bool   `json:"newerFormat"`
+	Message     string `json:"message"`
+}
+
+// SettingsStatus は設定ファイルが新しい形式で読めなかったときに案内を返す。
+func (s *Service) SettingsStatus() SettingsStatus {
+	if !s.cfgNewer {
+		return SettingsStatus{}
+	}
+	return SettingsStatus{NewerFormat: true, Message: "設定ファイルが新しい形式のため読み込めません（既定値で動作中で、設定の保存はできません）。新しいバージョンに更新するか、設定ファイル（config.json）を退避してください。"}
+}
 
 // config は設定のスナップショット（スケジューラなど別 goroutine からも安全に読める）。
 func (s *Service) config() config.Config {

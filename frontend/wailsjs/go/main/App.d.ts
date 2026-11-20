@@ -71,4 +71,6 @@ export function Search(arg1:string):Promise<Array<store.SearchHit>>;
 
 export function Settings():Promise<config.Config>;
 
+export function SettingsStatus():Promise<service.SettingsStatus>;
+
 export function Version():Promise<string>;

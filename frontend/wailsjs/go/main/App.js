@@ -126,6 +126,10 @@ export function Settings() {
   return window['go']['main']['App']['Settings']();
 }
 
+export function SettingsStatus() {
+  return window['go']['main']['App']['SettingsStatus']();
+}
+
 export function Version() {
   return window['go']['main']['App']['Version']();
 }

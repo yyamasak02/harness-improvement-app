@@ -7,6 +7,7 @@ import (
 	"fmt"
 	"os"
 	"path/filepath"
+	"sync"
 
 	"harness-app/internal/fsutil"
 )
@@ -110,11 +111,22 @@ func Load(dataDir string) (Config, error) {
 	return c, nil
 }
 
+// saveMu は Save の「形式バージョンの確認」から「書き込み」までを直列化する（確認後に別の Save が割り込まない）。
+var saveMu sync.Mutex
+
+// テスト用のフック（本番では nil）。確認直後・書き込み直後に呼ばれる。
+var testHookAfterCheck, testHookAfterWrite func()
+
 // Save は設定を temp → rename で保存する。
-// 既存ファイルが新しい形式なら上書きしない。
+// 既存ファイルが新しい形式なら上書きしない。確認と書き込みは同じ排他の中で行う。
 func Save(dataDir string, c Config) error {
+	saveMu.Lock()
+	defer saveMu.Unlock()
 	if _, err := Load(dataDir); errors.Is(err, ErrNewerFormat) {
 		return err
+	}
+	if testHookAfterCheck != nil {
+		testHookAfterCheck()
 	}
 	c.FormatVersion = FormatVersion
 	b, err := json.MarshalIndent(c, "", "  ")
@@ -123,6 +135,9 @@ func Save(dataDir string, c Config) error {
 	}
 	if err := fsutil.WriteFileAtomic(path(dataDir), b, 0o600); err != nil {
 		return fmt.Errorf("設定保存: %w", err)
+	}
+	if testHookAfterWrite != nil {
+		testHookAfterWrite()
 	}
 	return nil
 }

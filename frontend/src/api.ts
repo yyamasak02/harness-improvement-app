@@ -6,6 +6,7 @@ import type * as T from './types'
 
 export interface Api {
   settings(): Promise<T.Config>
+  settingsStatus(): Promise<T.SettingsStatus>
   saveSettings(c: T.Config): Promise<void>
   reindex(rebuild: boolean): Promise<T.IndexStats>
   overview(days: number): Promise<T.Overview>
@@ -46,6 +47,7 @@ const cast = <U>(p: Promise<unknown>) => p as Promise<U>
 
 export const wailsApi: Api = {
   settings: () => cast(App.Settings()),
+  settingsStatus: () => cast(App.SettingsStatus()),
   saveSettings: (c) => App.SaveSettings(c as never),
   reindex: (r) => cast(App.Reindex(r)),
   overview: (d) => cast(App.Overview(d)),

@@ -318,6 +318,14 @@ func (a *App) Rollback(id string) (applier.Manifest, error) {
 	return a.svc.Rollback(id)
 }
 
+// SettingsStatus は設定ファイルの読み込み状態（新しい形式で読めない場合の案内）。
+func (a *App) SettingsStatus() (service.SettingsStatus, error) {
+	if err := a.ready(); err != nil {
+		return service.SettingsStatus{}, err
+	}
+	return a.svc.SettingsStatus(), nil
+}
+
 func (a *App) CheckClaude() (service.ClaudeStatus, error) {
 	if err := a.ready(); err != nil {
 		return service.ClaudeStatus{}, err

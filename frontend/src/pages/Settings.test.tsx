@@ -10,6 +10,12 @@ test('claude が見つからないときに案内を表示する', async () => {
   expect(screen.getByRole('alert')).toHaveTextContent('which claude')
 })
 
+test('設定ファイルが新しい形式のときに案内を表示する', async () => {
+  vi.spyOn(api, 'settingsStatus').mockResolvedValue({newerFormat: true, message: '設定ファイルが新しい形式のため読み込めません。新しいバージョンに更新するか、設定ファイル（config.json）を退避してください。'})
+  render(<Settings />)
+  expect(await screen.findByText(/新しい形式のため読み込めません/)).toBeInTheDocument()
+})
+
 test('設定を編集して保存できる', async () => {
   render(<Settings />)
   const model = await screen.findByLabelText('使用モデル')
