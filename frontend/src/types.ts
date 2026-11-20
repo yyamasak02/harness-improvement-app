@@ -10,6 +10,7 @@ export interface Config {
   dailyReportEnabled: boolean
   dailyReportTime: string
   autoSuggestEnabled: boolean
+  formatVersion?: number
 }
 export interface AutoSuggestStatus {
   enabled: boolean; running: boolean; lastAttemptAt: string; lastError: string; hasProposal: boolean

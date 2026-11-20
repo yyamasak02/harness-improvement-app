@@ -7,7 +7,7 @@ cd "$(dirname "$0")/.."
 out="${1:-build/bin}"
 bin=build/bin/harness-app
 [ -x "$bin" ] || { echo "$bin がありません。先に make linux を実行してください"; exit 1; }
-ver=$(sed -n 's/.*"productVersion": *"\([^"]*\)".*/\1/p' wails.json)
+ver="${HARNESS_VERSION:-$(sed -n 's/.*"productVersion": *"\([^"]*\)".*/\1/p' wails.json)}"   # HARNESS_VERSION は CI の更新テスト用の上書き（通常は使わない）
 [ -n "$ver" ] || { echo "wails.json からバージョンを読めません"; exit 1; }
 debver="${ver/-/\~}"
 root=$(mktemp -d)

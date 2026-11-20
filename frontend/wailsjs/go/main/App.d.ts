@@ -69,3 +69,5 @@ export function SaveSettings(arg1:config.Config):Promise<void>;
 export function Search(arg1:string):Promise<Array<store.SearchHit>>;
 
 export function Settings():Promise<config.Config>;
+
+export function Version():Promise<string>;

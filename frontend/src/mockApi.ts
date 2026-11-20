@@ -168,6 +168,7 @@ export function mockApi(): Api {
     },
     checkClaude: () => delay({found: false, path: '', error: 'claude コマンドが見つかりません。設定画面でパスを指定してください'}),
     openDataDir: async () => undefined,
+    version: async () => '0.0.0-mock',
     onEvent: () => () => undefined,
   }
 }

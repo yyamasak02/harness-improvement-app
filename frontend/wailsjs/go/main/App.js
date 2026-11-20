@@ -125,3 +125,7 @@ export function Search(arg1) {
 export function Settings() {
   return window['go']['main']['App']['Settings']();
 }
+
+export function Version() {
+  return window['go']['main']['App']['Version']();
+}

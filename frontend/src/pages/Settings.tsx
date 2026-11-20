@@ -15,6 +15,7 @@ export default function Settings() {
   const loaded = useAsync(() => api.settings(), [])
   const claude = useAsync(() => api.checkClaude(), [loaded.data?.claudePath])
   const suggest = useAsync(() => api.autoSuggestStatus(), [])
+  const version = useAsync(() => api.version(), [])
   const [cfg, setCfg] = useState<Config | null>(null)
   const [error, setError] = useState('')
   const [notice, setNotice] = useState('')
@@ -118,6 +119,11 @@ export default function Settings() {
           })}
         </ul>
         <button className="mt-2 btn btn-secondary" onClick={() => set('maskPatterns', [...cfg.maskPatterns, {name: '', regex: ''}])}>パターンを追加</button>
+      </Card>
+
+      <Card title="バージョン情報">
+        <p className="text-sm">現在のバージョン: <span data-testid="app-version">{version.data ?? '取得中…'}</span></p>
+        <p className="mt-1 text-xs text-muted">アプリは更新の確認を行いません（通信しません）。新しいバージョンへの更新方法は README の「更新の方法」を参照してください。設定・履歴・バックアップは更新で消えません。</p>
       </Card>
 
       <div className="flex flex-wrap gap-2">
