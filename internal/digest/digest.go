@@ -96,6 +96,10 @@ func Build(st *store.Store, m *masking.Masker, opt Options) (string, error) {
 		fmt.Fprintf(&b, "- [%s] %s\n", safeDate(ts), excerpt(text, 300))
 		n++
 	}
+	if err := rows.Err(); err != nil {
+		rows.Close()
+		return "", fmt.Errorf("訂正の反復: %w", err)
+	}
 	rows.Close()
 	if n == 0 {
 		b.WriteString("（なし）\n")
@@ -118,6 +122,10 @@ func Build(st *store.Store, m *masking.Masker, opt Options) (string, error) {
 			tool = "(不明)"
 		}
 		errCounts[tool+": "+firstLine(text)]++
+	}
+	if err := rows.Err(); err != nil {
+		rows.Close()
+		return "", fmt.Errorf("エラーの反復: %w", err)
 	}
 	rows.Close()
 	b.WriteString("\n## ツールエラーのまとめ（ツール: 先頭行 / 件数）\n\n")
@@ -144,6 +152,10 @@ func Build(st *store.Store, m *masking.Masker, opt Options) (string, error) {
 		if t := collector.FirstToken(text); t != "" {
 			cmds[t]++
 		}
+	}
+	if err := rows.Err(); err != nil {
+		rows.Close()
+		return "", fmt.Errorf("コマンドの反復: %w", err)
 	}
 	rows.Close()
 	b.WriteString("\n## 頻出コマンド（Bash 先頭トークン）\n\n")
