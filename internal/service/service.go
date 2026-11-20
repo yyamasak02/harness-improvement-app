@@ -399,3 +399,11 @@ type Session = store.Session
 
 // SearchHit は検索結果の 1 件（store.SearchHit の別名。同上）。
 type SearchHit = store.SearchHit
+
+// IndexStats は取り込み結果（collector.Stats の別名。エントリが collector を直接 import しないための公開）。
+type IndexStats = collector.Stats
+
+// Watch は ClaudeDir 配下の jsonl 変更を監視し、debounce 後に onChange を呼ぶ。ctx 終了で停止する（collector.Watch への委譲）。
+func (s *Service) Watch(ctx context.Context, debounce time.Duration, onChange func()) error {
+	return collector.Watch(ctx, s.env.ClaudeDir, debounce, onChange)
+}

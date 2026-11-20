@@ -10,7 +10,6 @@ import (
 	wruntime "github.com/wailsapp/wails/v2/pkg/runtime"
 
 	"harness-app/internal/applier"
-	"harness-app/internal/collector"
 	"harness-app/internal/service"
 )
 
@@ -59,7 +58,7 @@ func (a *App) shutdown(ctx context.Context) {
 }
 
 // reindex は進捗を Wails イベントで通知しながら差分取り込みする。
-func (a *App) reindex(rebuild bool) (collector.Stats, error) {
+func (a *App) reindex(rebuild bool) (service.IndexStats, error) {
 	wruntime.EventsEmit(a.ctx, "index:start")
 	stats, err := a.svc.Reindex(rebuild, func(done, total int) {
 		wruntime.EventsEmit(a.ctx, "index:progress", map[string]int{"done": done, "total": total})
@@ -74,7 +73,7 @@ func (a *App) reindex(rebuild bool) (collector.Stats, error) {
 
 func (a *App) indexAndWatch(ctx context.Context) {
 	a.reindexAndSuggest(ctx)
-	_ = collector.Watch(ctx, a.svc.ClaudeDir(), 2*time.Second, func() { a.reindexAndSuggest(ctx) })
+	_ = a.svc.Watch(ctx, 2*time.Second, func() { a.reindexAndSuggest(ctx) })
 }
 
 // reindexAndSuggest は取り込み後に、設定がオンなら改善案を自動生成する（提案まで。適用はしない）。
@@ -149,9 +148,9 @@ func (a *App) SaveSettings(c service.Config) error {
 	return a.svc.SaveSettings(c)
 }
 
-func (a *App) Reindex(rebuild bool) (collector.Stats, error) {
+func (a *App) Reindex(rebuild bool) (service.IndexStats, error) {
 	if err := a.ready(); err != nil {
-		return collector.Stats{}, err
+		return service.IndexStats{}, err
 	}
 	return a.reindex(rebuild)
 }
