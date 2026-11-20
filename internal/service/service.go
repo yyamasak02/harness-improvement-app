@@ -81,6 +81,9 @@ func (s *Service) now() time.Time {
 	return time.Now()
 }
 
+// Target は書き込み・閲覧対象（targets.Target の別名。エントリが targets を直接 import しないための公開）。
+type Target = targets.Target
+
 // ---- 設定 ----
 
 // Config はアプリ設定（config.Config の別名。エントリが config を直接 import しないための公開）。

@@ -11,11 +11,9 @@ import (
 
 	"harness-app/internal/applier"
 	"harness-app/internal/collector"
-	"harness-app/internal/extensions"
 	"harness-app/internal/osutil"
 	"harness-app/internal/service"
 	"harness-app/internal/store"
-	"harness-app/internal/targets"
 )
 
 // App は Wails バインディング層。ロジックは internal/service に置く。
@@ -195,7 +193,7 @@ func (a *App) Search(q string) ([]store.SearchHit, error) {
 	return a.svc.Search(q)
 }
 
-func (a *App) ListTargets() ([]targets.Target, error) {
+func (a *App) ListTargets() ([]service.Target, error) {
 	if err := a.ready(); err != nil {
 		return nil, err
 	}
@@ -209,9 +207,9 @@ func (a *App) ListMemories() ([]service.MemoryItem, error) {
 	return a.svc.ListMemories()
 }
 
-func (a *App) ListExtensions() (extensions.Report, error) {
+func (a *App) ListExtensions() (service.ExtensionsReport, error) {
 	if err := a.ready(); err != nil {
-		return extensions.Report{}, err
+		return service.ExtensionsReport{}, err
 	}
 	return a.svc.ListExtensions()
 }
