@@ -11,6 +11,7 @@ description: 開発・機能・トークン・環境の観点でプロジェク�
    - 開発プロセス: 同じ失敗・手戻りの繰り返し（`git log` の revert・fix 連続、`docs/blockers.md`）。手作業を機械化できる箇所（`quality.md` の「新しい禁止事項は機械化」）。
    - 品質: カバレッジ基準ぎりぎりのパッケージ、テストの無いスクリプト、フレーク、`type/tech-debt` の滞留。
    - 機能: `docs/spec.md` の MVP 後（F4〜F7）、ユーザーが繰り返し行う操作の自動化、アプリの使い勝手。
+   - ユーザー体験: `scout-metrics.sh` の UX 指標の要約（予算超過・達成率）。前回（CI の `ux-metrics` アーティファクトを `frontend/ux-metrics-previous/` に置く）との推移を `bash scripts/ux-report.sh` で比べ、悪化があれば `ux-review` skill の手順で起票する。
    - 環境: CI の所要時間、dependabot の滞留、WSL / Windows / macOS 差、ドキュメントの鮮度（handoff・README）。
 3. **重複確認**: 候補ごとに `bash scripts/related-issues.sh <キーワード>`。既にあれば新規にせず、必要なら既存 issue にコメント（`gh-post.sh`）。
 4. **起票**: `create-issue` skill に従う。1 件 1 issue、優先度は規則の基準どおり（迷えば p2/p3）。本文に「根拠（計測値・コミット・ファイル）」を必ず書く。

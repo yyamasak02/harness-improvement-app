@@ -17,3 +17,4 @@ __pycache__/
 frontend/test-results/
 frontend/playwright-report/
 frontend/ux-metrics-results/
+frontend/ux-metrics-previous/

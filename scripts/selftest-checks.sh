@@ -522,6 +522,23 @@ cc="$tmp/cc"; mkdir -p "$cc/scripts"; cp scripts/check-changelog.sh "$cc/scripts
 (cd "$cc" && PR_TITLE="docs: x" bash scripts/check-changelog.sh main >/dev/null 2>&1) && echo "ok: docs は対象外" || { echo "NG: docs が対象になっている"; fail=1; }
 (cd "$cc" && echo '- 追加' >> CHANGELOG.md && git commit -qam "feat: y" && PR_TITLE="feat: x" bash scripts/check-changelog.sh main >/dev/null 2>&1) && echo "ok: CHANGELOG を更新すれば通る" || { echo "NG: 更新しても通らない"; fail=1; }
 
+# ux-report.sh（#158）: ダミー JSON で、達成率・前回比・悪化・超過・結果なしを確認する
+ux="$tmp/ux"; mkdir -p "$ux/cur" "$ux/prev"
+printf '%s' '{"metrics":[{"id":"a","label":"指標A","unit":"ms","value":300,"budget":1000},{"id":"b","label":"指標B","unit":"","value":2,"budget":0},{"id":"c","label":"指標C","unit":"回","value":4,"budget":5}]}' > "$ux/cur/summary.json"
+printf '%s' '{"metrics":[{"id":"a","label":"指標A","unit":"ms","value":100,"budget":1000},{"id":"b","label":"指標B","unit":"","value":0,"budget":0},{"id":"c","label":"指標C","unit":"回","value":4,"budget":5}]}' > "$ux/prev/summary.json"
+uxout=$(bash scripts/ux-report.sh --current "$ux/cur" --previous "$ux/prev" 2>&1); uxrc=$?
+{ [ "$uxrc" = 0 ] && echo "$uxout" | grep -q '予算超過: 1 件 — 指標B' && echo "$uxout" | grep -q '悪化（前回比）: 2 件' && echo "$uxout" | grep -q '| 指標C | 4 回 | 5 回 | 80% | 4 | ±0 | OK |'; } \
+  && echo "ok: ux-report.sh は達成率・前回比・超過・悪化を出す" || { echo "NG: ux-report.sh の出力が想定と違う"; fail=1; }
+uxout=$(bash scripts/ux-report.sh --current "$ux/cur" --previous "$ux/none" 2>&1); uxrc=$?
+{ [ "$uxrc" = 0 ] && echo "$uxout" | grep -q '前回の結果がありません' && ! echo "$uxout" | grep -q '悪化（前回比）'; } \
+  && echo "ok: ux-report.sh は前回が無ければその旨を出して続行する" || { echo "NG: 前回なしの扱いが違う"; fail=1; }
+uxout=$(bash scripts/ux-report.sh --current "$ux/none" 2>&1); uxrc=$?
+{ [ "$uxrc" = 0 ] && echo "$uxout" | grep -q 'UX 計測結果がありません'; } \
+  && echo "ok: ux-report.sh は結果が無ければその旨を出して正常終了する" || { echo "NG: 結果なしの扱いが違う"; fail=1; }
+uxsum=$(cd "$ux/cur" && sha256sum summary.json); bash scripts/ux-report.sh --current "$ux/cur" --previous "$ux/prev" >/dev/null 2>&1
+[ "$uxsum" = "$(cd "$ux/cur" && sha256sum summary.json)" ] && [ "$(ls "$ux/cur" | wc -l)" = 1 ] \
+  && echo "ok: ux-report.sh は何も書き込まない" || { echo "NG: ux-report.sh が書き込んでいる"; fail=1; }
+
 # check-tests-changed: 一時リポジトリで検証
 repo="$tmp/repo"; mkdir -p "$repo/scripts" "$repo/internal/x"; cp scripts/check-tests-changed.sh "$repo/scripts/"
 (

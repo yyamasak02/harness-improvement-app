@@ -27,3 +27,6 @@ git ls-files 'scripts/*' '*.go' '*.ts' '*.tsx' | xargs wc -l 2>/dev/null | grep 
 
 echo "== TODO / FIXME（コード内。issue 化されていない課題の目印）"
 git grep -nE 'TODO|FIXME' -- '*.go' '*.ts' '*.tsx' | head -10 || true
+
+echo "== UX 指標（docs/ux-metrics.md。結果が無ければその旨のみ。詳細は ux-review skill）"
+bash scripts/ux-report.sh 2>/dev/null | head -25 || true
