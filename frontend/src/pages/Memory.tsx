@@ -32,20 +32,20 @@ function Inner({cur, onApplied}: {cur: TargetContent; onApplied: (id: string) =>
   return (
     <div className="space-y-3">
       <ErrorBox message={error} />
-      <div className="break-all text-sm text-gray-600">{cur.target.path}</div>
+      <div className="break-all text-sm text-muted">{cur.target.path}</div>
       {editing ? (
         <>
           <DiffView original={cur.content} proposed={text} editing onChange={setText} />
           <div className="flex gap-2">
-            <LoadingButton className="rounded bg-blue-600 px-3 py-1 text-sm text-white disabled:opacity-40" busy={applying} busyLabel="適用中…" disabled={!changed} onClick={() => void apply()}>適用</LoadingButton>
-            <button className="rounded border px-3 py-1 text-sm disabled:opacity-50" disabled={applying} onClick={() => { setText(cur.content); setEditing(false) }}>破棄</button>
+            <LoadingButton className="btn btn-primary" busy={applying} busyLabel="適用中…" disabled={!changed} onClick={() => void apply()}>適用</LoadingButton>
+            <button className="btn btn-secondary" disabled={applying} onClick={() => { setText(cur.content); setEditing(false) }}>破棄</button>
           </div>
-          <p className="text-xs text-gray-500">適用すると変更前の内容がバックアップされ、変更履歴からロールバックできます。</p>
+          <p className="text-xs text-muted">適用すると変更前の内容がバックアップされ、変更履歴からロールバックできます。</p>
         </>
       ) : (
         <>
-          <pre data-testid="memory-body" className="max-h-96 overflow-auto whitespace-pre-wrap rounded border bg-gray-50 p-3 text-sm">{cur.content}</pre>
-          <button className="rounded border px-3 py-1 text-sm" onClick={() => setEditing(true)}>編集</button>
+          <pre data-testid="memory-body" className="max-h-96 overflow-auto whitespace-pre-wrap rounded-ctl border bg-subtle p-3 text-sm">{cur.content}</pre>
+          <button className="btn btn-secondary" onClick={() => setEditing(true)}>編集</button>
         </>
       )}
     </div>
@@ -62,33 +62,33 @@ export default function Memory() {
   return (
     <div className="space-y-4">
       <h2 className="text-xl font-bold">メモリ</h2>
-      <p className="text-sm text-gray-600">プロジェクトメモリの閲覧と編集です。編集は差分を確認してから適用します。重複・古いメモリには印が付きます。</p>
+      <p className="text-sm text-muted">プロジェクトメモリの閲覧と編集です。編集は差分を確認してから適用します。重複・古いメモリには印が付きます。</p>
       <ErrorBox message={list.error} />
-      {notice && <p role="status" className="rounded border border-green-300 bg-green-50 p-2 text-sm">{notice}</p>}
+      {notice && <p role="status" className="alert alert-success">{notice}</p>}
       <div className="grid gap-4 lg:grid-cols-[360px_1fr]">
         <Card title="メモリ一覧">
           <ul className="space-y-2" aria-label="メモリ一覧">
             {list.data?.map((m) => (
               <li key={m.target.path}>
-                <button className={`w-full rounded border p-2 text-left text-sm hover:bg-gray-50 ${selected === m.target.path ? 'border-blue-500' : ''}`}
+                <button className="list-item" aria-current={selected === m.target.path ? true : undefined}
                   onClick={() => { setSelected(m.target.path); setNotice('') }}>
-                  <div className="text-xs text-gray-500">{m.project}</div>
+                  <div className="text-xs text-muted">{m.project}</div>
                   <div className="break-all">{base(m.target.path)}</div>
                   <div className="mt-1 flex gap-1 text-xs">
-                    {m.stale && <span className="rounded bg-yellow-100 px-1">古い</span>}
+                    {m.stale && <span className="badge badge-warning">古い</span>}
                     {m.duplicateOf.length > 0 && (
-                      <span className="rounded bg-orange-100 px-1" title={m.duplicateOf.join('\n')}>重複: {m.duplicateOf.map(base).join(', ')}</span>
+                      <span className="badge badge-warning" title={m.duplicateOf.join('\n')}>重複: {m.duplicateOf.map(base).join(', ')}</span>
                     )}
                   </div>
                 </button>
               </li>
             ))}
-            {list.data?.length === 0 && <li className="text-sm text-gray-500">メモリはまだありません。</li>}
+            {list.data?.length === 0 && <li className="text-sm text-muted">メモリはまだありません。</li>}
           </ul>
         </Card>
         <Card title="内容">
           {selected ? <Editor key={selected} path={selected} onApplied={(id) => { setNotice(`適用しました（バックアップ ID: ${id}）`); setVer((v) => v + 1) }} />
-            : <p className="text-sm text-gray-500">メモリを選択してください。</p>}
+            : <p className="text-sm text-muted">メモリを選択してください。</p>}
         </Card>
       </div>
     </div>

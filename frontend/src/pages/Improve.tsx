@@ -86,15 +86,15 @@ export default function Improve() {
   return (
     <div className="space-y-4">
       <h2 className="text-xl font-bold">CLAUDE.md 改善</h2>
-      <p className="text-sm text-gray-600">AI の出力は自動では保存されません。差分を確認して「適用」を押したときだけ書き込まれます（適用前に自動でバックアップされます）。</p>
+      <p className="text-sm text-muted">AI の出力は自動では保存されません。差分を確認して「適用」を押したときだけ書き込まれます（適用前に自動でバックアップされます）。</p>
       <ErrorBox message={error || targets.error} />
 
       {auto.data && !autoHidden && phase === 'select' && (
         <Card title="自動生成された提案があります">
           <p className="text-sm">設定で有効にした自動生成により、{auto.data.targetPath} の改善案が作られています。まだ何も書き込まれていません。差分を確認して、よければ「適用」を押してください。</p>
           <div className="mt-3 flex gap-2">
-            <button className="rounded bg-blue-600 px-3 py-1 text-sm text-white" onClick={() => openAuto(auto.data as Proposal)}>差分を確認する</button>
-            <LoadingButton className="rounded border px-3 py-1 text-sm disabled:opacity-50" busy={dismissBusy} onClick={() => void dismissAuto()}>破棄</LoadingButton>
+            <button className="btn btn-primary" onClick={() => openAuto(auto.data as Proposal)}>差分を確認する</button>
+            <LoadingButton className="btn btn-secondary" busy={dismissBusy} onClick={() => void dismissAuto()}>破棄</LoadingButton>
           </div>
         </Card>
       )}
@@ -103,25 +103,25 @@ export default function Improve() {
         <Card title="① 対象と条件">
           <div className="grid gap-3 md:grid-cols-2">
             <label className="text-sm">対象ファイル
-              <select className="mt-1 w-full rounded border px-2 py-1" value={path} onChange={(e) => void selectTarget(e.target.value)} aria-label="対象ファイル" disabled={phase === 'generating'}>
+              <select className="mt-1 w-full" value={path} onChange={(e) => void selectTarget(e.target.value)} aria-label="対象ファイル" disabled={phase === 'generating'}>
                 <option value="">選択してください</option>
                 {targets.data?.map((t) => <option key={t.path} value={t.path}>{t.label}（{t.path}）{t.exists ? '' : ' ※未作成'}</option>)}
               </select>
             </label>
             <label className="text-sm">対象期間
-              <select className="mt-1 w-full rounded border px-2 py-1" value={days} onChange={(e) => setDays(Number(e.target.value))} aria-label="対象期間" disabled={phase === 'generating'}>
+              <select className="mt-1 w-full" value={days} onChange={(e) => setDays(Number(e.target.value))} aria-label="対象期間" disabled={phase === 'generating'}>
                 {[7, 30, 90].map((d) => <option key={d} value={d}>直近 {d} 日</option>)}
               </select>
             </label>
           </div>
           <label className="mt-3 block text-sm">追加指示（任意）
-            <textarea className="mt-1 w-full rounded border p-2" rows={3} value={instruction} onChange={(e) => setInstruction(e.target.value)} aria-label="追加指示" disabled={phase === 'generating'} />
+            <textarea className="mt-1 w-full" rows={3} value={instruction} onChange={(e) => setInstruction(e.target.value)} aria-label="追加指示" disabled={phase === 'generating'} />
           </label>
-          {current && <p className="mt-2 text-xs text-gray-500">現在の内容：{current.content.split('\n').length} 行</p>}
+          {current && <p className="mt-2 text-xs text-muted">現在の内容：{current.content.split('\n').length} 行</p>}
           <div className="mt-3 flex gap-2">
-            <LoadingButton className="rounded border px-3 py-1 text-sm disabled:opacity-50" busy={digestBusy} busyLabel="digest を作成中…" disabled={!path || phase === 'generating'} onClick={() => void previewDigest()}>② digest をプレビュー</LoadingButton>
-            <LoadingButton className="rounded bg-blue-600 px-3 py-1 text-sm text-white disabled:opacity-50" busy={phase === 'generating'} busyLabel="生成中…" disabled={!path || digestBusy} onClick={() => void generate()}>④ 改善案を生成</LoadingButton>
-            {phase === 'generating' && <button className="rounded border border-red-400 px-3 py-1 text-sm text-red-700" onClick={() => void api.cancelGeneration()}>キャンセル</button>}
+            <LoadingButton className="btn btn-secondary" busy={digestBusy} busyLabel="digest を作成中…" disabled={!path || phase === 'generating'} onClick={() => void previewDigest()}>② digest をプレビュー</LoadingButton>
+            <LoadingButton className="btn btn-primary" busy={phase === 'generating'} busyLabel="生成中…" disabled={!path || digestBusy} onClick={() => void generate()}>④ 改善案を生成</LoadingButton>
+            {phase === 'generating' && <button className="btn btn-danger-outline" onClick={() => void api.cancelGeneration()}>キャンセル</button>}
           </div>
           {phase === 'generating' && <Busy label="生成中…（claude を実行しています）" />}
         </Card>
@@ -136,16 +136,16 @@ export default function Improve() {
       {phase === 'review' && proposal && (
         <>
           <Card title="変更理由">
-            {proposal.rationale ? <div className="prose prose-sm max-w-none text-sm"><Markdown>{proposal.rationale}</Markdown></div> : <p className="text-sm text-gray-500">理由は出力されませんでした。</p>}
+            {proposal.rationale ? <div className="prose prose-sm max-w-none text-sm"><Markdown>{proposal.rationale}</Markdown></div> : <p className="text-sm text-muted">理由は出力されませんでした。</p>}
           </Card>
           <Card title="⑤ 差分（右側は編集できます）">
             <DiffView original={proposal.original} proposed={edited} editing={editing} onChange={setEdited} />
             <div className="mt-3 flex gap-2">
-              <button className="rounded border px-3 py-1 text-sm" onClick={() => setEditing((v) => !v)}>{editing ? '編集を終えて差分を見る' : '右側を編集'}</button>
-              {edited !== proposal.output && <button className="rounded border px-3 py-1 text-sm" onClick={() => setEdited(proposal.output)}>AI の出力に戻す</button>}
+              <button className="btn btn-secondary" onClick={() => setEditing((v) => !v)}>{editing ? '編集を終えて差分を見る' : '右側を編集'}</button>
+              {edited !== proposal.output && <button className="btn btn-secondary" onClick={() => setEdited(proposal.output)}>AI の出力に戻す</button>}
               <span className="flex-1" />
-              <button className="rounded border px-3 py-1 text-sm disabled:opacity-50" disabled={applyBusy} onClick={discard}>破棄</button>
-              <LoadingButton className="rounded bg-green-600 px-3 py-1 text-sm text-white disabled:opacity-50" busy={applyBusy} busyLabel="適用中…" disabled={edited === proposal.original} onClick={() => void apply()}>適用</LoadingButton>
+              <button className="btn btn-secondary" disabled={applyBusy} onClick={discard}>破棄</button>
+              <LoadingButton className="btn btn-primary" busy={applyBusy} busyLabel="適用中…" disabled={edited === proposal.original} onClick={() => void apply()}>適用</LoadingButton>
             </div>
           </Card>
         </>
@@ -154,7 +154,7 @@ export default function Improve() {
       {phase === 'applied' && applied && (
         <Card title="適用しました">
           <p className="text-sm" role="status">{applied.path} に適用しました。バックアップ ID: <code>{applied.id}</code>（「変更履歴」から元に戻せます）</p>
-          <button className="mt-3 rounded border px-3 py-1 text-sm" onClick={() => void selectTarget(path)}>続けて改善する</button>
+          <button className="mt-3 btn btn-secondary" onClick={() => void selectTarget(path)}>続けて改善する</button>
         </Card>
       )}
       {targets.loading && !targets.data && <Loading />}

@@ -2,17 +2,128 @@
 @tailwind components;
 @tailwind utilities;
 
-/* グリッドの子は内容の最小幅まで縮められるようにし、長い行で枠をはみ出さないようにする */
+/* ===== デザイントークン（RGB チャンネル）。ダークは OS の設定に追従 ===== */
+:root {
+  color-scheme: light dark;
+  --c-canvas: 244 246 250;
+  --c-surface: 255 255 255;
+  --c-subtle: 241 245 249;
+  --c-line: 220 226 236;
+  --c-fg: 15 23 42;
+  --c-muted: 71 85 105;
+  --c-accent: 37 99 235;
+  --c-accent-hover: 29 78 216;
+  --c-accent-soft: 232 240 254;
+  --c-accent-fg: 30 64 175;
+  --c-danger: 185 28 28;
+  --c-danger-hover: 153 27 27;
+  --c-danger-soft: 254 240 240;
+  --c-danger-fg: 153 27 27;
+  --c-danger-line: 240 150 150;
+  --c-success: 21 128 61;
+  --c-success-soft: 236 253 243;
+  --c-success-fg: 21 94 48;
+  --c-success-line: 134 220 165;
+  --c-warning: 180 83 9;
+  --c-warning-soft: 255 247 230;
+  --c-warning-fg: 133 64 8;
+  --c-warning-line: 240 190 90;
+  --shadow: 15 23 42;
+}
+@media (prefers-color-scheme: dark) {
+  :root {
+    --c-canvas: 9 13 22;
+    --c-surface: 17 24 39;
+    --c-subtle: 30 41 59;
+    --c-line: 51 65 85;
+    --c-fg: 241 245 249;
+    --c-muted: 156 170 190;
+    --c-accent: 37 99 235;
+    --c-accent-hover: 59 112 240;
+    --c-accent-soft: 23 37 84;
+    --c-accent-fg: 170 200 255;
+    --c-danger: 185 28 28;
+    --c-danger-hover: 205 45 45;
+    --c-danger-soft: 69 20 24;
+    --c-danger-fg: 254 190 190;
+    --c-danger-line: 153 50 50;
+    --c-success: 21 128 61;
+    --c-success-soft: 16 52 33;
+    --c-success-fg: 170 240 195;
+    --c-success-line: 30 110 62;
+    --c-warning: 180 83 9;
+    --c-warning-soft: 66 42 12;
+    --c-warning-fg: 252 220 150;
+    --c-warning-line: 140 90 25;
+    --shadow: 0 0 0;
+  }
+}
+
 @layer base {
+  html { font-family: theme('fontFamily.sans'); -webkit-font-smoothing: antialiased; }
+  body { @apply bg-canvas text-fg; line-height: 1.6; }
+  h2 { @apply text-xl font-bold tracking-tight; }
+  /* フォーカスリング（キーボード操作で必ず見える） */
+  :focus-visible { @apply outline-none ring-2 ring-accent ring-offset-2 ring-offset-surface; }
+  /* フォーム部品の共通の見た目 */
+  input:not([type='checkbox']):not([type='radio']), select, textarea {
+    @apply rounded-ctl border border-line bg-surface px-2.5 py-1.5 text-sm text-fg shadow-sm placeholder:text-muted/70;
+  }
+  textarea { @apply p-2.5; }
+  input:disabled, select:disabled, textarea:disabled { @apply cursor-not-allowed bg-subtle opacity-60; }
+  input[type='checkbox'], input[type='radio'] { @apply h-4 w-4 align-middle accent-[rgb(var(--c-accent))]; }
+  table { @apply border-collapse; }
+  th { @apply text-left font-medium text-muted; }
+  td, th { @apply px-1.5 py-1; }
+  tbody tr { @apply border-t border-line; }
+  /* グリッドの子は内容の最小幅まで縮められるようにし、長い行で枠をはみ出さないようにする */
   main .grid > * { min-width: 0; }
   main pre, main code { overflow-wrap: anywhere; }
+  code { @apply rounded bg-subtle px-1 font-mono text-[0.85em]; }
+  pre code { @apply bg-transparent p-0; }
+}
+
+@layer components {
+  /* ボタン（primary / secondary / danger / ghost） */
+  .btn { @apply inline-flex items-center justify-center gap-1.5 rounded-ctl border border-transparent px-3 py-1.5 text-sm font-medium transition-colors disabled:cursor-not-allowed disabled:opacity-50; }
+  .btn-primary { @apply bg-accent text-white shadow-sm hover:bg-accent-hover; }
+  .btn-secondary { @apply border-line bg-surface text-fg shadow-sm hover:bg-subtle; }
+  .btn-danger { @apply bg-danger text-white shadow-sm hover:bg-danger-hover; }
+  .btn-danger-outline { @apply border-danger-line bg-surface text-danger-fg hover:bg-danger-soft; }
+  .btn-ghost { @apply text-muted hover:bg-subtle hover:text-fg; }
+  /* 一覧の項目（選択状態つき）。ボタンとして使う */
+  .list-item { @apply w-full rounded-ctl border border-line bg-surface p-2.5 text-left text-sm transition-colors hover:bg-subtle; }
+  .list-item[aria-current='true'] { @apply border-accent bg-accent-soft; }
+  /* バッジ・通知 */
+  .badge { @apply inline-flex items-center rounded-full px-2 py-0.5 text-xs font-medium; }
+  .badge-neutral { @apply bg-subtle text-muted; }
+  .badge-success { @apply bg-success-soft text-success-fg; }
+  .badge-warning { @apply bg-warning-soft text-warning-fg; }
+  .badge-danger { @apply bg-danger-soft text-danger-fg; }
+  .alert { @apply rounded-ctl border p-3 text-sm; }
+  .alert-success { @apply border-success-line bg-success-soft text-success-fg; }
+  .alert-warning { @apply border-warning-line bg-warning-soft text-warning-fg; }
+  .alert-danger { @apply border-danger-line bg-danger-soft text-danger-fg; }
+  /* Markdown 表示（typography プラグインなしの最小限） */
+  .prose > * + * { @apply mt-2; }
+  .prose h1, .prose h2, .prose h3 { @apply font-semibold; }
+  .prose ul { @apply list-disc pl-5; }
+  .prose ol { @apply list-decimal pl-5; }
+  .prose pre { @apply overflow-auto rounded-ctl bg-subtle p-3; }
+  .prose a { @apply text-accent-fg underline; }
 }
 
 /* スピナー。動きを減らす設定のときは回転せず静止させる */
 @layer utilities {
   .spinner { animation: spinner-rotate 0.8s linear infinite; }
-  @media (prefers-reduced-motion: reduce) {
-    .spinner { animation: none; }
-  }
 }
 @keyframes spinner-rotate { to { transform: rotate(360deg); } }
+@media (prefers-reduced-motion: reduce) {
+  .spinner { animation: none; }
+  *, *::before, *::after { transition-duration: 0.01ms !important; scroll-behavior: auto !important; }
+}
+
+/* Recharts をテーマに追従させる（軸・凡例の文字、グリッド線、ツールチップ） */
+.recharts-text, .recharts-legend-item-text { fill: rgb(var(--c-muted)) !important; color: rgb(var(--c-muted)) !important; }
+.recharts-cartesian-grid line { stroke: rgb(var(--c-line)); }
+.recharts-default-tooltip { background-color: rgb(var(--c-surface)) !important; border-color: rgb(var(--c-line)) !important; color: rgb(var(--c-fg)); }
