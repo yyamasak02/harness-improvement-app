@@ -8,6 +8,12 @@ import (
 	"github.com/wailsapp/wails/v2/pkg/options/assetserver"
 )
 
+// E2E（frontend/e2e）が検証しているウィンドウの最小サイズ。
+const (
+	minWindowWidth  = 640
+	minWindowHeight = 480
+)
+
 //go:embed all:frontend/dist
 var assets embed.FS
 
@@ -20,6 +26,9 @@ func main() {
 		Title:  "harness-app",
 		Width:  1024,
 		Height: 768,
+		// 小さいウィンドウでも UI が枠からはみ出さない下限（E2E で検証している最小サイズ）
+		MinWidth:  minWindowWidth,
+		MinHeight: minWindowHeight,
 		AssetServer: &assetserver.Options{
 			Assets: assets,
 		},

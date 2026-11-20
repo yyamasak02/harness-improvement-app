@@ -24,8 +24,8 @@ const nav = [
 export default function App() {
   return (
     <HashRouter>
-      <div className="flex h-screen bg-gray-50 text-gray-900">
-        <aside className="w-52 shrink-0 border-r bg-white p-4">
+      <div className="flex h-screen overflow-hidden bg-gray-50 text-gray-900">
+        <aside className="w-40 shrink-0 overflow-y-auto border-r bg-white p-3 md:w-52 md:p-4">
           <h1 className="mb-1 text-lg font-bold">harness-app</h1>
           <p className="mb-4 text-xs text-gray-500">Claude Code ハーネス改善</p>
           <nav className="flex flex-col gap-1" aria-label="メイン">
@@ -37,7 +37,7 @@ export default function App() {
             ))}
           </nav>
         </aside>
-        <main className="flex-1 overflow-auto p-6">
+        <main className="min-w-0 flex-1 overflow-auto p-4 md:p-6">
           <Routes>
             <Route path="/" element={<Dashboard />} />
             <Route path="/sessions" element={<Sessions />} />
