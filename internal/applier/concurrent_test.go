@@ -74,7 +74,60 @@ func TestConcurrentApplyAndRollback(t *testing.T) {
 	case <-time.After(30 * time.Second):
 		t.Fatal("デッドロックの疑い")
 	}
-	if _, err := os.ReadFile(target); err != nil {
+	final, err := HashFile(target)
+	if err != nil {
 		t.Fatal(err)
+	}
+	assertHistoryChain(t, a, m.OldHash, final) // 履歴には最初の Apply（v0→v1）も含まれる
+}
+
+// assertHistoryChain は、並行実行後の履歴が「start から final へ至る 1 本の直列な操作列」と整合することを検証する。
+// 各履歴は manifest・バックアップ（original/applied）が欠けず、そのハッシュが OldHash/NewHash と一致する。
+// 順序は ID（時刻）に頼らず、ハッシュ遷移のグラフで検査する: 各ハッシュで（出る辺 − 入る辺）が、
+// start では +1、final では -1（start==final なら全て 0）、他は 0 であること。
+// 排他が破れて操作が交錯すると、OldHash が直前の NewHash と連鎖せず、この釣り合いが崩れる。
+func assertHistoryChain(t *testing.T, a *Applier, start, final string) {
+	t.Helper()
+	hist, err := a.History()
+	if err != nil {
+		t.Fatal(err)
+	}
+	dirs, err := os.ReadDir(a.backupsDir())
+	if err != nil {
+		t.Fatal(err)
+	}
+	if len(hist) != len(dirs) {
+		t.Fatalf("バックアップ dir %d 件に対し、読める履歴が %d 件（manifest の欠け）", len(dirs), len(hist))
+	}
+	balance := map[string]int{}
+	for _, e := range hist {
+		full, err := a.Get(e.ID)
+		if err != nil {
+			t.Fatal(err)
+		}
+		dir := filepath.Join(a.backupsDir(), e.ID)
+		if e.Existed {
+			if got := HashBytes([]byte(full.Before)); got != e.OldHash {
+				t.Errorf("%s: original のハッシュが OldHash と不一致", e.ID)
+			}
+		} else if _, err := os.Stat(filepath.Join(dir, "original")); err == nil || e.OldHash != AbsentHash {
+			t.Errorf("%s: 存在しなかったのに original がある、または OldHash が absent でない", e.ID)
+		}
+		if e.NewHash != AbsentHash {
+			if got := HashBytes([]byte(full.After)); got != e.NewHash {
+				t.Errorf("%s: applied のハッシュが NewHash と不一致", e.ID)
+			}
+		}
+		balance[e.OldHash]++
+		balance[e.NewHash]--
+	}
+	if start != final {
+		balance[start]--
+		balance[final]++
+	}
+	for h, b := range balance {
+		if b != 0 {
+			t.Errorf("履歴の OldHash/NewHash が連鎖していない（ハッシュ %.8s の釣り合い %d）", h, b)
+		}
 	}
 }
