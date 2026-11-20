@@ -6,6 +6,7 @@ import (
 	"os"
 	"path/filepath"
 	"reflect"
+	"runtime"
 	"strings"
 	"testing"
 	"time"
@@ -57,6 +58,14 @@ func TestClassify(t *testing.T) {
 	}
 }
 
+// skipNoExecBit は実行ビットで判定する非 Windows の解決を、Windows ホストでは検証できないためスキップする。
+func skipNoExecBit(t *testing.T) {
+	t.Helper()
+	if runtime.GOOS == "windows" {
+		t.Skip("Windows のファイルに実行ビットは無い")
+	}
+}
+
 func TestResolveClaudeInjectedHost(t *testing.T) {
 	home := t.TempDir()
 	none := func(string) []string { return nil }
@@ -68,6 +77,7 @@ func TestResolveClaudeInjectedHost(t *testing.T) {
 		}
 	})
 	t.Run("シェル実行を注入", func(t *testing.T) {
+		skipNoExecBit(t)
 		bin := filepath.Join(home, "sh-claude")
 		if err := os.WriteFile(bin, []byte("x"), 0o755); err != nil {
 			t.Fatal(err)
@@ -101,6 +111,7 @@ func TestResolveClaudeInjectedHost(t *testing.T) {
 			}})
 	})
 	t.Run("固定パスの差し替え", func(t *testing.T) {
+		skipNoExecBit(t)
 		bin := filepath.Join(home, "fixed-claude")
 		if err := os.WriteFile(bin, []byte("x"), 0o755); err != nil {
 			t.Fatal(err)
