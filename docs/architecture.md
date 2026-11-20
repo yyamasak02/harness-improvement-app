@@ -12,7 +12,7 @@
 
 | パッケージ | 非テスト行数 | プロジェクト内の import |
 |---|---|---|
-| `.`（main: app.go） | 381 | applier, collector, config, extensions, osutil, service, store, targets |
+| `.`（main: app.go） | 381 | service のみ（M3 完了後。着手時点は applier, collector, config, extensions, osutil, service, store, targets） |
 | service | 1139 | applier, collector, config, digest, extensions, fsutil, launchd, masking, memory, runner, scheduler, store, targets |
 | digest | 173 | collector, masking, store |
 | collector | 530 | logmodel（M1 で store 依存を解消） |
@@ -25,7 +25,7 @@
 - 層の逆流（下位が上位に依存）: なし。
 - 層の飛ばし・横の依存（今回の検査で違反として登録したもの、計 8 件）:
   - `collector -> store`: M1 で解消済み（collector 側の `Store` インターフェース＋基盤層 `logmodel` の型）。
-  - `. -> applier|collector|config|extensions|osutil|store|targets`（7 件）: エントリ（app.go）が service を介さずインフラを直接使っている。
+  - `. -> applier|collector|config|extensions|osutil|store|targets`（7 件）: エントリ（app.go）が service を介さずインフラを直接使っていた。M3 で全て解消済み（Go の許容リストは空）。
 - 巨大パッケージ: `internal/service` が 1139 行（全体の 4 割強）で最大。ファイルは service.go 365・query.go 189・report.go 182。service は 13 個のパッケージに依存しており、責務（取り込み・検索・提案・適用・日報・スケジュール・設定）が 1 パッケージに混在している。`app.go` は 381 行・関数 38 個。
 - 時刻: `time.Now()` の直接呼び出しは applier・digest（2 か所）・runner・service の各 1〜2 か所。外部プロセス（`os/exec`）は runner・osutil のみ（testutil を除く）。ホーム解決（`os.UserHomeDir`）は app.go のみで、他は注入済み。
 - 外部ライブラリの入口: wails は main のみ、sqlite は store のみ、fsnotify は collector のみ（今回の検査で固定）。
@@ -93,7 +93,7 @@
 ## 3. 機械的な強制と許容リスト
 - Go: `internal/archtest/archtest_test.go`。`go/parser` で import を読み、層の表と照合。エントリは `service` のみ import 可。外部ライブラリの入口も検査。
 - フロント: `frontend/src/arch.test.ts`（vitest。import を静的解析。新規依存なし）。
-- 現状の違反は各ファイルの `allowlist`（理由付き）に登録済み。**追加は禁止**: 件数の固定上限（`allowlistCap` / `ALLOWLIST_CAP`）と一致しないとテストが失敗する。違反でなくなった項目が残っていても失敗する。減らしたら上限も同じだけ下げる。上限を上げる変更はレビューで blocker とする。目標は 0。
+- 許容リスト（各ファイルの `allowlist`）は M3 完了により Go 側は空（上限 0）。**追加は禁止**: 件数の固定上限（`allowlistCap` / `ALLOWLIST_CAP`）と一致しないとテストが失敗する。違反でなくなった項目が残っていても失敗する。減らしたら上限も同じだけ下げる。上限を上げる変更はレビューで blocker とする。目標は 0。
 
 ## 4. 移行計画（挙動を変えない・1 PR 1 パッケージ程度・各 PR で archtest の許容リストと上限を減らす）
 後続の issue として起票して進める。順序は依存の少ない順。
@@ -103,7 +103,7 @@
 | F1 | フロント: `Api` 型を `types.ts` へ移し、`mockApi -> api` の循環を解消 | `mockApi -> api` |
 | M1 | `collector` が使う store の機能を collector 側のインターフェースにし、main/service で結線 | `collector -> store` |
 | M2 | 時刻・ホームの注入の徹底（`time.Now` の直接呼び出しを `func() time.Time` 注入へ。applier・digest・runner・service） | なし（2.2 の達成） |
-| M3 | app.go のインフラ直接利用を service のメソッドに寄せ、app.go を `service` のみに依存させる（service の API を増やす PR を小分けにする: config → targets/extensions → osutil → store → collector → applier の順） | `. -> *` 7 件 |
+| M3 | app.go のインフラ直接利用を service のメソッドに寄せ、app.go を `service` のみに依存させる（service の API を増やす PR を小分けにする: config → targets/extensions → osutil → store → collector → applier の順） | `. -> *` 7 件（**完了**: app.go は `service` のみに依存。Go の許容リストは空） |
 | M4 | `service` を責務で分割（取り込み・検索・提案/適用・日報・スケジュールなど。1 責務 1 PR）。分割後の層は L4 のまま、service 同士の依存向きを一方向にする | なし（2.5 の達成） |
 | M5 | 必要ならフロントの `pages/*` を機能単位のディレクトリに整理（`api` 型の分割など） | なし |
 

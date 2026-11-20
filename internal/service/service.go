@@ -72,9 +72,6 @@ func New(env Env) (*Service, error) {
 // Close は DB を閉じる。
 func (s *Service) Close() error { return s.st.Close() }
 
-// ClaudeDir は監視用に公開する。
-func (s *Service) ClaudeDir() string { return s.env.ClaudeDir }
-
 func (s *Service) now() time.Time {
 	if s.env.Now != nil {
 		return s.env.Now()
@@ -84,6 +81,12 @@ func (s *Service) now() time.Time {
 
 // Target は書き込み・閲覧対象（targets.Target の別名。エントリが targets を直接 import しないための公開）。
 type Target = targets.Target
+
+// Manifest・Entry は applier の書き込み記録・履歴の別名（エントリが applier を直接 import しないための公開）。
+type (
+	Manifest = applier.Manifest
+	Entry    = applier.Entry
+)
 
 // ---- 設定 ----
 
