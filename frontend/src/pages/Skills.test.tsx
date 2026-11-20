@@ -1,6 +1,7 @@
 import {render, screen} from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import {api} from '../api'
+import {deferred} from '../testUtils'
 import Skills from './Skills'
 
 async function fillAndGenerate(name: string) {
@@ -54,4 +55,27 @@ test('編集した内容が適用される', async () => {
   const hist = await api.listBackups()
   const skillMd = hist.find((h) => h.path.endsWith('/edited/SKILL.md'))
   expect((await api.getBackup(skillMd!.id)).after).toContain('追記')
+})
+
+test('生成中・適用中は実行中表示になりボタンが無効化される', async () => {
+  const g = deferred<Awaited<ReturnType<typeof api.generateSkill>>>()
+  const spy = vi.spyOn(api, 'generateSkill').mockReturnValue(g.promise)
+  render(<Skills />)
+  await fillAndGenerate('busy-skill')
+  expect(screen.getByRole('status')).toHaveTextContent('生成中')
+  expect(screen.getByRole('button', {name: /生成中…/})).toBeDisabled()
+  spy.mockRestore()
+  g.reject(new Error('止めた'))
+  expect(await screen.findByRole('alert')).toHaveTextContent('止めた')
+  expect(screen.getByRole('button', {name: '生成'})).toBeEnabled()
+
+  await userEvent.click(screen.getByRole('button', {name: '生成'}))
+  await screen.findByText('SKILL.md（新規）')
+  const a = deferred<Awaited<ReturnType<typeof api.applySkill>>>()
+  vi.spyOn(api, 'applySkill').mockReturnValue(a.promise)
+  await userEvent.click(screen.getByRole('button', {name: '適用'}))
+  expect(screen.getByRole('button', {name: /適用中…/})).toBeDisabled()
+  a.resolve([])
+  expect(await screen.findByText(/0 ファイルを適用しました/)).toBeInTheDocument()
+  vi.restoreAllMocks()
 })

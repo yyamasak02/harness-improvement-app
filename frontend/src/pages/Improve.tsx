@@ -1,7 +1,7 @@
 import {useMemo, useState} from 'react'
 import Markdown from 'react-markdown'
 import {api} from '../api'
-import {Card, ErrorBox, Loading} from '../components'
+import {Busy, Card, ErrorBox, Loading, LoadingButton} from '../components'
 import DiffView from '../DiffView'
 import {isUnder} from '../paths'
 import {useAsync} from '../hooks'
@@ -25,7 +25,9 @@ export default function Improve() {
   const [editing, setEditing] = useState(false)
   const [error, setError] = useState('')
   const [applied, setApplied] = useState<Manifest | null>(null)
-  const [busy, setBusy] = useState(false)
+  const [digestBusy, setDigestBusy] = useState(false)
+  const [applyBusy, setApplyBusy] = useState(false)
+  const [dismissBusy, setDismissBusy] = useState(false)
 
   const target: Target | undefined = targets.data?.find((t) => t.path === path)
   const project = useMemo(() => {
@@ -43,8 +45,8 @@ export default function Improve() {
   }
 
   async function previewDigest() {
-    setError(''); setBusy(true)
-    try { setDigest(await api.buildDigest(project, days)) } catch (e) { fail(e) } finally { setBusy(false) }
+    setError(''); setDigestBusy(true)
+    try { setDigest(await api.buildDigest(project, days)) } catch (e) { fail(e) } finally { setDigestBusy(false) }
   }
 
   async function generate() {
@@ -59,12 +61,12 @@ export default function Improve() {
 
   async function apply() {
     if (!proposal) return
-    setError(''); setBusy(true)
+    setError(''); setApplyBusy(true)
     try {
       setApplied(await api.applyProposal(proposal.targetPath, edited, proposal.baseHash))
       if (auto.data && auto.data.jobId === proposal.jobId) await api.dismissAutoSuggestion()
       setPhase('applied')
-    } catch (e) { fail(e) } finally { setBusy(false) }
+    } catch (e) { fail(e) } finally { setApplyBusy(false) }
   }
 
   /** 自動生成された提案を確認画面に開く（適用は差分を見て人が押す）。 */
@@ -73,7 +75,8 @@ export default function Improve() {
   }
 
   async function dismissAuto() {
-    try { await api.dismissAutoSuggestion(); setAutoHidden(true) } catch (e) { fail(e) }
+    setDismissBusy(true)
+    try { await api.dismissAutoSuggestion(); setAutoHidden(true) } catch (e) { fail(e) } finally { setDismissBusy(false) }
   }
 
   function discard() {
@@ -91,7 +94,7 @@ export default function Improve() {
           <p className="text-sm">設定で有効にした自動生成により、{auto.data.targetPath} の改善案が作られています。まだ何も書き込まれていません。差分を確認して、よければ「適用」を押してください。</p>
           <div className="mt-3 flex gap-2">
             <button className="rounded bg-blue-600 px-3 py-1 text-sm text-white" onClick={() => openAuto(auto.data as Proposal)}>差分を確認する</button>
-            <button className="rounded border px-3 py-1 text-sm" onClick={() => void dismissAuto()}>破棄</button>
+            <LoadingButton className="rounded border px-3 py-1 text-sm disabled:opacity-50" busy={dismissBusy} onClick={() => void dismissAuto()}>破棄</LoadingButton>
           </div>
         </Card>
       )}
@@ -116,11 +119,11 @@ export default function Improve() {
           </label>
           {current && <p className="mt-2 text-xs text-gray-500">現在の内容：{current.content.split('\n').length} 行</p>}
           <div className="mt-3 flex gap-2">
-            <button className="rounded border px-3 py-1 text-sm disabled:opacity-50" disabled={!path || busy || phase === 'generating'} onClick={() => void previewDigest()}>② digest をプレビュー</button>
-            <button className="rounded bg-blue-600 px-3 py-1 text-sm text-white disabled:opacity-50" disabled={!path || phase === 'generating'} onClick={() => void generate()}>④ 改善案を生成</button>
+            <LoadingButton className="rounded border px-3 py-1 text-sm disabled:opacity-50" busy={digestBusy} busyLabel="digest を作成中…" disabled={!path || phase === 'generating'} onClick={() => void previewDigest()}>② digest をプレビュー</LoadingButton>
+            <LoadingButton className="rounded bg-blue-600 px-3 py-1 text-sm text-white disabled:opacity-50" busy={phase === 'generating'} busyLabel="生成中…" disabled={!path || digestBusy} onClick={() => void generate()}>④ 改善案を生成</LoadingButton>
             {phase === 'generating' && <button className="rounded border border-red-400 px-3 py-1 text-sm text-red-700" onClick={() => void api.cancelGeneration()}>キャンセル</button>}
           </div>
-          {phase === 'generating' && <p className="mt-2 text-sm text-gray-600" role="status">生成中…（claude を実行しています）</p>}
+          {phase === 'generating' && <Busy label="生成中…（claude を実行しています）" />}
         </Card>
       )}
 
@@ -141,8 +144,8 @@ export default function Improve() {
               <button className="rounded border px-3 py-1 text-sm" onClick={() => setEditing((v) => !v)}>{editing ? '編集を終えて差分を見る' : '右側を編集'}</button>
               {edited !== proposal.output && <button className="rounded border px-3 py-1 text-sm" onClick={() => setEdited(proposal.output)}>AI の出力に戻す</button>}
               <span className="flex-1" />
-              <button className="rounded border px-3 py-1 text-sm" onClick={discard}>破棄</button>
-              <button className="rounded bg-green-600 px-3 py-1 text-sm text-white disabled:opacity-50" disabled={busy || edited === proposal.original} onClick={() => void apply()}>適用</button>
+              <button className="rounded border px-3 py-1 text-sm disabled:opacity-50" disabled={applyBusy} onClick={discard}>破棄</button>
+              <LoadingButton className="rounded bg-green-600 px-3 py-1 text-sm text-white disabled:opacity-50" busy={applyBusy} busyLabel="適用中…" disabled={edited === proposal.original} onClick={() => void apply()}>適用</LoadingButton>
             </div>
           </Card>
         </>

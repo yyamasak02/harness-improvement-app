@@ -1,6 +1,7 @@
 import {render, screen} from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import {api} from '../api'
+import {deferred} from '../testUtils'
 import Improve from './Improve'
 
 afterEach(() => { vi.restoreAllMocks() })
@@ -88,4 +89,49 @@ test('破棄すると選択画面に戻り、何も適用されない', async ()
   await userEvent.click(screen.getByRole('button', {name: '破棄'}))
   expect(screen.getByLabelText('対象ファイル')).toBeInTheDocument()
   expect(screen.queryByText(/に適用しました/)).not.toBeInTheDocument()
+})
+
+test('改善案の生成中はスピナーと実行中表示が出て、ボタンが無効化される。完了で消える', async () => {
+  const d = deferred<Awaited<ReturnType<typeof api.generateProposal>>>()
+  vi.spyOn(api, 'generateProposal').mockReturnValue(d.promise)
+  render(<Improve />)
+  await pick()
+  await userEvent.click(screen.getByRole('button', {name: /改善案を生成/}))
+  const status = screen.getByRole('status')
+  expect(status).toHaveTextContent('生成中')
+  expect(status).toHaveAttribute('aria-busy', 'true')
+  const btn = screen.getByRole('button', {name: /生成中…/})
+  expect(btn).toBeDisabled()
+  expect(btn).toHaveAttribute('aria-busy', 'true')
+  expect(screen.getAllByTestId('spinner').length).toBeGreaterThan(0)
+  d.resolve({targetPath: proj, baseHash: 'h', original: '# a\n', output: '# a\n- x\n', rationale: '', digest: '', jobId: 'j'})
+  expect(await screen.findByText(/変更理由/)).toBeInTheDocument()
+  expect(screen.queryByRole('status')).toBeNull()
+})
+
+test('digest 作成中と適用中は実行中表示になり、2 重に押せない', async () => {
+  const dg = deferred<string>()
+  vi.spyOn(api, 'buildDigest').mockReturnValue(dg.promise)
+  const {unmount} = render(<Improve />)
+  await pick()
+  await userEvent.click(screen.getByRole('button', {name: /digest をプレビュー/}))
+  expect(screen.getByRole('button', {name: /digest を作成中/})).toBeDisabled()
+  expect(screen.getByRole('button', {name: /改善案を生成/})).toBeDisabled()
+  dg.resolve('# d')
+  expect(await screen.findByTestId('digest')).toBeInTheDocument()
+  unmount()
+
+  const ap = deferred<never>()
+  const apply = vi.spyOn(api, 'applyProposal').mockReturnValue(ap.promise)
+  render(<Improve />)
+  await pick()
+  await userEvent.click(screen.getByRole('button', {name: /改善案を生成/}))
+  await userEvent.click(await screen.findByRole('button', {name: '適用'}))
+  const busy = screen.getByRole('button', {name: /適用中…/})
+  expect(busy).toBeDisabled()
+  await userEvent.click(busy)
+  expect(apply).toHaveBeenCalledTimes(1)
+  ap.reject(new Error('失敗した'))
+  expect(await screen.findByRole('alert')).toHaveTextContent('失敗した')
+  expect(screen.getByRole('button', {name: '適用'})).toBeEnabled()
 })

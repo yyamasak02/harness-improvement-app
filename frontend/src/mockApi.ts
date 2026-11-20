@@ -41,6 +41,8 @@ export function mockApi(): Api {
   let cfg: T.Config = {claudePath: '', model: '', excludedProjects: [], correctionPatterns: ['違う', "don't"], maskPatterns: [], timeoutSeconds: 300, dailyReportEnabled: false, dailyReportTime: '', autoSuggestEnabled: false}
   const reports: Record<string, string> = {}
   let cancelFn: (() => void) | null = null
+  // E2E が実行中表示を確認できるよう、時間のかかる操作の応答を遅らせる（window.__mockSlowMs。通常は 0）
+  const slowMs = () => (typeof window !== 'undefined' ? Number((window as unknown as {__mockSlowMs?: number}).__mockSlowMs) || 0 : 0)
   const delay = <V,>(v: V, ms = 0) => new Promise<V>((res) => setTimeout(() => res(v), ms))
 
   return {
@@ -49,7 +51,7 @@ export function mockApi(): Api {
       for (const m of c.maskPatterns) new RegExp(m.regex) // 不正な正規表現は例外
       cfg = c
     },
-    reindex: () => delay({Scanned: 2, Ingested: 2, Skipped: 0, Removed: 0, BrokenLines: 1}),
+    reindex: () => delay({Scanned: 2, Ingested: 2, Skipped: 0, Removed: 0, BrokenLines: 1}, slowMs()),
     overview: () => delay({
       sessions: 2, messages: 11, inputTokens: 41, outputTokens: 76, corrections: 2, toolErrors: 1, memoryFiles: 2,
       daily: [{date: '2026-11-01', sessions: 1, messages: 7}, {date: '2026-11-02', sessions: 1, messages: 4}],
@@ -98,7 +100,7 @@ export function mockApi(): Api {
         resolve({targetPath: req.targetPath, baseHash: hashOf(req.targetPath), original: orig,
           output: orig + '- コミット前に go vet を先に実行する\n', rationale: '- 訂正発言「先に go vet」が繰り返されたため追記\n',
           digest: '(mock)', jobId: 'mock-job'})
-      }, 300)
+      }, 300 + slowMs())
       cancelFn = () => { clearTimeout(t); cancelFn = null; reject(new Error('claude の実行がキャンセルされました')) }
     }),
     cancelGeneration: async () => { cancelFn?.() },
@@ -121,7 +123,7 @@ export function mockApi(): Api {
         cancelFn = null
         resolve({name: req.name, dir, jobId: 'mock-skill-job', rationale: '- メモリに「応答は日本語」が繰り返し現れるため\n',
           files: [mk('SKILL.md', `---\nname: ${req.name}\ndescription: mock の skill\n---\n\n# ${req.name}\n`), mk('knowledge/notes.md', '# メモ\n\n- 応答は日本語\n')]})
-      }, 300)
+      }, 300 + slowMs())
       cancelFn = () => { clearTimeout(t); cancelFn = null; reject(new Error('claude の実行がキャンセルされました')) }
     }),
     applySkill: async (name, fs) => {
@@ -140,6 +142,7 @@ export function mockApi(): Api {
       return ms
     },
     generateReport: async (date) => {
+      await delay(null, slowMs())
       const d = date || new Date().toISOString().slice(0, 10)
       if (!/^\d{4}-\d{2}-\d{2}$/.test(d)) throw new Error('日付は YYYY-MM-DD 形式で指定してください')
       reports[d] = `# 日報 ${d}\n\n## やったこと\n\n- mock の日報\n\n## TODO\n\n- [ ] 明日やること\n`

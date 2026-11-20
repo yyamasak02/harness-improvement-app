@@ -1,12 +1,12 @@
 import {useState} from 'react'
 import {api} from '../api'
-import {Card, ErrorBox, Loading} from '../components'
+import {Busy, Card, ErrorBox, Loading} from '../components'
 import DiffView from '../DiffView'
 import {useAsync} from '../hooks'
 
 const opLabel: Record<string, string> = {apply: '適用', rollback: 'ロールバック'}
 
-function Detail({id, onRollback}: {id: string; onRollback: () => void}) {
+function Detail({id, onRollback, rolling}: {id: string; onRollback: () => void; rolling: boolean}) {
   const {data, error, loading} = useAsync(() => api.getBackup(id), [id])
   if (loading && !data) return <Loading />
   if (error) return <ErrorBox message={error} />
@@ -19,7 +19,7 @@ function Detail({id, onRollback}: {id: string; onRollback: () => void}) {
       </div>
       <DiffView original={data.before} proposed={data.after} editing={false} onChange={() => undefined} />
       {data.op === 'apply' && (
-        <button className="rounded border border-red-400 px-3 py-1 text-sm text-red-700" onClick={onRollback}>この変更をロールバック</button>
+        <button className="rounded border border-red-400 px-3 py-1 text-sm text-red-700 disabled:opacity-50" disabled={rolling} onClick={onRollback}>この変更をロールバック</button>
       )}
     </div>
   )
@@ -30,16 +30,17 @@ export default function History() {
   const list = useAsync(() => api.listBackups(), [ver])
   const [selected, setSelected] = useState('')
   const [confirming, setConfirming] = useState(false)
+  const [rolling, setRolling] = useState(false)
   const [error, setError] = useState('')
   const [notice, setNotice] = useState('')
 
   async function rollback() {
-    setConfirming(false); setError('')
+    setConfirming(false); setError(''); setRolling(true)
     try {
       const m = await api.rollback(selected)
       setNotice(`ロールバックしました（バックアップ ID: ${m.id}）`)
       setSelected(m.id); setVer((v) => v + 1)
-    } catch (e) { setError(e instanceof Error ? e.message : String(e)) }
+    } catch (e) { setError(e instanceof Error ? e.message : String(e)) } finally { setRolling(false) }
   }
 
   return (
@@ -47,6 +48,7 @@ export default function History() {
       <h2 className="text-xl font-bold">変更履歴</h2>
       <p className="text-sm text-gray-600">アプリが書き込んだ全ファイルのバックアップです。ロールバックも履歴に記録されます。</p>
       <ErrorBox message={error || list.error} />
+      {rolling && <Busy label="ロールバック中…" />}
       {notice && <p role="status" className="rounded border border-green-300 bg-green-50 p-2 text-sm">{notice}</p>}
       <div className="grid gap-4 lg:grid-cols-[360px_1fr]">
         <Card title="履歴">
@@ -63,7 +65,7 @@ export default function History() {
           </ul>
         </Card>
         <Card title="差分">
-          {selected ? <Detail key={selected} id={selected} onRollback={() => setConfirming(true)} /> : <p className="text-sm text-gray-500">履歴を選択してください。</p>}
+          {selected ? <Detail key={selected} id={selected} onRollback={() => setConfirming(true)} rolling={rolling} /> : <p className="text-sm text-gray-500">履歴を選択してください。</p>}
         </Card>
       </div>
       {confirming && (

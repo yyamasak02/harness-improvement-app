@@ -1,6 +1,6 @@
 import {useState} from 'react'
 import {api} from '../api'
-import {Card, ErrorBox, Loading} from '../components'
+import {Card, ErrorBox, Loading, LoadingButton} from '../components'
 import DiffView from '../DiffView'
 import {useAsync, useIndexVersion} from '../hooks'
 import type {TargetContent} from '../types'
@@ -18,14 +18,15 @@ function Inner({cur, onApplied}: {cur: TargetContent; onApplied: (id: string) =>
   const [text, setText] = useState(cur.content)
   const [editing, setEditing] = useState(false)
   const [error, setError] = useState('')
+  const [applying, setApplying] = useState(false)
   const changed = text !== cur.content
 
   async function apply() {
-    setError('')
+    setError(''); setApplying(true)
     try {
       const m = await api.applyProposal(cur.target.path, text, cur.hash)
       onApplied(m.id)
-    } catch (e) { setError(e instanceof Error ? e.message : String(e)) }
+    } catch (e) { setError(e instanceof Error ? e.message : String(e)); setApplying(false) }
   }
 
   return (
@@ -36,8 +37,8 @@ function Inner({cur, onApplied}: {cur: TargetContent; onApplied: (id: string) =>
         <>
           <DiffView original={cur.content} proposed={text} editing onChange={setText} />
           <div className="flex gap-2">
-            <button className="rounded bg-blue-600 px-3 py-1 text-sm text-white disabled:opacity-40" disabled={!changed} onClick={() => void apply()}>適用</button>
-            <button className="rounded border px-3 py-1 text-sm" onClick={() => { setText(cur.content); setEditing(false) }}>破棄</button>
+            <LoadingButton className="rounded bg-blue-600 px-3 py-1 text-sm text-white disabled:opacity-40" busy={applying} busyLabel="適用中…" disabled={!changed} onClick={() => void apply()}>適用</LoadingButton>
+            <button className="rounded border px-3 py-1 text-sm disabled:opacity-50" disabled={applying} onClick={() => { setText(cur.content); setEditing(false) }}>破棄</button>
           </div>
           <p className="text-xs text-gray-500">適用すると変更前の内容がバックアップされ、変更履歴からロールバックできます。</p>
         </>
