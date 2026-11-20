@@ -15,3 +15,4 @@ paths: ["**/*.go"]
 - 実行ファイルの判定は Windows では拡張子（`.exe` `.cmd`）、他は実行ビット。`claude.exe` を `.cmd` より優先する。
 - テストで OS 依存の機能（パーミッションビット・シンボリックリンク・読み取り専用ディレクトリ）を使う場合は、`t.Skip("理由")` を付けて Windows を除外する。外部プロセスは OS 非依存の Go 製フェイクを使う。
 - 変更後は `bash scripts/lint.sh vet-windows`（`GOOS=windows go vet ./...`）が通ること。CI の windows-latest でもテストする。
+- パッケージ構成・依存の向きは `docs/architecture.md`（レイヤー方針・許容リスト・移行計画）に従う。`internal/archtest` と `frontend/src/arch.test.ts` が検査する（許容リストへの追加は禁止）。
