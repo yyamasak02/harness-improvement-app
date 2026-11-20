@@ -11,7 +11,6 @@ import (
 
 	"harness-app/internal/applier"
 	"harness-app/internal/collector"
-	"harness-app/internal/config"
 	"harness-app/internal/extensions"
 	"harness-app/internal/osutil"
 	"harness-app/internal/service"
@@ -36,7 +35,7 @@ func (a *App) startup(ctx context.Context) {
 		a.initErr = fmt.Errorf("ホームディレクトリの解決: %w", err)
 		return
 	}
-	dataDir, err := config.DataDir("")
+	dataDir, err := service.DefaultDataDir()
 	if err != nil {
 		a.initErr = err
 		return
@@ -140,14 +139,14 @@ func (a *App) InitError() string {
 	return ""
 }
 
-func (a *App) Settings() (config.Config, error) {
+func (a *App) Settings() (service.Config, error) {
 	if err := a.ready(); err != nil {
-		return config.Config{}, err
+		return service.Config{}, err
 	}
 	return a.svc.Settings(), nil
 }
 
-func (a *App) SaveSettings(c config.Config) error {
+func (a *App) SaveSettings(c service.Config) error {
 	if err := a.ready(); err != nil {
 		return err
 	}
@@ -335,7 +334,7 @@ func (a *App) CheckClaude() (service.ClaudeStatus, error) {
 
 // OpenDataDir はアプリデータディレクトリを OS のファイラで開く。
 func (a *App) OpenDataDir() error {
-	dir, err := config.DataDir("")
+	dir, err := service.DefaultDataDir()
 	if err != nil {
 		return err
 	}
