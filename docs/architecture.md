@@ -15,7 +15,7 @@
 | `.`（main: app.go） | 381 | applier, collector, config, extensions, osutil, service, store, targets |
 | service | 1139 | applier, collector, config, digest, extensions, fsutil, launchd, masking, memory, runner, scheduler, store, targets |
 | digest | 173 | collector, masking, store |
-| collector | 530 | store |
+| collector | 530 | logmodel（M1 で store 依存を解消） |
 | runner | 509 | fsutil, skills |
 | applier | 303 | fsutil |
 | config | 109 | fsutil |
@@ -24,7 +24,7 @@
 - 循環 import: なし（Go が禁止するため）。
 - 層の逆流（下位が上位に依存）: なし。
 - 層の飛ばし・横の依存（今回の検査で違反として登録したもの、計 8 件）:
-  - `collector -> store`: インフラ同士の依存。
+  - `collector -> store`: M1 で解消済み（collector 側の `Store` インターフェース＋基盤層 `logmodel` の型）。
   - `. -> applier|collector|config|extensions|osutil|store|targets`（7 件）: エントリ（app.go）が service を介さずインフラを直接使っている。
 - 巨大パッケージ: `internal/service` が 1139 行（全体の 4 割強）で最大。ファイルは service.go 365・query.go 189・report.go 182。service は 13 個のパッケージに依存しており、責務（取り込み・検索・提案・適用・日報・スケジュール・設定）が 1 パッケージに混在している。`app.go` は 381 行・関数 38 個。
 - 時刻: `time.Now()` の直接呼び出しは applier・digest（2 か所）・runner・service の各 1〜2 か所。外部プロセス（`os/exec`）は runner・osutil のみ（testutil を除く）。ホーム解決（`os.UserHomeDir`）は app.go のみで、他は注入済み。
@@ -46,7 +46,7 @@
 | L4 ユースケース | `service` | 処理の順序づけ・トランザクション境界。インフラはインターフェース越しに使う | UI/Wails 依存、ファイル・プロセスの直接操作 |
 | L3 加工 | `digest` | インフラの結果から digest を組み立てる処理（masking を必ず通す） | 書き込み |
 | L2 インフラ | `store` `config` `applier` `collector` `runner` | 外部（DB・ファイル・FS 監視・claude プロセス）への出入口。パス・時刻・実行ファイルは注入 | 他のインフラへの依存、上位層への依存 |
-| L1 基盤 | `fsutil` `osutil` `masking` `memory` `launchd` `scheduler` `skills` `extensions` `targets` | 純粋なロジック・小さな OS 依存のユーティリティ | プロジェクト内の他パッケージへの依存 |
+| L1 基盤 | `fsutil` `osutil` `masking` `memory` `launchd` `scheduler` `skills` `extensions` `targets` `logmodel` | 純粋なロジック・小さな OS 依存のユーティリティ | プロジェクト内の他パッケージへの依存 |
 | 対象外 | `testutil` `testutil/fakeclaude` `archtest` | テスト補助・検査 | 本番コードからの import |
 
 - 外部ライブラリの入口は 1 か所に閉じる: wails は main、sqlite は store、fsnotify は collector。

@@ -3,57 +3,17 @@ package store
 import (
 	"database/sql"
 	"fmt"
+
+	"harness-app/internal/logmodel"
 )
 
-// Session は 1 セッションの集計。
-type Session struct {
-	ID            string `json:"id"`
-	Project       string `json:"project"`
-	FilePath      string `json:"filePath"`
-	Cwd           string `json:"cwd"`
-	GitBranch     string `json:"gitBranch"`
-	StartedAt     string `json:"startedAt"`
-	EndedAt       string `json:"endedAt"`
-	UserMsgs      int    `json:"userMsgs"`
-	AssistantMsgs int    `json:"assistantMsgs"`
-	ToolErrors    int    `json:"toolErrors"`
-	Corrections   int    `json:"corrections"`
-	InputTokens   int    `json:"inputTokens"`
-	OutputTokens  int    `json:"outputTokens"`
-	CacheRead     int    `json:"cacheRead"`
-	CacheCreate   int    `json:"cacheCreate"`
-}
-
-// Message は 1 メッセージ（ブロック単位）。
-type Message struct {
-	ID           int64  `json:"id"`
-	SessionID    string `json:"sessionId"`
-	Project      string `json:"project"`
-	Ts           string `json:"ts"`
-	Role         string `json:"role"`
-	Kind         string `json:"kind"` // text | tool_use | tool_result
-	Tool         string `json:"tool"`
-	Text         string `json:"text"`
-	IsError      bool   `json:"isError"`
-	IsCorrection bool   `json:"isCorrection"`
-}
-
-// ModelUsage はセッション内のモデル別使用量。
-type ModelUsage struct {
-	SessionID    string `json:"sessionId"`
-	Model        string `json:"model"`
-	Messages     int    `json:"messages"`
-	InputTokens  int    `json:"inputTokens"`
-	OutputTokens int    `json:"outputTokens"`
-}
-
-// FileState は取り込み済みファイルの状態。
-type FileState struct {
-	Path        string
-	Size        int64
-	MtimeNs     int64
-	BrokenLines int
-}
+// 取り込み結果の型は logmodel に定義し、store からは従来の名前で参照できるようにする。
+type (
+	Session    = logmodel.Session
+	Message    = logmodel.Message
+	ModelUsage = logmodel.ModelUsage
+	FileState  = logmodel.FileState
+)
 
 // Files は取り込み済みファイルの一覧を返す。
 func (s *Store) Files() (map[string]FileState, error) {
