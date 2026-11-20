@@ -1,0 +1,35 @@
+name: UX weekly
+# 週次で UX 指標（docs/ux-metrics.md）を計測し、結果をアーティファクトに保存する（推移の確認用）。
+# issue は自動投稿しない。悪化の起票は ux-review skill に従い、人またはエージェントが gh-post.sh 経由で行う。
+on:
+  schedule:
+    - cron: '0 1 * * 1'   # 毎週月曜 10:00 JST
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  ux-metrics:
+    name: UX 指標の週次計測
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: npm
+          cache-dependency-path: frontend/package-lock.json
+      - run: cd frontend && npm ci
+      - run: cd frontend && npx playwright install --with-deps chromium
+      - name: UX 指標を計測（予算超過なら失敗。結果はジョブサマリーに出る）
+        run: cd frontend && npm run e2e:ux
+      - name: 前回比レポート（読み取り専用）
+        if: always()
+        run: bash scripts/ux-report.sh >> "$GITHUB_STEP_SUMMARY"
+      - name: 結果 JSON をアーティファクトに保存（90 日）
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: ux-metrics-weekly
+          path: frontend/ux-metrics-results/
+          retention-days: 90
+          if-no-files-found: warn
