@@ -393,3 +393,9 @@ func (s *Service) GetBackup(id string) (applier.Entry, error) { return s.applier
 
 // Rollback は履歴を元に戻す。
 func (s *Service) Rollback(id string) (applier.Manifest, error) { return s.applier().Rollback(id) }
+
+// Session はセッション一覧の 1 件（store.Session の別名。エントリが store を直接 import しないための公開）。
+type Session = store.Session
+
+// SearchHit は検索結果の 1 件（store.SearchHit の別名。同上）。
+type SearchHit = store.SearchHit

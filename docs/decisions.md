@@ -39,3 +39,4 @@
 - 2026-11-21 applier の排他の範囲（#200）: Apply/Rollback の排他（writeMu）は同一プロセス内のみ。複数のアプリプロセスが同時に動く場合は ExpectedHash の照合で防ぐが、照合と rename の間は守られない。プロセス間ロック（ロックファイル等）は範囲外とし、単一利用者のローカルデスクトップアプリでは複数起動を想定しない。必要になったら別 issue で案を検討する
 - 2026-11-21 M3 第2段階（#183）: targets・extensions も同じく型エイリアス（service.Target / service.ExtensionsReport）で app.go の import を外す。wailsjs は変わらない
 - 2026-11-21 M3 第3段階（#183）: osutil は型が無いため service.OpenPath（関数の委譲）で app.go の import を外す。wailsjs は変わらない（App のメソッドは不変）
+- 2026-11-21 M3 第4段階（#183）: store の Session / SearchHit を service の型エイリアスで公開し app.go の import を外す。wailsjs は変わらない（型名は store のまま）
