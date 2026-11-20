@@ -538,6 +538,13 @@ uxout=$(bash scripts/ux-report.sh --current "$ux/none" 2>&1); uxrc=$?
 uxsum=$(cd "$ux/cur" && sha256sum summary.json); bash scripts/ux-report.sh --current "$ux/cur" --previous "$ux/prev" >/dev/null 2>&1
 [ "$uxsum" = "$(cd "$ux/cur" && sha256sum summary.json)" ] && [ "$(ls "$ux/cur" | wc -l)" = 1 ] \
   && echo "ok: ux-report.sh は何も書き込まない" || { echo "NG: ux-report.sh が書き込んでいる"; fail=1; }
+# arch-metrics.sh（#176）: 許容リスト・巨大ファイル・time.Now の各節を出し、何も書き込まない
+arch_before=$(git status --porcelain | sha256sum)
+archout=$(bash scripts/arch-metrics.sh 2>&1); archrc=$?
+{ [ "$archrc" = 0 ] && echo "$archout" | grep -q '許容リスト' && echo "$archout" | grep -q '巨大ファイル' && echo "$archout" | grep -q 'time.Now'; } \
+  && echo "ok: arch-metrics.sh は許容リスト・巨大ファイル・time.Now を出す" || { echo "NG: arch-metrics.sh の出力が想定と違う"; fail=1; }
+[ "$arch_before" = "$(git status --porcelain | sha256sum)" ] \
+  && echo "ok: arch-metrics.sh は何も書き込まない" || { echo "NG: arch-metrics.sh が書き込んでいる"; fail=1; }
 
 # check-tests-changed: 一時リポジトリで検証
 repo="$tmp/repo"; mkdir -p "$repo/scripts" "$repo/internal/x"; cp scripts/check-tests-changed.sh "$repo/scripts/"
