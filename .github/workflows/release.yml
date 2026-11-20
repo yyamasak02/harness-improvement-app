@@ -14,9 +14,10 @@ permissions:
   contents: read
 
 # 同じタグで 2 重に走らせない（push と Release 公開の両方が起きた場合は順に実行する）。
-# 0.1.0 と v0.1.0 を同じグループにするため、先頭の v を除いた名前で束ねる
+# Release 公開と tag push は同じタグ名になるので、タグ名で束ねる
+# （GitHub Actions の式に substring 関数は無い。使うとワークフローごと無効になる）
 concurrency:
-  group: release-${{ startsWith(github.event.release.tag_name || github.ref_name, 'v') && substring(github.event.release.tag_name || github.ref_name, 1) || (github.event.release.tag_name || github.ref_name) }}
+  group: release-${{ github.event.release.tag_name || github.ref_name }}
   cancel-in-progress: false
 
 jobs:
