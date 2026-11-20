@@ -36,6 +36,8 @@ export interface Api {
   rollback(id: string): Promise<T.Manifest>
   checkClaude(): Promise<T.ClaudeStatus>
   openDataDir(): Promise<void>
+  /** アプリのバージョン（wails.json 由来。通信なし）。 */
+  version(): Promise<string>
   /** index:progress / index:done などのイベント購読。解除関数を返す。 */
   onEvent(name: string, cb: (payload: unknown) => void): () => void
 }
@@ -73,6 +75,7 @@ export const wailsApi: Api = {
   rollback: (id) => cast(App.Rollback(id)),
   checkClaude: () => cast(App.CheckClaude()),
   openDataDir: () => App.OpenDataDir(),
+  version: () => App.Version(),
   onEvent: (name, cb) => EventsOn(name, cb),
 }
 

@@ -273,6 +273,38 @@ jobs:
           bash scripts/build-deb.sh build/bin
           dpkg-deb --info build/bin/harness-app_*_amd64.deb | grep -q 'Depends: libgtk-3-0, libwebkit2gtk-4.1-0'
           dpkg-deb --contents build/bin/harness-app_*_amd64.deb | grep -q ' ./usr/bin/harness-app$'
+      - name: .deb のバージョン順序（rc 間・正式版）
+        run: |
+          set -e
+          dpkg --compare-versions 0.1.0~rc.3 lt 0.1.0~rc.4
+          dpkg --compare-versions 0.1.0~rc.4 lt 0.1.0
+          dpkg --compare-versions 0.1.0~rc.10 gt 0.1.0~rc.9
+          dpkg --compare-versions 0.1.0 lt 0.1.1~rc.1
+          # 現行の wails.json のバージョンが、1 つ前の rc より新しい（~ 形式に変換されている）
+          cur=$(dpkg-deb --field build/bin/harness-app_*_amd64.deb Version)
+          echo "現行の deb バージョン: $cur"
+          dpkg --compare-versions "$cur" gt 0.0.1~rc.1
+      - name: .deb の更新インストール（同じ版の再導入 → 新しい版。ユーザーデータが残る）
+        run: |
+          set -e
+          d="$RUNNER_TEMP/debs"; mkdir -p "$d"
+          HARNESS_VERSION=0.0.1-rc.1 bash scripts/build-deb.sh "$d"
+          HARNESS_VERSION=0.0.1 bash scripts/build-deb.sh "$d"
+          old="$d/harness-app_0.0.1~rc.1_amd64.deb"; new="$d/harness-app_0.0.1_amd64.deb"
+          # ユーザーデータ（アプリは XDG の設定ディレクトリに置く）の代わりのダミー
+          data="${XDG_CONFIG_HOME:-$HOME/.config}/harness-app"
+          mkdir -p "$data"; echo '{"formatVersion":1}' > "$data/config.json"
+          sudo dpkg -i "$old"
+          test "$(dpkg-query -W -f='${Version}' harness-app)" = "0.0.1~rc.1"
+          sudo dpkg -i "$old"   # 同じ版の再導入
+          test "$(dpkg-query -W -f='${Version}' harness-app)" = "0.0.1~rc.1"
+          sudo dpkg -i "$new"   # 新しい版への更新
+          test "$(dpkg-query -W -f='${Version}' harness-app)" = "0.0.1"
+          test -x /usr/bin/harness-app
+          test "$(cat "$data/config.json")" = '{"formatVersion":1}'
+          sudo dpkg -r harness-app
+          test -f "$data/config.json"   # アンインストールでもユーザーデータは消えない
+          rm -rf "$data"
 
   dmg-smoke:
     name: dmg-smoke（make dmg）

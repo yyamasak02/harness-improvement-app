@@ -3,6 +3,7 @@ package store
 
 import (
 	"database/sql"
+	"errors"
 	"fmt"
 	"strings"
 	"unicode/utf8"
@@ -33,18 +34,47 @@ CREATE TRIGGER IF NOT EXISTS messages_ad AFTER DELETE ON messages BEGIN
 END;
 `
 
+// SchemaVersion は索引 DB の形式バージョン（PRAGMA user_version）。
+// 0 はバージョン導入前（v0.1.0-rc.3 以前）の DB で、スキーマは 1 と同一なので印を付けるだけで移行できる。
+// 形式を変えるときは値を上げ、migrate に段階的な移行を足す。
+const SchemaVersion = 1
+
+// ErrNewerFormat は DB がこのアプリより新しい形式のときのエラー（古いアプリで開いて壊さないために開かない）。
+var ErrNewerFormat = errors.New("索引 DB がこのバージョンより新しい形式です。アプリを新しいバージョンに更新してください")
+
 // Open は DB を開きマイグレーションする。path が ":memory:" ならメモリ DB。
+// DB は ~/.claude から再構築できる索引なので、読めない形式でも元データは失われない。
 func Open(path string) (*Store, error) {
 	db, err := sql.Open("sqlite", path)
 	if err != nil {
 		return nil, fmt.Errorf("DB を開く: %w", err)
 	}
 	db.SetMaxOpenConns(1)
-	if _, err := db.Exec(schema); err != nil {
+	if err := migrate(db); err != nil {
 		_ = db.Close()
-		return nil, fmt.Errorf("マイグレーション: %w", err)
+		return nil, err
 	}
 	return &Store{db: db}, nil
+}
+
+// migrate は形式バージョンを確認し、古ければ現行に上げる。新しければ何も変更せず ErrNewerFormat を返す。
+func migrate(db *sql.DB) error {
+	var ver int
+	if err := db.QueryRow(`PRAGMA user_version`).Scan(&ver); err != nil {
+		return fmt.Errorf("DB 形式バージョンの取得: %w", err)
+	}
+	if ver > SchemaVersion {
+		return fmt.Errorf("%w（DB v%d、このアプリ v%d）", ErrNewerFormat, ver, SchemaVersion)
+	}
+	if _, err := db.Exec(schema); err != nil {
+		return fmt.Errorf("マイグレーション: %w", err)
+	}
+	if ver < SchemaVersion {
+		if _, err := db.Exec(fmt.Sprintf(`PRAGMA user_version = %d`, SchemaVersion)); err != nil {
+			return fmt.Errorf("DB 形式バージョンの設定: %w", err)
+		}
+	}
+	return nil
 }
 
 // Close は DB を閉じる。

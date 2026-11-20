@@ -46,6 +46,13 @@ test('改善案の自動生成は既定でオフ。切り替えて保存でき�
   expect((await api.settings()).autoSuggestEnabled).toBe(true)
 })
 
+test('バージョン情報を表示する（通信なし）', async () => {
+  vi.spyOn(api, 'version').mockResolvedValue('1.2.3')
+  render(<Settings />)
+  expect(await screen.findByText('1.2.3')).toBeInTheDocument()
+  expect(screen.getByText(/更新の確認を行いません/)).toBeInTheDocument()
+})
+
 test('前回の自動生成の失敗を表示する', async () => {
   vi.spyOn(api, 'autoSuggestStatus').mockResolvedValue({enabled: true, running: false, lastAttemptAt: '2026-11-10T00:00:00Z', lastError: 'claude が見つかりません', hasProposal: false})
   render(<Settings />)

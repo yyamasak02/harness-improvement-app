@@ -17,8 +17,17 @@ type MaskPattern struct {
 	Regex string `json:"regex"`
 }
 
+// FormatVersion は config.json の形式バージョン。0（無し）は導入前の形式で、フィールドは現行と互換。
+// 形式を変えるときは上げ、Load に移行を足す。
+const FormatVersion = 1
+
+// ErrNewerFormat は設定ファイルがこのアプリより新しい形式のときのエラー（古いアプリで上書きして壊さないため）。
+var ErrNewerFormat = errors.New("設定ファイルがこのバージョンより新しい形式です。アプリを新しいバージョンに更新してください")
+
 // Config はユーザー設定。
 type Config struct {
+	// FormatVersion は設定ファイルの形式バージョン（保存時にアプリが設定する。画面からは編集しない）。
+	FormatVersion      int           `json:"formatVersion"`
 	ClaudePath         string        `json:"claudePath"`
 	Model              string        `json:"model"`
 	ExcludedProjects   []string      `json:"excludedProjects"`
@@ -56,6 +65,7 @@ func DefaultCorrectionPatterns() []string {
 // Default は初期設定を返す。
 func Default() Config {
 	return Config{
+		FormatVersion:      FormatVersion,
 		CorrectionPatterns: DefaultCorrectionPatterns(),
 		ExcludedProjects:   []string{},
 		MaskPatterns:       []MaskPattern{},
@@ -90,6 +100,10 @@ func Load(dataDir string) (Config, error) {
 	if err := json.Unmarshal(b, &c); err != nil {
 		return Default(), fmt.Errorf("設定の解析: %w", err)
 	}
+	if c.FormatVersion > FormatVersion {
+		return Default(), fmt.Errorf("%w（設定 v%d、このアプリ v%d）", ErrNewerFormat, c.FormatVersion, FormatVersion)
+	}
+	c.FormatVersion = FormatVersion
 	if c.TimeoutSeconds <= 0 {
 		c.TimeoutSeconds = 300
 	}
@@ -97,7 +111,12 @@ func Load(dataDir string) (Config, error) {
 }
 
 // Save は設定を temp → rename で保存する。
+// 既存ファイルが新しい形式なら上書きしない。
 func Save(dataDir string, c Config) error {
+	if _, err := Load(dataDir); errors.Is(err, ErrNewerFormat) {
+		return err
+	}
+	c.FormatVersion = FormatVersion
 	b, err := json.MarshalIndent(c, "", "  ")
 	if err != nil {
 		return fmt.Errorf("設定のシリアライズ: %w", err)

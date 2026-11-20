@@ -1,0 +1,11 @@
+{
+  "claudePath": "/opt/demo/bin/claude",
+  "model": "demo-model",
+  "excludedProjects": ["demo-excluded"],
+  "correctionPatterns": ["違う"],
+  "maskPatterns": [{"name": "demo", "regex": "DEMO-[0-9]+"}],
+  "timeoutSeconds": 120,
+  "dailyReportEnabled": true,
+  "dailyReportTime": "20:30",
+  "autoSuggestEnabled": false
+}

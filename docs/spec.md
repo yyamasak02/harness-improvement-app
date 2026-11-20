@@ -83,6 +83,7 @@ CREATE VIRTUAL TABLE messages_fts USING fts5(text, content='messages', content_r
 
 - 取り込みは差分のみ：`files` の size/mtime が変わったファイルだけ、そのセッションを消してから入れ直す。
 - DB の場所はアプリデータディレクトリ（macOS: `~/Library/Application Support/harness-app/index.db`）。DB を消しても再構築できること。
+- **形式バージョンと更新（#172）**: アプリデータはインストール先と別（`os.UserConfigDir()/harness-app`）にあり、インストールの更新・アンインストールで消えない。`index.db` は `PRAGMA user_version`（現行 1。0 は導入前でスキーマ同一＝印を付けるだけで移行）、`config.json` は `formatVersion`（現行 1。無い場合は 0 扱い）を持つ。古い形式は読み込み時に現行へ移行し、新しい形式（このアプリより大きい値）は開かず `ErrNewerFormat` を返し、ファイルを変更しない（config は Save も拒否）。形式を変えるときは版を上げ、移行処理とテスト（`testdata/upgrade/`）を足す。アプリのバージョンの出典は `wails.json`（ビルド時に埋め込み、設定画面の「バージョン情報」に表示。通信なし）。更新の確認・自動ダウンロードは持たない（#173 で判断）。
 
 ## 6. 機能
 

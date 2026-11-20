@@ -105,6 +105,7 @@ export namespace config {
 	    }
 	}
 	export class Config {
+	    formatVersion: number;
 	    claudePath: string;
 	    model: string;
 	    excludedProjects: string[];
@@ -121,6 +122,7 @@ export namespace config {
 	
 	    constructor(source: any = {}) {
 	        if ('string' === typeof source) source = JSON.parse(source);
+	        this.formatVersion = source["formatVersion"];
 	        this.claudePath = source["claudePath"];
 	        this.model = source["model"];
 	        this.excludedProjects = source["excludedProjects"];
