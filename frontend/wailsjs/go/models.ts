@@ -621,11 +621,11 @@ export namespace service {
 	export class SettingsStatus {
 	    newerFormat: boolean;
 	    message: string;
-
+	
 	    static createFrom(source: any = {}) {
 	        return new SettingsStatus(source);
 	    }
-
+	
 	    constructor(source: any = {}) {
 	        if ('string' === typeof source) source = JSON.parse(source);
 	        this.newerFormat = source["newerFormat"];
