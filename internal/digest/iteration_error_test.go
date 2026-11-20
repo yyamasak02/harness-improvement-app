@@ -17,7 +17,6 @@ func TestBuild_IterationError(t *testing.T) {
 		tool    string
 		wantMsg string
 	}{
-		{"訂正の抜粋", 0, 1, "text", "", "訂正の取得"},
 		{"ツールエラー", 1, 0, "tool_result", "Bash", "エラーの反復"},
 		{"頻出コマンド", 0, 0, "tool_use", "Bash", "コマンドの反復"},
 	}
@@ -46,5 +45,37 @@ SELECT 2, '%[1]s', '', '2026-11-09T00:00:01Z', 'user', '%[2]s', '%[3]s',
 				t.Errorf("エラー文言に %q が必要: %v", tc.wantMsg, err)
 			}
 		})
+	}
+}
+
+// 訂正の抜粋は ORDER BY のソートで全行の text が Query の時点で評価されるため、ビューの式では
+// 反復中のエラーにならない。ts にインデックスを持つ実テーブルの上のビューにして、ソートを避け、
+// 行ごとに遅延評価される text（古い行だけオーバーフロー）で rows.Err() の分岐を通す。
+func TestBuild_IterationError_Correction(t *testing.T) {
+	st, m := setup(t)
+	var sid string
+	if err := st.DB().QueryRow(`SELECT id FROM sessions LIMIT 1`).Scan(&sid); err != nil {
+		t.Fatal(err)
+	}
+	setupSQL := fmt.Sprintf(`DROP TABLE messages;
+CREATE TABLE raw_messages(id INTEGER PRIMARY KEY, session_id TEXT, project TEXT, ts TEXT, role TEXT,
+  kind TEXT, tool TEXT, text TEXT, is_error INT, is_correction INT);
+CREATE INDEX idx_raw_ts ON raw_messages(ts);
+INSERT INTO raw_messages VALUES
+  (1, '%[1]s', '', '2026-11-09T00:00:02Z', 'user', 'text', '', 'ok', 0, 1),
+  (2, '%[1]s', '', '2026-11-09T00:00:01Z', 'user', 'text', '', 'ok', 0, 1);
+CREATE VIEW messages AS
+SELECT id, session_id, project, ts, role, kind, tool,
+  CASE WHEN id = 2 THEN abs(-9223372036854775807 - 1) ELSE text END AS text, is_error, is_correction
+FROM raw_messages`, sid)
+	if _, err := st.DB().Exec(setupSQL); err != nil {
+		t.Fatal(err)
+	}
+	out, err := Build(st, m, Options{Days: 30, Now: now})
+	if err == nil {
+		t.Fatalf("反復中のエラーが握りつぶされた:\n%s", out)
+	}
+	if !strings.Contains(err.Error(), "訂正の反復") && !strings.Contains(err.Error(), "訂正の読み取り") {
+		t.Errorf("反復中のエラーになっていない（Query で失敗している可能性）: %v", err)
 	}
 }
