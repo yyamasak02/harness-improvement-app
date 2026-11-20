@@ -52,6 +52,8 @@ type Runner struct {
 	// Env は claude に追加する環境変数（"KEY=VALUE"）。空なら親プロセスの環境をそのまま引き継ぐ（従来どおり）。
 	// 指定時は親の環境に追記する（同名キーは Env が優先）。テストが t.Setenv に頼らず FakeClaude を制御するために使う。
 	Env []string
+	// Now はジョブ ID に使う現在時刻の注入点。nil なら time.Now。
+	Now func() time.Time
 }
 
 // Result は実行結果。
@@ -63,10 +65,17 @@ type Result struct {
 	Log       string `json:"log"`
 }
 
-func newJobID() string {
+func (r *Runner) now() time.Time {
+	if r.Now != nil {
+		return r.Now()
+	}
+	return time.Now()
+}
+
+func (r *Runner) newJobID() string {
 	var b [4]byte
 	_, _ = rand.Read(b[:])
-	return time.Now().UTC().Format("20060102T150405") + "-" + hex.EncodeToString(b[:])
+	return r.now().UTC().Format("20060102T150405") + "-" + hex.EncodeToString(b[:])
 }
 
 // Run はジョブディレクトリを作り claude を実行する。cwd は常にジョブディレクトリ。
@@ -97,7 +106,7 @@ func (r *Runner) execute(ctx context.Context, promptText string, in any) (*Resul
 	if r.WorkDir == "" {
 		return nil, errors.New("WorkDir が未設定です")
 	}
-	id := newJobID()
+	id := r.newJobID()
 	dir := filepath.Join(r.WorkDir, id)
 	if err := os.MkdirAll(dir, 0o755); err != nil {
 		return nil, fmt.Errorf("ジョブディレクトリ作成: %w", err)

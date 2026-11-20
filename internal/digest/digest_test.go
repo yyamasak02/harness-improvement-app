@@ -96,6 +96,13 @@ func TestRequiresMasker(t *testing.T) {
 	}
 }
 
+func TestBuildRequiresNow(t *testing.T) {
+	st, m := setup(t)
+	if _, err := Build(st, m, Options{Days: 30}); err == nil {
+		t.Fatal("Now 未指定はエラーのはず")
+	}
+}
+
 func TestExcerpt(t *testing.T) {
 	tests := []struct {
 		name string

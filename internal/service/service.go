@@ -323,7 +323,7 @@ func (s *Service) newRunner() (*runner.Runner, error) {
 		return nil, err
 	}
 	return &runner.Runner{ClaudePath: bin, WorkDir: filepath.Join(s.env.DataDir, "work"), Model: cfg.Model,
-		Timeout: time.Duration(cfg.TimeoutSeconds) * time.Second}, nil
+		Timeout: time.Duration(cfg.TimeoutSeconds) * time.Second, Now: s.env.Now}, nil
 }
 
 // startRunner は claude の解決とキャンセル登録を行う。done は必ず呼ぶ。
