@@ -45,24 +45,24 @@ export default function Settings() {
     <div className="max-w-3xl space-y-4">
       <h2 className="text-xl font-bold">設定</h2>
       <ErrorBox message={error} />
-      {notice && <p role="status" className="rounded border border-green-300 bg-green-50 p-2 text-sm">{notice}</p>}
+      {notice && <p role="status" className="alert alert-success">{notice}</p>}
 
       <Card title="claude コマンド">
         {claude.data && !claude.data.found && (
-          <div role="alert" className="mb-3 rounded border border-amber-300 bg-amber-50 p-3 text-sm">
+          <div role="alert" className="mb-3 alert alert-warning">
             claude コマンドが見つかりません。Claude Code をインストールするか、下の欄にフルパスを入力して保存してください
             （例: <code>~/.local/bin/claude</code> や <code>/opt/homebrew/bin/claude</code>。ターミナルで <code>which claude</code> を実行すると分かります）。
           </div>
         )}
-        {claude.data?.found && <p className="mb-2 text-xs text-green-700">検出済み: {claude.data.path}</p>}
+        {claude.data?.found && <p className="mb-2 text-xs text-success-fg">検出済み: {claude.data.path}</p>}
         <label className="block text-sm">パス（空欄なら自動検出）
-          <input className="mt-1 w-full rounded border px-2 py-1" aria-label="claude のパス" value={cfg.claudePath} onChange={(e) => set('claudePath', e.target.value)} />
+          <input className="mt-1 w-full" aria-label="claude のパス" value={cfg.claudePath} onChange={(e) => set('claudePath', e.target.value)} />
         </label>
         <label className="mt-3 block text-sm">使用モデル（空欄なら既定）
-          <input className="mt-1 w-full rounded border px-2 py-1" aria-label="使用モデル" value={cfg.model} onChange={(e) => set('model', e.target.value)} />
+          <input className="mt-1 w-full" aria-label="使用モデル" value={cfg.model} onChange={(e) => set('model', e.target.value)} />
         </label>
         <label className="mt-3 block text-sm">タイムアウト（秒）
-          <input type="number" min={10} className="mt-1 w-32 rounded border px-2 py-1" aria-label="タイムアウト" value={cfg.timeoutSeconds} onChange={(e) => set('timeoutSeconds', Number(e.target.value))} />
+          <input type="number" min={10} className="mt-1 w-32" aria-label="タイムアウト" value={cfg.timeoutSeconds} onChange={(e) => set('timeoutSeconds', Number(e.target.value))} />
         </label>
       </Card>
 
@@ -72,7 +72,7 @@ export default function Settings() {
           アプリ起動中、指定時刻に当日の日報を自動生成する
         </label>
         <label className="mt-3 block text-sm">生成時刻（HH:MM。空欄なら 21:00）
-          <input className="mt-1 w-32 rounded border px-2 py-1" aria-label="日報の生成時刻" placeholder="21:00" value={cfg.dailyReportTime} onChange={(e) => set('dailyReportTime', e.target.value)} />
+          <input className="mt-1 w-32" aria-label="日報の生成時刻" placeholder="21:00" value={cfg.dailyReportTime} onChange={(e) => set('dailyReportTime', e.target.value)} />
         </label>
       </Card>
 
@@ -81,24 +81,24 @@ export default function Settings() {
           <input type="checkbox" aria-label="改善案を自動で生成する" checked={cfg.autoSuggestEnabled} onChange={(e) => set('autoSuggestEnabled', e.target.checked)} />
           セッションの取り込み後に、グローバル CLAUDE.md の改善案を自動で生成する（既定はオフ）
         </label>
-        <p className="mt-1 text-xs text-gray-500">
+        <p className="mt-1 text-xs text-muted">
           生成には claude を使うためトークンを消費します。前回の試行から 24 時間以上たち、新しいセッションがあるときだけ実行します（失敗しても 24 時間は再試行しません）。
           自動で作るのは提案までです。「CLAUDE.md 改善」画面で差分を確認し、「適用」を押したときだけ書き込まれます。
         </p>
         {suggest.data?.running && <Busy label="自動提案を実行中…" />}
-        {suggest.data?.lastAttemptAt && <p className="mt-1 text-xs text-gray-500">前回の試行: {new Date(suggest.data.lastAttemptAt).toLocaleString('ja-JP')}</p>}
-        {suggest.data?.hasProposal && <p className="mt-1 text-xs text-green-700">未確認の提案があります（「CLAUDE.md 改善」画面で確認できます）。</p>}
+        {suggest.data?.lastAttemptAt && <p className="mt-1 text-xs text-muted">前回の試行: {new Date(suggest.data.lastAttemptAt).toLocaleString('ja-JP')}</p>}
+        {suggest.data?.hasProposal && <p className="mt-1 text-xs text-success-fg">未確認の提案があります（「CLAUDE.md 改善」画面で確認できます）。</p>}
         <ErrorBox message={suggest.data?.lastError ? `前回の自動生成に失敗しました: ${suggest.data.lastError}` : ''} />
       </Card>
 
       <Card title="取り込み">
         <label className="block text-sm">除外するプロジェクト（プロジェクトディレクトリ名または cwd。1 行 1 件）
-          <textarea className="mt-1 w-full rounded border p-2 font-mono text-xs" rows={3} aria-label="除外するプロジェクト" value={cfg.excludedProjects.join('\n')} onChange={(e) => set('excludedProjects', lines(e.target.value))} />
+          <textarea className="mt-1 w-full font-mono text-xs" rows={3} aria-label="除外するプロジェクト" value={cfg.excludedProjects.join('\n')} onChange={(e) => set('excludedProjects', lines(e.target.value))} />
         </label>
         <label className="mt-3 block text-sm">訂正パターン（部分一致・1 行 1 件）
-          <textarea className="mt-1 w-full rounded border p-2 font-mono text-xs" rows={5} aria-label="訂正パターン" value={cfg.correctionPatterns.join('\n')} onChange={(e) => set('correctionPatterns', lines(e.target.value))} />
+          <textarea className="mt-1 w-full font-mono text-xs" rows={5} aria-label="訂正パターン" value={cfg.correctionPatterns.join('\n')} onChange={(e) => set('correctionPatterns', lines(e.target.value))} />
         </label>
-        <p className="mt-1 text-xs text-gray-500">変更後に「インデックスを再構築」を実行すると反映されます。</p>
+        <p className="mt-1 text-xs text-muted">変更後に「インデックスを再構築」を実行すると反映されます。</p>
       </Card>
 
       <Card title="マスキングの追加パターン（正規表現）">
@@ -107,23 +107,23 @@ export default function Settings() {
             const err = regexError(p)
             return (
               <li key={i} className="flex flex-wrap items-center gap-2">
-                <input className="w-32 rounded border px-2 py-1 text-sm" aria-label={`パターン名 ${i + 1}`} placeholder="名前" value={p.name}
+                <input className="w-32" aria-label={`パターン名 ${i + 1}`} placeholder="名前" value={p.name}
                   onChange={(e) => set('maskPatterns', cfg.maskPatterns.map((x, j) => (j === i ? {...x, name: e.target.value} : x)))} />
-                <input className="flex-1 rounded border px-2 py-1 font-mono text-sm" aria-label={`正規表現 ${i + 1}`} placeholder="正規表現" value={p.regex}
+                <input className="flex-1 font-mono text-sm" aria-label={`正規表現 ${i + 1}`} placeholder="正規表現" value={p.regex}
                   onChange={(e) => set('maskPatterns', cfg.maskPatterns.map((x, j) => (j === i ? {...x, regex: e.target.value} : x)))} />
-                <button className="rounded border px-2 py-1 text-sm" onClick={() => set('maskPatterns', cfg.maskPatterns.filter((_, j) => j !== i))}>削除</button>
-                {err && <span className="w-full text-xs text-red-700">正規表現が不正です: {err}</span>}
+                <button className="btn btn-secondary" onClick={() => set('maskPatterns', cfg.maskPatterns.filter((_, j) => j !== i))}>削除</button>
+                {err && <span className="w-full text-xs text-danger-fg">正規表現が不正です: {err}</span>}
               </li>
             )
           })}
         </ul>
-        <button className="mt-2 rounded border px-3 py-1 text-sm" onClick={() => set('maskPatterns', [...cfg.maskPatterns, {name: '', regex: ''}])}>パターンを追加</button>
+        <button className="mt-2 btn btn-secondary" onClick={() => set('maskPatterns', [...cfg.maskPatterns, {name: '', regex: ''}])}>パターンを追加</button>
       </Card>
 
       <div className="flex flex-wrap gap-2">
-        <LoadingButton className="rounded bg-blue-600 px-4 py-1.5 text-sm text-white disabled:opacity-50" busy={saving} busyLabel="保存中…" disabled={badRegex || rebuilding} onClick={() => void save()}>保存</LoadingButton>
-        <LoadingButton className="rounded border px-4 py-1.5 text-sm disabled:opacity-50" busy={rebuilding} busyLabel="再構築中…" disabled={saving} onClick={() => void rebuild()}>インデックスを再構築</LoadingButton>
-        <button className="rounded border px-4 py-1.5 text-sm" onClick={() => void api.openDataDir()}>データディレクトリを開く</button>
+        <LoadingButton className="btn btn-primary" busy={saving} busyLabel="保存中…" disabled={badRegex || rebuilding} onClick={() => void save()}>保存</LoadingButton>
+        <LoadingButton className="btn btn-secondary" busy={rebuilding} busyLabel="再構築中…" disabled={saving} onClick={() => void rebuild()}>インデックスを再構築</LoadingButton>
+        <button className="btn btn-secondary" onClick={() => void api.openDataDir()}>データディレクトリを開く</button>
       </div>
     </div>
   )

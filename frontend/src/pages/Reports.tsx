@@ -46,22 +46,22 @@ export default function Reports() {
   return (
     <div className="space-y-4">
       <h2 className="text-xl font-bold">日次振り返り</h2>
-      <p className="text-sm text-gray-600">
+      <p className="text-sm text-muted">
         当日のセッションから日報と TODO を生成し、アプリのデータディレクトリの reports/ に保存します（~/.claude やプロジェクトには書きません）。
         自動生成は設定画面で有効にします（アプリ起動中のみ。時刻を過ぎて起動した場合は未生成なら作成します）。
       </p>
       <ErrorBox message={error || list.error} />
-      {notice && <p role="status" className="rounded border border-green-300 bg-green-50 p-2 text-sm">{notice}</p>}
+      {notice && <p role="status" className="alert alert-success">{notice}</p>}
       <div className="flex gap-2">
-        <LoadingButton className="rounded bg-blue-600 px-3 py-1 text-sm text-white disabled:opacity-50" busy={busy} busyLabel="生成中…" onClick={generate}>今日の日報を生成</LoadingButton>
-        <button className="rounded border px-3 py-1 text-sm" onClick={showPlist}>launchd の plist を生成</button>
+        <LoadingButton className="btn btn-primary" busy={busy} busyLabel="生成中…" onClick={generate}>今日の日報を生成</LoadingButton>
+        <button className="btn btn-secondary" onClick={showPlist}>launchd の plist を生成</button>
       </div>
       {plist && (
         <Card title="launchd の plist（表示のみ。登録・実行はしません）">
-          <p className="mb-2 text-xs text-gray-500">
+          <p className="mb-2 text-xs text-muted">
             使う場合は ~/Library/LaunchAgents/ に保存し、自分で launchctl load してください。指定時刻にアプリを起動します。
           </p>
-          <textarea readOnly aria-label="plist" className="w-full rounded border p-2 font-mono text-xs" rows={14} value={plist} />
+          <textarea readOnly aria-label="plist" className="w-full font-mono text-xs" rows={14} value={plist} />
         </Card>
       )}
       <div className="grid gap-4 lg:grid-cols-[240px_1fr]">
@@ -69,16 +69,16 @@ export default function Reports() {
           <ul className="space-y-1" aria-label="日報一覧">
             {list.data?.map((r) => (
               <li key={r.date}>
-                <button className={`w-full rounded border px-2 py-1 text-left text-sm hover:bg-gray-50 ${selected === r.date ? 'border-blue-500' : ''}`}
+                <button className="list-item" aria-current={selected === r.date ? true : undefined}
                   onClick={() => setSelected(r.date)}>{r.date}</button>
               </li>
             ))}
-            {list.data?.length === 0 && <li className="text-sm text-gray-500">日報はまだありません。</li>}
+            {list.data?.length === 0 && <li className="text-sm text-muted">日報はまだありません。</li>}
           </ul>
         </Card>
         <Card title="内容">
           {selected ? <div className="prose max-w-none text-sm"><Markdown>{body}</Markdown></div>
-            : <p className="text-sm text-gray-500">日報を選択してください。</p>}
+            : <p className="text-sm text-muted">日報を選択してください。</p>}
         </Card>
       </div>
     </div>

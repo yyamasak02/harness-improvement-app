@@ -1,5 +1,5 @@
 import {render, screen} from '@testing-library/react'
-import {Busy, Loading, LoadingButton, Spinner} from './components'
+import {Busy, Icon, Loading, LoadingButton, Spinner} from './components'
 
 test('Loading は status として通知され、スピナーは装飾（aria-hidden）', () => {
   render(<Loading />)
@@ -39,4 +39,12 @@ test('LoadingButton は busyLabel が無ければラベルを保ち、disabled �
 test('Spinner は className を受け取る', () => {
   render(<Spinner className="x" />)
   expect(screen.getByTestId('spinner')).toHaveClass('x')
+})
+
+test('Icon は装飾（aria-hidden）の SVG を描画する', () => {
+  const {container} = render(<Icon name="home" className="x" />)
+  const svg = container.querySelector('svg')!
+  expect(svg).toHaveAttribute('aria-hidden', 'true')
+  expect(svg).toHaveClass('x')
+  expect(svg.querySelector('path')).toHaveAttribute('d')
 })

@@ -13,13 +13,13 @@ function Detail({id, onRollback, rolling}: {id: string; onRollback: () => void; 
   if (!data) return null
   return (
     <div className="space-y-3">
-      <div className="text-sm text-gray-600">
+      <div className="text-sm text-muted">
         <div>{data.path}</div>
         <div>{opLabel[data.op] ?? data.op}（{data.time.replace('T', ' ').replace('Z', '')}）{!data.existed && ' ※新規作成'}</div>
       </div>
       <DiffView original={data.before} proposed={data.after} editing={false} onChange={() => undefined} />
       {data.op === 'apply' && (
-        <button className="rounded border border-red-400 px-3 py-1 text-sm text-red-700 disabled:opacity-50" disabled={rolling} onClick={onRollback}>この変更をロールバック</button>
+        <button className="btn btn-danger-outline" disabled={rolling} onClick={onRollback}>この変更をロールバック</button>
       )}
     </div>
   )
@@ -46,35 +46,35 @@ export default function History() {
   return (
     <div className="space-y-4">
       <h2 className="text-xl font-bold">変更履歴</h2>
-      <p className="text-sm text-gray-600">アプリが書き込んだ全ファイルのバックアップです。ロールバックも履歴に記録されます。</p>
+      <p className="text-sm text-muted">アプリが書き込んだ全ファイルのバックアップです。ロールバックも履歴に記録されます。</p>
       <ErrorBox message={error || list.error} />
       {rolling && <Busy label="ロールバック中…" />}
-      {notice && <p role="status" className="rounded border border-green-300 bg-green-50 p-2 text-sm">{notice}</p>}
+      {notice && <p role="status" className="alert alert-success">{notice}</p>}
       <div className="grid gap-4 lg:grid-cols-[360px_1fr]">
         <Card title="履歴">
           <ul className="space-y-2" aria-label="履歴一覧">
             {list.data?.map((h) => (
               <li key={h.id}>
-                <button className={`w-full rounded border p-2 text-left text-sm hover:bg-gray-50 ${selected === h.id ? 'border-blue-500' : ''}`} onClick={() => { setSelected(h.id); setNotice('') }}>
-                  <div className="text-xs text-gray-500">{h.time.replace('T', ' ').replace('Z', '')} / {opLabel[h.op] ?? h.op}</div>
+                <button className="list-item" aria-current={selected === h.id ? true : undefined} onClick={() => { setSelected(h.id); setNotice('') }}>
+                  <div className="text-xs text-muted">{h.time.replace('T', ' ').replace('Z', '')} / {opLabel[h.op] ?? h.op}</div>
                   <div className="break-all">{h.path}</div>
                 </button>
               </li>
             ))}
-            {list.data?.length === 0 && <li className="text-sm text-gray-500">履歴はまだありません。</li>}
+            {list.data?.length === 0 && <li className="text-sm text-muted">履歴はまだありません。</li>}
           </ul>
         </Card>
         <Card title="差分">
-          {selected ? <Detail key={selected} id={selected} onRollback={() => setConfirming(true)} rolling={rolling} /> : <p className="text-sm text-gray-500">履歴を選択してください。</p>}
+          {selected ? <Detail key={selected} id={selected} onRollback={() => setConfirming(true)} rolling={rolling} /> : <p className="text-sm text-muted">履歴を選択してください。</p>}
         </Card>
       </div>
       {confirming && (
         <div className="fixed inset-0 flex items-center justify-center bg-black/40" role="presentation">
-          <div role="dialog" aria-modal="true" aria-label="ロールバックの確認" className="w-96 rounded-lg bg-white p-5 shadow-xl">
+          <div role="dialog" aria-modal="true" aria-label="ロールバックの確認" className="w-96 max-w-[calc(100vw-2rem)] rounded-card border bg-surface p-5 shadow-pop">
             <p className="mb-4 text-sm">この変更を元に戻します。現在の内容もバックアップされます。よろしいですか？</p>
             <div className="flex justify-end gap-2">
-              <button className="rounded border px-3 py-1 text-sm" onClick={() => setConfirming(false)}>キャンセル</button>
-              <button className="rounded bg-red-600 px-3 py-1 text-sm text-white" onClick={() => void rollback()}>ロールバックする</button>
+              <button className="btn btn-secondary" onClick={() => setConfirming(false)}>キャンセル</button>
+              <button className="btn btn-danger" onClick={() => void rollback()}>ロールバックする</button>
             </div>
           </div>
         </div>

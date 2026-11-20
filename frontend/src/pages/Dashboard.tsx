@@ -16,7 +16,7 @@ export default function Dashboard() {
       <div className="flex items-center justify-between">
         <h2 className="text-xl font-bold">概要</h2>
         <label className="text-sm">期間：
-          <select className="ml-1 rounded border px-2 py-1" value={days} onChange={(e) => setDays(Number(e.target.value))} aria-label="期間">
+          <select className="ml-1" value={days} onChange={(e) => setDays(Number(e.target.value))} aria-label="期間">
             {periods.map((p) => <option key={p} value={p}>直近 {p} 日</option>)}
           </select>
         </label>
@@ -44,12 +44,12 @@ export default function Dashboard() {
                     <YAxis allowDecimals={false} />
                     <Tooltip />
                     <Legend />
-                    <Line type="monotone" dataKey="sessions" name="セッション" stroke="#2563eb" />
-                    <Line type="monotone" dataKey="messages" name="メッセージ" stroke="#16a34a" />
+                    <Line type="monotone" dataKey="sessions" name="セッション" stroke="#3b82f6" />
+                    <Line type="monotone" dataKey="messages" name="メッセージ" stroke="#22c55e" />
                   </LineChart>
                 </ResponsiveContainer>
               </div>
-            ) : <p className="text-sm text-gray-500">この期間のデータはありません。</p>}
+            ) : <p className="text-sm text-muted">この期間のデータはありません。</p>}
           </Card>
           <div className="grid gap-4 md:grid-cols-2">
             <Card title="モデル別の使用量">
@@ -61,11 +61,11 @@ export default function Dashboard() {
                       <XAxis dataKey="model" tick={{fontSize: 11}} />
                       <YAxis allowDecimals={false} />
                       <Tooltip />
-                      <Bar dataKey="messages" name="応答数" fill="#7c3aed" />
+                      <Bar dataKey="messages" name="応答数" fill="#8b5cf6" />
                     </BarChart>
                   </ResponsiveContainer>
                 </div>
-              ) : <p className="text-sm text-gray-500">データなし</p>}
+              ) : <p className="text-sm text-muted">データなし</p>}
               <table className="mt-2 w-full text-xs">
                 <tbody>
                   {data.models?.map((m) => (
@@ -84,7 +84,7 @@ export default function Dashboard() {
                     </li>
                   ))}
                 </ul>
-              ) : <p className="text-sm text-gray-500">データなし</p>}
+              ) : <p className="text-sm text-muted">データなし</p>}
             </Card>
           </div>
         </>
