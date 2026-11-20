@@ -166,15 +166,20 @@ jobs:
           ls -la build/bin
       - name: インストーラのサイレント上書き更新（同じインストーラを 2 回。実行ファイルとユーザーデータが残る）
         shell: bash
+        timeout-minutes: 10
         run: |
           set -e
           inst=$(ls build/bin/*installer.exe | head -1)
           data="$APPDATA/harness-app"
           mkdir -p "$data"; echo '{"formatVersion":1}' > "$data/config.json"
-          "$inst" /S
           exe="/c/Program Files/harness-app/harness-app/harness-app.exe"
+          run_installer() {
+            # サイレント実行が固まったら診断を出して失敗させる（ジョブ全体を待たせない）
+            timeout 240 "$inst" /S || { echo "インストーラが失敗または時間切れ"; tasklist | grep -i "harness\|installer" || true; ls -la "/c/Program Files/harness-app" || true; return 1; }
+          }
+          run_installer
           test -f "$exe"
-          "$inst" /S   # 既存の導入への上書き
+          run_installer   # 既存の導入への上書き
           test -f "$exe"
           test "$(cat "$data/config.json")" = '{"formatVersion":1}'
       - uses: actions/upload-artifact@v4
