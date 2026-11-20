@@ -38,3 +38,4 @@
 - 2026-11-21 M3 第1段階の方式（#183）: app.go の config 直接依存は、service.Config を config.Config の型エイリアスにして外す。型の形は service が所有しておらず、依存の向きの整備としては半分。独立した設定 DTO（service.Settings）と変換関数に置き換える案は、wailsjs の型の再生成が要るため、挙動不変の PR には向かず、M3 の最後（または M4 の分割時）に検討する
 - 2026-11-21 applier の排他の範囲（#200）: Apply/Rollback の排他（writeMu）は同一プロセス内のみ。複数のアプリプロセスが同時に動く場合は ExpectedHash の照合で防ぐが、照合と rename の間は守られない。プロセス間ロック（ロックファイル等）は範囲外とし、単一利用者のローカルデスクトップアプリでは複数起動を想定しない。必要になったら別 issue で案を検討する
 - 2026-11-21 M3 第2段階（#183）: targets・extensions も同じく型エイリアス（service.Target / service.ExtensionsReport）で app.go の import を外す。wailsjs は変わらない
+- 2026-11-21 M3 第3段階（#183）: osutil は型が無いため service.OpenPath（関数の委譲）で app.go の import を外す。wailsjs は変わらない（App のメソッドは不変）
