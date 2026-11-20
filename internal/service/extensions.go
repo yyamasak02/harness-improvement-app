@@ -7,6 +7,9 @@ import (
 	"harness-app/internal/masking"
 )
 
+// ExtensionsReport は拡張機能の一覧（extensions.Report の別名。エントリが extensions を直接 import しないための公開）。
+type ExtensionsReport = extensions.Report
+
 // ListExtensions は MCP / plugins / skills / hooks の状態（読み取りのみ）。
 // コマンド・引数・URL はマスキングを通して返す。
 func (s *Service) ListExtensions() (extensions.Report, error) {
