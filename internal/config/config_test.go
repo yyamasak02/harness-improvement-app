@@ -60,6 +60,23 @@ func TestLoadBroken(t *testing.T) {
 	}
 }
 
+// 自動生成は既定オフで、保存・複製で値が保たれる。
+func TestAutoSuggestDefaultOff(t *testing.T) {
+	c, err := Load(t.TempDir())
+	if err != nil || c.AutoSuggestEnabled || Default().AutoSuggestEnabled {
+		t.Fatalf("既定はオフ: %+v %v", c, err)
+	}
+	dir := t.TempDir()
+	c.AutoSuggestEnabled = true
+	if err := Save(dir, c); err != nil {
+		t.Fatal(err)
+	}
+	got, err := Load(dir)
+	if err != nil || !got.AutoSuggestEnabled || !got.Clone().AutoSuggestEnabled {
+		t.Fatalf("%+v %v", got, err)
+	}
+}
+
 func TestDataDir(t *testing.T) {
 	d, err := DataDir("/x")
 	if err != nil || d != filepath.Join("/x", "harness-app") {

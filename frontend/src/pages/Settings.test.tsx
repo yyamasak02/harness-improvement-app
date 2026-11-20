@@ -34,6 +34,24 @@ test('インデックス再構築の結果を表示する', async () => {
   expect(await screen.findByText(/再構築しました/)).toBeInTheDocument()
 })
 
+test('改善案の自動生成は既定でオフ。切り替えて保存できる（適用の自動化ではないと説明する）', async () => {
+  render(<Settings />)
+  const box = await screen.findByLabelText('改善案を自動で生成する')
+  expect(box).not.toBeChecked()
+  expect(screen.getByText(/自動で作るのは提案までです/)).toBeInTheDocument()
+  await userEvent.click(box)
+  await userEvent.click(screen.getByRole('button', {name: '保存'}))
+  expect(await screen.findByText('保存しました')).toBeInTheDocument()
+  expect((await api.settings()).autoSuggestEnabled).toBe(true)
+})
+
+test('前回の自動生成の失敗を表示する', async () => {
+  vi.spyOn(api, 'autoSuggestStatus').mockResolvedValue({enabled: true, running: false, lastAttemptAt: '2026-11-10T00:00:00Z', lastError: 'claude が見つかりません', hasProposal: false})
+  render(<Settings />)
+  expect(await screen.findByText(/前回の自動生成に失敗しました: claude が見つかりません/)).toBeInTheDocument()
+  vi.restoreAllMocks()
+})
+
 test('regexError', () => {
   expect(regexError({name: 'a', regex: 'a+'})).toBe('')
   expect(regexError({name: 'a', regex: '('})).not.toBe('')

@@ -10,6 +10,14 @@ export function ApplySkill(arg1, arg2) {
   return window['go']['main']['App']['ApplySkill'](arg1, arg2);
 }
 
+export function AutoSuggestStatus() {
+  return window['go']['main']['App']['AutoSuggestStatus']();
+}
+
+export function AutoSuggestion() {
+  return window['go']['main']['App']['AutoSuggestion']();
+}
+
 export function BuildDigest(arg1, arg2) {
   return window['go']['main']['App']['BuildDigest'](arg1, arg2);
 }
@@ -20,6 +28,10 @@ export function CancelGeneration() {
 
 export function CheckClaude() {
   return window['go']['main']['App']['CheckClaude']();
+}
+
+export function DismissAutoSuggestion() {
+  return window['go']['main']['App']['DismissAutoSuggestion']();
 }
 
 export function GenerateProposal(arg1) {

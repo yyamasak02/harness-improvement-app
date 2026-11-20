@@ -113,6 +113,7 @@ export namespace config {
 	    timeoutSeconds: number;
 	    dailyReportEnabled: boolean;
 	    dailyReportTime: string;
+	    autoSuggestEnabled: boolean;
 	
 	    static createFrom(source: any = {}) {
 	        return new Config(source);
@@ -128,6 +129,7 @@ export namespace config {
 	        this.timeoutSeconds = source["timeoutSeconds"];
 	        this.dailyReportEnabled = source["dailyReportEnabled"];
 	        this.dailyReportTime = source["dailyReportTime"];
+	        this.autoSuggestEnabled = source["autoSuggestEnabled"];
 	    }
 	
 		convertValues(a: any, classs: any, asMap: boolean = false): any {
@@ -274,6 +276,26 @@ export namespace extensions {
 
 export namespace service {
 	
+	export class AutoSuggestStatus {
+	    enabled: boolean;
+	    running: boolean;
+	    lastAttemptAt: string;
+	    lastError: string;
+	    hasProposal: boolean;
+	
+	    static createFrom(source: any = {}) {
+	        return new AutoSuggestStatus(source);
+	    }
+	
+	    constructor(source: any = {}) {
+	        if ('string' === typeof source) source = JSON.parse(source);
+	        this.enabled = source["enabled"];
+	        this.running = source["running"];
+	        this.lastAttemptAt = source["lastAttemptAt"];
+	        this.lastError = source["lastError"];
+	        this.hasProposal = source["hasProposal"];
+	    }
+	}
 	export class ClaudeStatus {
 	    found: boolean;
 	    path: string;

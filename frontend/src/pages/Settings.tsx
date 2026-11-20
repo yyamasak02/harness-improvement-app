@@ -14,6 +14,7 @@ export function regexError(p: MaskPattern): string {
 export default function Settings() {
   const loaded = useAsync(() => api.settings(), [])
   const claude = useAsync(() => api.checkClaude(), [loaded.data?.claudePath])
+  const suggest = useAsync(() => api.autoSuggestStatus(), [])
   const [cfg, setCfg] = useState<Config | null>(null)
   const [error, setError] = useState('')
   const [notice, setNotice] = useState('')
@@ -71,6 +72,20 @@ export default function Settings() {
         <label className="mt-3 block text-sm">生成時刻（HH:MM。空欄なら 21:00）
           <input className="mt-1 w-32 rounded border px-2 py-1" aria-label="日報の生成時刻" placeholder="21:00" value={cfg.dailyReportTime} onChange={(e) => set('dailyReportTime', e.target.value)} />
         </label>
+      </Card>
+
+      <Card title="改善案の自動生成">
+        <label className="flex items-center gap-2 text-sm">
+          <input type="checkbox" aria-label="改善案を自動で生成する" checked={cfg.autoSuggestEnabled} onChange={(e) => set('autoSuggestEnabled', e.target.checked)} />
+          セッションの取り込み後に、グローバル CLAUDE.md の改善案を自動で生成する（既定はオフ）
+        </label>
+        <p className="mt-1 text-xs text-gray-500">
+          生成には claude を使うためトークンを消費します。前回の試行から 24 時間以上たち、新しいセッションがあるときだけ実行します（失敗しても 24 時間は再試行しません）。
+          自動で作るのは提案までです。「CLAUDE.md 改善」画面で差分を確認し、「適用」を押したときだけ書き込まれます。
+        </p>
+        {suggest.data?.lastAttemptAt && <p className="mt-1 text-xs text-gray-500">前回の試行: {new Date(suggest.data.lastAttemptAt).toLocaleString('ja-JP')}</p>}
+        {suggest.data?.hasProposal && <p className="mt-1 text-xs text-green-700">未確認の提案があります（「CLAUDE.md 改善」画面で確認できます）。</p>}
+        <ErrorBox message={suggest.data?.lastError ? `前回の自動生成に失敗しました: ${suggest.data.lastError}` : ''} />
       </Card>
 
       <Card title="取り込み">

@@ -78,8 +78,48 @@ func (a *App) reindex(rebuild bool) (collector.Stats, error) {
 }
 
 func (a *App) indexAndWatch(ctx context.Context) {
-	_, _ = a.reindex(false)
-	_ = collector.Watch(ctx, a.svc.ClaudeDir(), 2*time.Second, func() { _, _ = a.reindex(false) })
+	a.reindexAndSuggest(ctx)
+	_ = collector.Watch(ctx, a.svc.ClaudeDir(), 2*time.Second, func() { a.reindexAndSuggest(ctx) })
+}
+
+// reindexAndSuggest は取り込み後に、設定がオンなら改善案を自動生成する（提案まで。適用はしない）。
+func (a *App) reindexAndSuggest(ctx context.Context) {
+	if _, err := a.reindex(false); err != nil {
+		return
+	}
+	go func() {
+		ok, err := a.svc.RunAutoSuggest(ctx)
+		switch {
+		case err != nil:
+			wruntime.EventsEmit(ctx, "autosuggest:error", err.Error())
+		case ok:
+			wruntime.EventsEmit(ctx, "autosuggest:done")
+		}
+	}()
+}
+
+// AutoSuggestStatus は改善案の自動生成の状態。
+func (a *App) AutoSuggestStatus() (service.AutoSuggestStatus, error) {
+	if err := a.ready(); err != nil {
+		return service.AutoSuggestStatus{}, err
+	}
+	return a.svc.AutoSuggestStatus(), nil
+}
+
+// AutoSuggestion は自動生成された未確認の提案（無ければ null）。
+func (a *App) AutoSuggestion() (*service.Proposal, error) {
+	if err := a.ready(); err != nil {
+		return nil, err
+	}
+	return a.svc.AutoSuggestion()
+}
+
+// DismissAutoSuggestion は未確認の提案を破棄する。
+func (a *App) DismissAutoSuggestion() error {
+	if err := a.ready(); err != nil {
+		return err
+	}
+	return a.svc.DismissAutoSuggestion()
 }
 
 func (a *App) ready() error {
