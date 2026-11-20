@@ -300,6 +300,45 @@ func TestReindexRebuild(t *testing.T) {
 	}
 }
 
+// 新しい形式の config.json があっても起動でき、既定値で動き、案内が出て、Save は拒否され、ファイルは変わらない。
+func TestNewWithNewerFormatConfig(t *testing.T) {
+	root := t.TempDir()
+	dataDir := filepath.Join(root, "data")
+	if err := os.MkdirAll(dataDir, 0o755); err != nil {
+		t.Fatal(err)
+	}
+	orig := `{"formatVersion": 999, "model": "future-demo"}`
+	p := filepath.Join(dataDir, "config.json")
+	if err := os.WriteFile(p, []byte(orig), 0o600); err != nil {
+		t.Fatal(err)
+	}
+	svc, err := New(Env{Home: root, ClaudeDir: filepath.Join(root, "claude"), DataDir: dataDir, ShellLookup: func() string { return "" }})
+	if err != nil {
+		t.Fatalf("新しい形式の設定でも起動できるはず: %v", err)
+	}
+	t.Cleanup(func() { svc.Close() })
+	st := svc.SettingsStatus()
+	if !st.NewerFormat || !strings.Contains(st.Message, "新しい形式") || !strings.Contains(st.Message, "退避") {
+		t.Fatalf("案内が出ない: %+v", st)
+	}
+	if svc.Settings().Model != "" || svc.Settings().TimeoutSeconds != 300 {
+		t.Fatalf("既定値で動くはず: %+v", svc.Settings())
+	}
+	if err := svc.SaveSettings(svc.Settings()); !errors.Is(err, config.ErrNewerFormat) {
+		t.Fatalf("Save は拒否されるはず: %v", err)
+	}
+	if read(t, p) != orig {
+		t.Fatal("config.json が書き換えられた")
+	}
+}
+
+func TestSettingsStatusNormal(t *testing.T) {
+	f := newFixture(t)
+	if st := f.svc.SettingsStatus(); st.NewerFormat || st.Message != "" {
+		t.Fatalf("通常は案内なし: %+v", st)
+	}
+}
+
 func TestNewValidation(t *testing.T) {
 	if _, err := New(Env{}); err == nil {
 		t.Fatal("必須パラメータなしはエラー")

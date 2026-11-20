@@ -15,6 +15,7 @@ export default function Settings() {
   const loaded = useAsync(() => api.settings(), [])
   const claude = useAsync(() => api.checkClaude(), [loaded.data?.claudePath])
   const suggest = useAsync(() => api.autoSuggestStatus(), [])
+  const status = useAsync(() => api.settingsStatus(), [])
   const version = useAsync(() => api.version(), [])
   const [cfg, setCfg] = useState<Config | null>(null)
   const [error, setError] = useState('')
@@ -45,6 +46,7 @@ export default function Settings() {
   return (
     <div className="max-w-3xl space-y-4">
       <h2 className="text-xl font-bold">設定</h2>
+      {status.data?.newerFormat && <p role="alert" className="alert alert-warning">{status.data.message}</p>}
       <ErrorBox message={error} />
       {notice && <p role="status" className="alert alert-success">{notice}</p>}
 

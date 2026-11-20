@@ -2,10 +2,13 @@ package config
 
 import (
 	"errors"
+	"fmt"
 	"os"
 	"path/filepath"
 	"strings"
+	"sync"
 	"testing"
+	"time"
 )
 
 // 形式バージョン導入前の config.json（formatVersion 無し）を読め、値が保たれ、保存で形式が付く。
@@ -51,5 +54,45 @@ func TestNewerFormatConfigNotOverwritten(t *testing.T) {
 	}
 	if got, _ := os.ReadFile(p); string(got) != orig {
 		t.Fatalf("ファイルが変更された: %s", got)
+	}
+}
+
+// 並行 Save でも「確認 → 書き込み」が 1 組ずつ直列に行われる（確認後に別の Save が割り込まない）。
+func TestSaveSerializesCheckAndWrite(t *testing.T) {
+	var mu sync.Mutex
+	var events []string
+	testHookAfterCheck = func() {
+		mu.Lock()
+		events = append(events, "check")
+		mu.Unlock()
+		time.Sleep(5 * time.Millisecond) // 確認と書き込みの間に隙間を作る
+	}
+	testHookAfterWrite = func() { mu.Lock(); events = append(events, "write"); mu.Unlock() }
+	t.Cleanup(func() { testHookAfterCheck, testHookAfterWrite = nil, nil })
+
+	dir := t.TempDir()
+	var wg sync.WaitGroup
+	for i := 0; i < 8; i++ {
+		wg.Add(1)
+		go func(i int) {
+			defer wg.Done()
+			c := Default()
+			c.Model = fmt.Sprintf("demo-%d", i)
+			if err := Save(dir, c); err != nil {
+				t.Error(err)
+			}
+		}(i)
+	}
+	wg.Wait()
+	if len(events) != 16 {
+		t.Fatalf("イベント数: %v", events)
+	}
+	for i, e := range events {
+		if want := []string{"check", "write"}[i%2]; e != want {
+			t.Fatalf("確認と書き込みが交錯した: %v", events)
+		}
+	}
+	if _, err := Load(dir); err != nil {
+		t.Fatalf("保存後の設定が壊れている: %v", err)
 	}
 }

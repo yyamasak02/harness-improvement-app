@@ -15,7 +15,8 @@ export interface Config {
 export interface AutoSuggestStatus {
   enabled: boolean; running: boolean; lastAttemptAt: string; lastError: string; hasProposal: boolean
 }
-export interface ReportInfo { date: string; path: string }
+export interface SettingsStatus { newerFormat: boolean; message: string }
+export interface ReportInfo{ date: string; path: string }
 export interface Session {
   id: string; project: string; filePath: string; cwd: string; gitBranch: string
   startedAt: string; endedAt: string
