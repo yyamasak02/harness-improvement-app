@@ -3,10 +3,11 @@
 import {applier} from '../models';
 import {service} from '../models';
 import {extensions} from '../models';
-import {store} from '../models';
+import {logmodel} from '../models';
 import {targets} from '../models';
 import {collector} from '../models';
 import {config} from '../models';
+import {store} from '../models';
 
 export function ApplyProposal(arg1:string,arg2:string,arg3:string):Promise<applier.Manifest>;
 
@@ -48,7 +49,7 @@ export function ListProjects():Promise<Array<service.ProjectStat>>;
 
 export function ListReports():Promise<Array<service.ReportInfo>>;
 
-export function ListSessions(arg1:string,arg2:number,arg3:number):Promise<Array<store.Session>>;
+export function ListSessions(arg1:string,arg2:number,arg3:number):Promise<Array<logmodel.Session>>;
 
 export function ListTargets():Promise<Array<targets.Target>>;
 

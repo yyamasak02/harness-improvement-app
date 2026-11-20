@@ -11,7 +11,7 @@ import (
 	"strings"
 	"unicode/utf8"
 
-	"harness-app/internal/store"
+	"harness-app/internal/logmodel"
 )
 
 const maxTextRunes = 4000
@@ -52,9 +52,9 @@ type rawBlock struct {
 
 // Parsed はパース結果。
 type Parsed struct {
-	Session  *store.Session // メッセージが 1 件も無ければ nil
-	Messages []store.Message
-	Usage    []store.ModelUsage
+	Session  *logmodel.Session // メッセージが 1 件も無ければ nil
+	Messages []logmodel.Message
+	Usage    []logmodel.ModelUsage
 	Broken   int
 }
 
@@ -103,7 +103,7 @@ func ParseFile(path, project string, det *CorrectionDetector) (*Parsed, error) {
 	defer f.Close()
 
 	p := &Parsed{}
-	sess := store.Session{Project: project, FilePath: path}
+	sess := logmodel.Session{Project: project, FilePath: path}
 	toolNames := map[string]string{}
 	type usage struct {
 		model           string
@@ -112,7 +112,7 @@ func ParseFile(path, project string, det *CorrectionDetector) (*Parsed, error) {
 	usageByMsg := map[string]usage{}
 	var anonUsage []usage
 	assistantSeen := map[string]bool{}
-	modelCount := map[string]*store.ModelUsage{}
+	modelCount := map[string]*logmodel.ModelUsage{}
 
 	r := bufio.NewReaderSize(f, 1<<20)
 	for {
@@ -158,7 +158,7 @@ func ParseFile(path, project string, det *CorrectionDetector) (*Parsed, error) {
 		}
 		mu := modelCount[model]
 		if mu == nil {
-			mu = &store.ModelUsage{Model: model}
+			mu = &logmodel.ModelUsage{Model: model}
 			modelCount[model] = mu
 		}
 		mu.Messages++
@@ -196,7 +196,7 @@ func baseName(p string) string {
 	return p
 }
 
-func (p *Parsed) handleLine(line []byte, sess *store.Session, toolNames map[string]string, det *CorrectionDetector,
+func (p *Parsed) handleLine(line []byte, sess *logmodel.Session, toolNames map[string]string, det *CorrectionDetector,
 	onMsg func(rawMessage, bool)) {
 	var l rawLine
 	if err := json.Unmarshal(line, &l); err != nil {
@@ -233,7 +233,7 @@ func (p *Parsed) handleLine(line []byte, sess *store.Session, toolNames map[stri
 	onMsg(m, role == "assistant")
 
 	add := func(kind, tool, text string, isErr, isCorr bool) {
-		p.Messages = append(p.Messages, store.Message{Project: sess.Project, Ts: l.Timestamp, Role: role, Kind: kind,
+		p.Messages = append(p.Messages, logmodel.Message{Project: sess.Project, Ts: l.Timestamp, Role: role, Kind: kind,
 			Tool: tool, Text: truncate(text), IsError: isErr, IsCorrection: isCorr})
 	}
 

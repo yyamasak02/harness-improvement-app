@@ -28,6 +28,7 @@ var layers = map[string]int{
 	"internal/skills":     1,
 	"internal/extensions": 1,
 	"internal/targets":    1,
+	"internal/logmodel":   1,
 	// L2 インフラ: 外部（ファイル・DB・プロセス・FS 監視）への出入口。L1 にのみ依存
 	"internal/store":     2,
 	"internal/config":    2,
@@ -65,18 +66,17 @@ var onlyImports = map[string][]string{
 
 // allowlistCap は許容リストの件数の固定上限。増やす変更は禁止（違反は直す）。
 // リストを減らしたら、この値も同じだけ下げる（件数が一致しないと失敗する）。目標は 0。
-const allowlistCap = 8
+const allowlistCap = 7
 
 // allowlist は現状の違反（"from -> to"）と理由。リファクタリング（docs/architecture.md の移行計画）で 0 にする。
 var allowlist = map[string]string{
-	"internal/collector -> internal/store": "インフラ同士の依存。collector が store に直接書き込む。M1 で store 呼び出しをインターフェース化して解消",
-	". -> internal/applier":                "エントリが service を介さずに applier を直接使う。M3 で service に集約して解消",
-	". -> internal/collector":              "同上（collector）。M3 で解消",
-	". -> internal/config":                 "同上（config）。M3 で解消",
-	". -> internal/extensions":             "同上（extensions）。M3 で解消",
-	". -> internal/osutil":                 "同上（osutil）。M3 で解消",
-	". -> internal/store":                  "同上（store）。M3 で解消",
-	". -> internal/targets":                "同上（targets）。M3 で解消",
+	". -> internal/applier":    "エントリが service を介さずに applier を直接使う。M3 で service に集約して解消",
+	". -> internal/collector":  "同上（collector）。M3 で解消",
+	". -> internal/config":     "同上（config）。M3 で解消",
+	". -> internal/extensions": "同上（extensions）。M3 で解消",
+	". -> internal/osutil":     "同上（osutil）。M3 で解消",
+	". -> internal/store":      "同上（store）。M3 で解消",
+	". -> internal/targets":    "同上（targets）。M3 で解消",
 }
 
 type pkgInfo struct {

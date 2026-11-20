@@ -276,6 +276,81 @@ export namespace extensions {
 
 }
 
+export namespace logmodel {
+	
+	export class Message {
+	    id: number;
+	    sessionId: string;
+	    project: string;
+	    ts: string;
+	    role: string;
+	    kind: string;
+	    tool: string;
+	    text: string;
+	    isError: boolean;
+	    isCorrection: boolean;
+	
+	    static createFrom(source: any = {}) {
+	        return new Message(source);
+	    }
+	
+	    constructor(source: any = {}) {
+	        if ('string' === typeof source) source = JSON.parse(source);
+	        this.id = source["id"];
+	        this.sessionId = source["sessionId"];
+	        this.project = source["project"];
+	        this.ts = source["ts"];
+	        this.role = source["role"];
+	        this.kind = source["kind"];
+	        this.tool = source["tool"];
+	        this.text = source["text"];
+	        this.isError = source["isError"];
+	        this.isCorrection = source["isCorrection"];
+	    }
+	}
+	export class Session {
+	    id: string;
+	    project: string;
+	    filePath: string;
+	    cwd: string;
+	    gitBranch: string;
+	    startedAt: string;
+	    endedAt: string;
+	    userMsgs: number;
+	    assistantMsgs: number;
+	    toolErrors: number;
+	    corrections: number;
+	    inputTokens: number;
+	    outputTokens: number;
+	    cacheRead: number;
+	    cacheCreate: number;
+	
+	    static createFrom(source: any = {}) {
+	        return new Session(source);
+	    }
+	
+	    constructor(source: any = {}) {
+	        if ('string' === typeof source) source = JSON.parse(source);
+	        this.id = source["id"];
+	        this.project = source["project"];
+	        this.filePath = source["filePath"];
+	        this.cwd = source["cwd"];
+	        this.gitBranch = source["gitBranch"];
+	        this.startedAt = source["startedAt"];
+	        this.endedAt = source["endedAt"];
+	        this.userMsgs = source["userMsgs"];
+	        this.assistantMsgs = source["assistantMsgs"];
+	        this.toolErrors = source["toolErrors"];
+	        this.corrections = source["corrections"];
+	        this.inputTokens = source["inputTokens"];
+	        this.outputTokens = source["outputTokens"];
+	        this.cacheRead = source["cacheRead"];
+	        this.cacheCreate = source["cacheCreate"];
+	    }
+	}
+
+}
+
 export namespace service {
 	
 	export class AutoSuggestStatus {
@@ -512,8 +587,8 @@ export namespace service {
 	    }
 	}
 	export class SessionDetail {
-	    session: store.Session;
-	    messages: store.Message[];
+	    session: logmodel.Session;
+	    messages: logmodel.Message[];
 	
 	    static createFrom(source: any = {}) {
 	        return new SessionDetail(source);
@@ -521,8 +596,8 @@ export namespace service {
 	
 	    constructor(source: any = {}) {
 	        if ('string' === typeof source) source = JSON.parse(source);
-	        this.session = this.convertValues(source["session"], store.Session);
-	        this.messages = this.convertValues(source["messages"], store.Message);
+	        this.session = this.convertValues(source["session"], logmodel.Session);
+	        this.messages = this.convertValues(source["messages"], logmodel.Message);
 	    }
 	
 		convertValues(a: any, classs: any, asMap: boolean = false): any {
@@ -676,36 +751,6 @@ export namespace service {
 
 export namespace store {
 	
-	export class Message {
-	    id: number;
-	    sessionId: string;
-	    project: string;
-	    ts: string;
-	    role: string;
-	    kind: string;
-	    tool: string;
-	    text: string;
-	    isError: boolean;
-	    isCorrection: boolean;
-	
-	    static createFrom(source: any = {}) {
-	        return new Message(source);
-	    }
-	
-	    constructor(source: any = {}) {
-	        if ('string' === typeof source) source = JSON.parse(source);
-	        this.id = source["id"];
-	        this.sessionId = source["sessionId"];
-	        this.project = source["project"];
-	        this.ts = source["ts"];
-	        this.role = source["role"];
-	        this.kind = source["kind"];
-	        this.tool = source["tool"];
-	        this.text = source["text"];
-	        this.isError = source["isError"];
-	        this.isCorrection = source["isCorrection"];
-	    }
-	}
 	export class SearchHit {
 	    messageId: number;
 	    sessionId: string;
@@ -726,46 +771,6 @@ export namespace store {
 	        this.ts = source["ts"];
 	        this.role = source["role"];
 	        this.text = source["text"];
-	    }
-	}
-	export class Session {
-	    id: string;
-	    project: string;
-	    filePath: string;
-	    cwd: string;
-	    gitBranch: string;
-	    startedAt: string;
-	    endedAt: string;
-	    userMsgs: number;
-	    assistantMsgs: number;
-	    toolErrors: number;
-	    corrections: number;
-	    inputTokens: number;
-	    outputTokens: number;
-	    cacheRead: number;
-	    cacheCreate: number;
-	
-	    static createFrom(source: any = {}) {
-	        return new Session(source);
-	    }
-	
-	    constructor(source: any = {}) {
-	        if ('string' === typeof source) source = JSON.parse(source);
-	        this.id = source["id"];
-	        this.project = source["project"];
-	        this.filePath = source["filePath"];
-	        this.cwd = source["cwd"];
-	        this.gitBranch = source["gitBranch"];
-	        this.startedAt = source["startedAt"];
-	        this.endedAt = source["endedAt"];
-	        this.userMsgs = source["userMsgs"];
-	        this.assistantMsgs = source["assistantMsgs"];
-	        this.toolErrors = source["toolErrors"];
-	        this.corrections = source["corrections"];
-	        this.inputTokens = source["inputTokens"];
-	        this.outputTokens = source["outputTokens"];
-	        this.cacheRead = source["cacheRead"];
-	        this.cacheCreate = source["cacheCreate"];
 	    }
 	}
 
