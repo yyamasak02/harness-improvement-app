@@ -19,7 +19,7 @@ const DefaultMaxBytes = 30000
 type Options struct {
 	Project  string    // プロジェクトディレクトリ名。空なら全体
 	Days     int       // 直近 N 日（0 以下なら 30）
-	Now      time.Time // 現在時刻（テスト注入用。ゼロなら time.Now()）
+	Now      time.Time // 現在時刻（必須。呼び出し側が注入する。ゼロはエラー）
 	MaxBytes int       // 上限（0 なら DefaultMaxBytes）
 	MaxItems int       // 各セクションの最大件数（0 なら 20）
 }
@@ -49,7 +49,7 @@ func Build(st *store.Store, m *masking.Masker, opt Options) (string, error) {
 		opt.Days = 30
 	}
 	if opt.Now.IsZero() {
-		opt.Now = time.Now()
+		return "", fmt.Errorf("Options.Now（現在時刻）が必要です")
 	}
 	if opt.MaxBytes <= 0 {
 		opt.MaxBytes = DefaultMaxBytes

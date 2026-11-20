@@ -29,6 +29,16 @@ func TestBuildArgs(t *testing.T) {
 	}
 }
 
+func TestNewJobIDUsesInjectedNow(t *testing.T) {
+	r := &Runner{Now: func() time.Time { return time.Date(2026, 1, 2, 3, 4, 5, 0, time.UTC) }}
+	if id := r.newJobID(); !strings.HasPrefix(id, "20260102T030405-") {
+		t.Fatalf("id=%s", id)
+	}
+	if id := (&Runner{}).newJobID(); len(id) != len("20260102T030405-")+8 {
+		t.Fatalf("既定の形式が違う: %s", id)
+	}
+}
+
 func TestEffectiveTimeout(t *testing.T) {
 	for in, want := range map[time.Duration]time.Duration{0: 5 * time.Minute, -1: 5 * time.Minute, time.Second: time.Second} {
 		if got := effectiveTimeout(in); got != want {
