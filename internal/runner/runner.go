@@ -111,18 +111,10 @@ func (r *Runner) execute(ctx context.Context, promptText string, in any) (*Resul
 	}
 	res := &Result{JobID: id, JobDir: dir}
 
-	timeout := r.Timeout
-	if timeout <= 0 {
-		timeout = 5 * time.Minute
-	}
-	cctx, cancel := context.WithTimeout(ctx, timeout)
+	cctx, cancel := context.WithTimeout(ctx, effectiveTimeout(r.Timeout))
 	defer cancel()
 
-	args := []string{"-p", promptText, "--allowedTools", AllowedTools, "--output-format", "json"}
-	if r.Model != "" {
-		args = append(args, "--model", r.Model)
-	}
-	cmd := exec.CommandContext(cctx, r.ClaudePath, args...)
+	cmd := exec.CommandContext(cctx, r.ClaudePath, buildArgs(promptText, r.Model)...)
 	cmd.Dir = dir
 	configureProc(cmd)
 	cmd.WaitDelay = 2 * time.Second
@@ -136,15 +128,43 @@ func (r *Runner) execute(ctx context.Context, promptText string, in any) (*Resul
 	res.Log = filepath.Join(dir, "job.log")
 
 	runErr := cmd.Run()
-	switch {
-	case errors.Is(cctx.Err(), context.DeadlineExceeded):
-		return res, ErrTimeout
-	case errors.Is(ctx.Err(), context.Canceled):
-		return res, ErrCanceled
-	case runErr != nil:
-		return res, fmt.Errorf("claude の実行に失敗: %w（ログ: %s）", runErr, tail(res.Log))
+	if err := classify(cctx.Err(), ctx.Err(), runErr, res.Log); err != nil {
+		return res, err
 	}
 	return res, nil
+}
+
+// defaultTimeout は Runner.Timeout が 0 以下のときの上限。
+const defaultTimeout = 5 * time.Minute
+
+// effectiveTimeout は実行のタイムアウトを返す（0 以下は既定の 5 分）。
+func effectiveTimeout(t time.Duration) time.Duration {
+	if t <= 0 {
+		return defaultTimeout
+	}
+	return t
+}
+
+// buildArgs は claude -p の引数を組み立てる。許可ツールは常に AllowedTools（Read,Write）のみ。
+func buildArgs(promptText, model string) []string {
+	args := []string{"-p", promptText, "--allowedTools", AllowedTools, "--output-format", "json"}
+	if model != "" {
+		args = append(args, "--model", model)
+	}
+	return args
+}
+
+// classify は実行終了時のエラーを分類する。タイムアウト > キャンセル > 実行失敗（ログ末尾付き）の順。
+func classify(timeoutCtxErr, parentCtxErr, runErr error, logPath string) error {
+	switch {
+	case errors.Is(timeoutCtxErr, context.DeadlineExceeded):
+		return ErrTimeout
+	case errors.Is(parentCtxErr, context.Canceled):
+		return ErrCanceled
+	case runErr != nil:
+		return fmt.Errorf("claude の実行に失敗: %w（ログ: %s）", runErr, tail(logPath))
+	}
+	return nil
 }
 
 func tail(path string) string {
