@@ -91,7 +91,7 @@ func TestSizeLimit(t *testing.T) {
 
 func TestRequiresMasker(t *testing.T) {
 	st, _ := setup(t)
-	if _, err := Build(st, nil, Options{}); err == nil {
+	if _, err := Build(st, nil, Options{Now: now}); err == nil {
 		t.Fatal("masker なしはエラー")
 	}
 }
