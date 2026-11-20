@@ -5,6 +5,7 @@ import (
 	"os"
 	"path/filepath"
 	"runtime"
+	"strings"
 	"testing"
 	"time"
 )
@@ -98,14 +99,9 @@ func TestRejects(t *testing.T) {
 	root := t.TempDir()
 	target := filepath.Join(root, "a.md")
 	other := filepath.Join(root, "b.md")
-	link := filepath.Join(root, "link.md")
 	_ = os.WriteFile(target, []byte("old"), 0o644)
 	_ = os.WriteFile(other, []byte("o"), 0o644)
-	if err := os.Symlink(other, link); err != nil {
-		t.Skip("シンボリックリンクを作成できない環境（Windows の権限不足など）: " + err.Error())
-	}
-	a, _ := newApplier(t, target, link)
-	h, _ := HashFile(target)
+	a, _ := newApplier(t, target)
 	tests := []struct {
 		name string
 		req  Request
@@ -113,7 +109,6 @@ func TestRejects(t *testing.T) {
 	}{
 		{"許可外", Request{Path: other, Content: "x", ExpectedHash: "h"}, ErrNotAllowed},
 		{"ハッシュ不一致", Request{Path: target, Content: "x", ExpectedHash: "deadbeef"}, ErrHashMismatch},
-		{"シンボリックリンク", Request{Path: link, Content: "x", ExpectedHash: "h"}, ErrSymlink},
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
@@ -128,7 +123,26 @@ func TestRejects(t *testing.T) {
 	if hist, _ := a.History(); len(hist) != 0 {
 		t.Fatalf("拒否時にバックアップが残っている: %d", len(hist))
 	}
-	_ = h
+}
+
+func TestRejectsSymlink(t *testing.T) {
+	root := t.TempDir()
+	other := filepath.Join(root, "b.md")
+	link := filepath.Join(root, "link.md")
+	_ = os.WriteFile(other, []byte("o"), 0o644)
+	if err := os.Symlink(other, link); err != nil {
+		t.Skip("シンボリックリンクを作成できない環境（Windows の権限不足など）: " + err.Error())
+	}
+	a, _ := newApplier(t, link)
+	if _, err := a.Apply(Request{Path: link, Content: "x", ExpectedHash: "h"}); !errors.Is(err, ErrSymlink) {
+		t.Fatalf("got %v want %v", err, ErrSymlink)
+	}
+	if read(t, other) != "o" {
+		t.Fatal("拒否されたのに変更されている")
+	}
+	if hist, _ := a.History(); len(hist) != 0 {
+		t.Fatalf("拒否時にバックアップが残っている: %d", len(hist))
+	}
 }
 
 func TestNilAllowedDeniesAll(t *testing.T) {
@@ -262,5 +276,132 @@ func TestRollbackKeepsPreexistingEmptyDirs(t *testing.T) {
 	}
 	if _, err := os.Stat(pre); err != nil {
 		t.Error("適用前から存在した空ディレクトリが消えた")
+	}
+}
+
+func TestNowDefaultsToWallClock(t *testing.T) {
+	a := &Applier{}
+	if a.now().IsZero() {
+		t.Fatal("Now 未注入でもゼロ値でないこと")
+	}
+}
+
+func TestNewBackupDirManyCollisions(t *testing.T) {
+	a, _ := newApplier(t)
+	fixed := time.Date(2026, 1, 1, 0, 0, 0, 0, time.UTC)
+	a.Now = func() time.Time { return fixed }
+	seen := map[string]bool{}
+	for i := 0; i < 5; i++ {
+		id, dir, err := a.newBackupDir("0123456789abcdef")
+		if err != nil {
+			t.Fatal(err)
+		}
+		if seen[id] {
+			t.Fatalf("ID が衝突: %s", id)
+		}
+		seen[id] = true
+		if st, err := os.Stat(dir); err != nil || !st.IsDir() {
+			t.Fatalf("dir が作られていない: %v", err)
+		}
+		if filepath.Base(dir) != id {
+			t.Fatalf("id と dir 名が不一致: %s %s", id, dir)
+		}
+	}
+	base := "20260101T000000.000-01234567"
+	for _, want := range []string{base, base + "-1", base + "-2", base + "-3", base + "-4"} {
+		if !seen[want] {
+			t.Errorf("ID %q があるはず: %v", want, seen)
+		}
+	}
+}
+
+func TestNewBackupDirShortHash(t *testing.T) {
+	a, _ := newApplier(t)
+	id, _, err := a.newBackupDir(AbsentHash)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if !strings.HasSuffix(id, "-absent") {
+		t.Fatalf("8 文字以下のハッシュはそのまま使う: %s", id)
+	}
+}
+
+func TestApplyEmptyContentWritesEmptyFile(t *testing.T) {
+	root := t.TempDir()
+	target := filepath.Join(root, "a.md")
+	_ = os.WriteFile(target, []byte("old"), 0o644)
+	a, _ := newApplier(t, target)
+	h, _ := HashFile(target)
+	m, err := a.Apply(Request{Path: target, Content: "", ExpectedHash: h})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if read(t, target) != "" {
+		t.Fatal("空ファイルになるはず（削除ではない）")
+	}
+	if m.NewHash != HashBytes(nil) || m.NewHash == AbsentHash {
+		t.Fatalf("NewHash: %s", m.NewHash)
+	}
+}
+
+func TestApplyNewFileManifest(t *testing.T) {
+	root := t.TempDir()
+	target := filepath.Join(root, "x", "y", "a.md")
+	a, _ := newApplier(t, target)
+	m, err := a.Apply(Request{Path: target, Content: "", ExpectedHash: AbsentHash})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if m.Existed || m.OldHash != AbsentHash || m.Op != "apply" {
+		t.Fatalf("%+v", m)
+	}
+	if len(m.CreatedDirs) != 2 {
+		t.Fatalf("新規作成した dir を記録する: %v", m.CreatedDirs)
+	}
+	e, _ := a.Get(m.ID)
+	if e.Before != "" || e.After != "" {
+		t.Fatalf("%+v", e)
+	}
+	if read(t, target) != "" {
+		t.Fatal("空の新規ファイルが作られるはず")
+	}
+}
+
+func TestRollbackInvalidID(t *testing.T) {
+	a, _ := newApplier(t)
+	for _, id := range []string{"", "../x", "a/b", "nonexistent"} {
+		if _, err := a.Rollback(id); err == nil {
+			t.Errorf("%q はエラー", id)
+		}
+	}
+}
+
+func TestHistorySkipsBrokenManifest(t *testing.T) {
+	root := t.TempDir()
+	target := filepath.Join(root, "a.md")
+	a, _ := newApplier(t, target)
+	m, err := a.Apply(Request{Path: target, Content: "x", ExpectedHash: AbsentHash})
+	if err != nil {
+		t.Fatal(err)
+	}
+	bad := filepath.Join(a.backupsDir(), "bad-json")
+	nomf := filepath.Join(a.backupsDir(), "no-manifest")
+	for _, d := range []string{bad, nomf} {
+		if err := os.Mkdir(d, 0o755); err != nil {
+			t.Fatal(err)
+		}
+	}
+	if err := os.WriteFile(filepath.Join(bad, "manifest.json"), []byte("{broken"), 0o644); err != nil {
+		t.Fatal(err)
+	}
+	if err := os.WriteFile(filepath.Join(a.backupsDir(), "stray-file"), []byte("x"), 0o644); err != nil {
+		t.Fatal(err)
+	}
+	hist, err := a.History()
+	if err != nil {
+		t.Fatal(err)
+	}
+	if len(hist) != 1 || hist[0].ID != m.ID {
+		t.Fatalf("壊れた履歴・ファイルはスキップされる: %+v", hist)
 	}
 }

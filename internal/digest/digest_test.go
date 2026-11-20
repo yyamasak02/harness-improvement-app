@@ -4,6 +4,7 @@ import (
 	"strings"
 	"testing"
 	"time"
+	"unicode/utf8"
 
 	"harness-app/internal/collector"
 	"harness-app/internal/config"
@@ -70,9 +71,21 @@ func TestBuildFilters(t *testing.T) {
 
 func TestSizeLimit(t *testing.T) {
 	st, m := setup(t)
-	out, _ := Build(st, m, Options{Days: 30, Now: now, MaxBytes: 200})
-	if len(out) > 300 || !strings.Contains(out, "省略") {
-		t.Fatalf("len=%d", len(out))
+	const marker = "（サイズ上限のため以降を省略）"
+	const max = 200
+	out, err := Build(st, m, Options{Days: 30, Now: now, MaxBytes: max})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if n := strings.Count(out, marker); n != 1 {
+		t.Fatalf("省略マーカーは 1 回だけ: %d\n%s", n, out)
+	}
+	body := strings.SplitN(out, "\n\n…"+marker, 2)[0]
+	if len(body) > max {
+		t.Fatalf("本文が MaxBytes を超えた: %d", len(body))
+	}
+	if !utf8.ValidString(out) {
+		t.Fatal("マルチバイト文字の途中で切れている")
 	}
 }
 
@@ -84,10 +97,65 @@ func TestRequiresMasker(t *testing.T) {
 }
 
 func TestExcerpt(t *testing.T) {
-	if got := excerpt("a  b\nc", 10); got != "a b c" {
-		t.Fatal(got)
+	tests := []struct {
+		name string
+		in   string
+		n    int
+		want string
+	}{
+		{"空白の正規化", "a  b\nc", 10, "a b c"},
+		{"マルチバイトの切り詰め", "あいうえお", 3, "あいう…"},
+		{"n=0", "abc", 0, "…"},
+		{"n=0 で空文字", "", 0, ""},
+		{"ちょうど n 文字", "abcde", 5, "abcde"},
+		{"n+1 文字", "abcdef", 5, "abcde…"},
+		{"マルチバイトでちょうど n 文字", "あいう", 3, "あいう"},
+		{"空白を詰めた後の長さで判定", "a   b", 3, "a b"},
 	}
-	if got := excerpt("あいうえお", 3); got != "あいう…" {
-		t.Fatal(got)
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			if got := excerpt(tt.in, tt.n); got != tt.want {
+				t.Fatalf("got %q want %q", got, tt.want)
+			}
+		})
+	}
+}
+
+func TestSafeDate(t *testing.T) {
+	tests := []struct{ name, in, want string }{
+		{"空文字", "", ""},
+		{"短い文字列", "2026-11", "2026-11"},
+		{"9 文字", "2026-11-1", "2026-11-1"},
+		{"ちょうど 10 文字", "2026-11-10", "2026-11-10"},
+		{"RFC3339", "2026-11-10T12:34:56Z", "2026-11-10"},
+		{"不正形式でも先頭 10 文字", "not-a-date-at-all", "not-a-date"},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			if got := safeDate(tt.in); got != tt.want {
+				t.Fatalf("got %q want %q", got, tt.want)
+			}
+		})
+	}
+}
+
+func TestBuildMasksAdditionalKinds(t *testing.T) {
+	st, m := setup(t)
+	_, err := st.DB().Exec(`INSERT INTO messages (session_id, ts, kind, text, is_correction) SELECT id, '2026-11-09T00:00:00Z', 'user', ?, 1 FROM sessions LIMIT 1`,
+		"違う Bearer abcdef1234567890 と ghp_abcdef123456")
+	if err != nil {
+		t.Fatal(err)
+	}
+	out, err := Build(st, m, Options{Days: 30, Now: now})
+	if err != nil {
+		t.Fatal(err)
+	}
+	for _, leak := range []string{"abcdef1234567890", "ghp_abcdef123456"} {
+		if strings.Contains(out, leak) {
+			t.Errorf("マスクされていない: %s", leak)
+		}
+	}
+	if !strings.Contains(out, "[MASKED:bearer]") {
+		t.Errorf("bearer がマスクされるはず\n%s", out)
 	}
 }
