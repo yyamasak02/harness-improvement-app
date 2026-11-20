@@ -7,6 +7,13 @@
 - v0.1.0 リリースの準備。MVP（F1・F2・F3・F8・F9）と macOS / Windows 対応は実装・マージ済み。残りは人の確認とタグ push。
 - 並行して、**開発プロセスの安全装置**（個人情報の流出防止・プロンプトインジェクション対策・承認フロー・再発防止）を整備してきた（#72 #78 #81 #85 はマージ済み）。
 
+## 現在の状態（2026-11-21）
+- **UX 改善は全てマージ済み**: #152 レイアウトと E2E・#153 自動提案の設定・#154 ローディング・#155 UI 刷新・#157 UX 計測・#158 評価の仕組み（ux-review skill・週次の ux-weekly ワークフロー）。#172 更新（データ形式のバージョン・上書き更新の手順）と #196（新形式の設定の案内）もマージ済み。
+- **アーキテクチャ方針（#175）と、観点別のサブエージェント群による大規模リファクタリング（#176）を整備**: `docs/architecture.md`（現状・レイヤード方針・移行計画）、`internal/archtest` と `frontend/src/arch.test.ts`（依存の向きの検査。許容リストは**増やさない**。件数の上限 `allowlistCap` / `ALLOWLIST_CAP` で固定）、観点別レビュアー 7 つと修正担当 `refactorer`（エージェント定義）、`refactor-campaign` skill、`scripts/arch-metrics.sh`、`docs/refactor-agents.md`。
+- リファクタリングの進み具合: 許容リスト（Go）は 8 件から 3 件（残りは app.go が applier・collector・store を直接 import している分）。移行 M1（#181）・M2（#182）完了、M3（#183）は第 1〜3 段階（config・targets/extensions・osutil）完了で、第 4 段階（store）以降（collector・applier）が続く。M4（#184 service の分割）・M5（#185）・F1（#180）は未着手。試運転のレビューの指摘（#188〜#192・#199〜#211 など）はマージ済み。
+- 人の判断待ち: #193（applier の Rollback・History、runner のジョブディレクトリなど、挙動が変わる提案）、#173（アプリ内の更新確認。採用と決定済みで、実装はこれから）、#178（公開に向けた人の作業。発信は見送り中）。
+- 運用の注意（今回の学び）: (1) PR 本文は `gh pr edit` が失敗して直せない。**`Closes #N` の語を段階的な issue に書かない**（`Refs #N`）。書いてしまったら PR を閉じて、直した本文の新しい PR にする。(2) worktree のローカルの git identity は実メールのことがある。`git merge` のマージコミットは、noreply の GIT_AUTHOR_*/GIT_COMMITTER_* を設定してから作る（push 前に確認する）。(3) `docs/decisions.md` の末尾に複数の PR が追記して衝突しやすい。マージ順に取り込む。(4) レビュー担当が、実装担当の worktree のブランチを切り替えることがある。
+
 ## 現在の状態（2026-11-20）
 - 追加済み（マージ済み）: `scout` skill（改善提案の点検→issue 化・#97）、`parallel-work` skill（独立 issue を worktree とサブエージェントで最大 3 本並列・#99）、常時ロード文脈の削減（約 65KB→約 39KB・#100）。
 - **v0.2 の機能 F4〜F7 は全てマージ済み**（#104 F4・#107 F5・#111 F6・#109 F7。T50〜T53 完了）。レビュー指摘の持ち越しも #113〜#115 でマージ済み。
