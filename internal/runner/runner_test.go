@@ -23,50 +23,77 @@ func samePathReal(a, b string) bool {
 	return err1 == nil && err2 == nil && ra == rb
 }
 
-func newRunner(t *testing.T) *Runner {
-	return &Runner{ClaudePath: fake(t), WorkDir: t.TempDir(), Model: "m1", Timeout: 5 * time.Second}
+// newRunner は FakeClaude を使う Runner を返す。env は FAKE_CLAUDE_* を t.Setenv に頼らず渡す（t.Parallel 可）。
+func newRunner(t *testing.T, env ...string) *Runner {
+	t.Helper()
+	return &Runner{ClaudePath: fake(t), WorkDir: t.TempDir(), Model: "m1", Timeout: 5 * time.Second, Env: env}
+}
+
+// waitForFile は path が非空で現れるまで短間隔でポーリングする（固定 sleep を避ける）。FakeClaude は起動直後に
+// FAKE_CLAUDE_ARGS_FILE へ書くので、その出現を「起動した」マーカーとして使う。
+func waitForFile(t *testing.T, path string) {
+	t.Helper()
+	deadline := time.Now().Add(30 * time.Second)
+	for time.Now().Before(deadline) {
+		if st, err := os.Stat(path); err == nil && st.Size() > 0 {
+			return
+		}
+		time.Sleep(5 * time.Millisecond)
+	}
+	t.Fatalf("FakeClaude の起動マーカー %s が現れない", path)
 }
 
 func TestRunOK(t *testing.T) {
+	t.Parallel()
 	argsFile := filepath.Join(t.TempDir(), "args")
-	t.Setenv("FAKE_CLAUDE_ARGS_FILE", argsFile)
-	r := newRunner(t)
+	r := newRunner(t, "FAKE_CLAUDE_ARGS_FILE="+argsFile)
 	res, err := r.Run(context.Background(), Input{Digest: "d", CurrentClaudeMd: "c", TargetKind: "project"})
 	if err != nil {
 		t.Fatal(err)
 	}
-	if !strings.Contains(res.Output, "フェイク") || !strings.Contains(res.Rationale, "固定") {
-		t.Fatalf("%+v", res)
-	}
-	args, _ := os.ReadFile(argsFile)
-	s := string(args)
-	var gotCwd string
-	for _, l := range strings.Split(s, "\n") {
-		if strings.HasPrefix(l, "cwd=") {
-			gotCwd = strings.TrimPrefix(strings.TrimSuffix(l, "\r"), "cwd=")
+	argsBytes, _ := os.ReadFile(argsFile)
+	args := strings.ReplaceAll(string(argsBytes), "\r\n", "\n")
+
+	t.Run("出力と理由を読み取る", func(t *testing.T) {
+		if !strings.Contains(res.Output, "フェイク") || !strings.Contains(res.Rationale, "固定") {
+			t.Fatalf("%+v", res)
 		}
-	}
-	if !samePathReal(gotCwd, res.JobDir) {
-		t.Errorf("cwd がジョブディレクトリでない: got %q want %q", gotCwd, res.JobDir)
-	}
-	s = strings.ReplaceAll(s, "\r\n", "\n")
-	for _, want := range []string{"arg=--allowedTools\narg=Read,Write", "arg=--output-format\narg=json", "arg=--model\narg=m1"} {
-		if !strings.Contains(s, want) {
-			t.Errorf("引数に %q が無い:\n%s", want, s)
+	})
+	t.Run("cwd はジョブディレクトリ", func(t *testing.T) {
+		var gotCwd string
+		for _, l := range strings.Split(args, "\n") {
+			if strings.HasPrefix(l, "cwd=") {
+				gotCwd = strings.TrimPrefix(l, "cwd=")
+			}
 		}
-	}
-	if strings.Contains(s, "Bash") {
-		t.Error("Bash を許可してはいけない")
-	}
-	if _, err := os.Stat(filepath.Join(res.JobDir, ".claude", "skills", "claudemd-improve", "SKILL.md")); err != nil {
-		t.Error("skill が展開されていない")
-	}
-	if _, err := os.Stat(filepath.Join(res.JobDir, "input.json")); err != nil {
-		t.Error("input.json が無い")
-	}
+		if !samePathReal(gotCwd, res.JobDir) {
+			t.Errorf("cwd がジョブディレクトリでない: got %q want %q", gotCwd, res.JobDir)
+		}
+	})
+	t.Run("許可ツールは Read,Write のみ", func(t *testing.T) {
+		for _, want := range []string{"arg=--allowedTools\narg=Read,Write", "arg=--output-format\narg=json", "arg=--model\narg=m1"} {
+			if !strings.Contains(args, want) {
+				t.Errorf("引数に %q が無い:\n%s", want, args)
+			}
+		}
+		if strings.Contains(args, "Bash") {
+			t.Error("Bash を許可してはいけない")
+		}
+	})
+	t.Run("skill が展開される", func(t *testing.T) {
+		if _, err := os.Stat(filepath.Join(res.JobDir, ".claude", "skills", "claudemd-improve", "SKILL.md")); err != nil {
+			t.Error("skill が展開されていない")
+		}
+	})
+	t.Run("input.json がある", func(t *testing.T) {
+		if _, err := os.Stat(filepath.Join(res.JobDir, "input.json")); err != nil {
+			t.Error("input.json が無い")
+		}
+	})
 }
 
 func TestRunErrors(t *testing.T) {
+	t.Parallel()
 	tests := []struct {
 		name  string
 		mode  string
@@ -74,13 +101,14 @@ func TestRunErrors(t *testing.T) {
 		check func(error) bool
 	}{
 		{"非ゼロ終了", "fail", 5 * time.Second, func(e error) bool { return e != nil && strings.Contains(e.Error(), "forced failure") }},
-		{"タイムアウト", "timeout", 300 * time.Millisecond, func(e error) bool { return errors.Is(e, ErrTimeout) }},
+		// FakeClaude は 30 秒眠るので、タイムアウトを長めにしても所要時間は変わらない（負荷の高い CI でも起動を待てる）。
+		{"タイムアウト", "timeout", time.Second, func(e error) bool { return errors.Is(e, ErrTimeout) }},
 		{"出力なし", "nooutput", 5 * time.Second, func(e error) bool { return e != nil && strings.Contains(e.Error(), "output.md") }},
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			t.Setenv("FAKE_CLAUDE_MODE", tt.mode)
-			r := newRunner(t)
+			t.Parallel()
+			r := newRunner(t, "FAKE_CLAUDE_MODE="+tt.mode)
 			r.Timeout = tt.to
 			start := time.Now()
 			_, err := r.Run(context.Background(), Input{})
@@ -95,10 +123,13 @@ func TestRunErrors(t *testing.T) {
 }
 
 func TestCancel(t *testing.T) {
-	t.Setenv("FAKE_CLAUDE_MODE", "timeout")
-	r := newRunner(t)
+	t.Parallel()
+	started := filepath.Join(t.TempDir(), "started")
+	r := newRunner(t, "FAKE_CLAUDE_MODE=timeout", "FAKE_CLAUDE_ARGS_FILE="+started)
+	r.Timeout = time.Minute // タイムアウトではなくキャンセルで終わることを確かめる
 	ctx, cancel := context.WithCancel(context.Background())
-	go func() { time.Sleep(200 * time.Millisecond); cancel() }()
+	defer cancel()
+	go func() { waitForFile(t, started); cancel() }()
 	_, err := r.Run(ctx, Input{})
 	if !errors.Is(err, ErrCanceled) {
 		t.Fatalf("err=%v", err)
@@ -271,9 +302,9 @@ func TestPickWindowsCandidate(t *testing.T) {
 }
 
 func TestRunSkillGenerate(t *testing.T) {
+	t.Parallel()
 	argsFile := filepath.Join(t.TempDir(), "args")
-	t.Setenv("FAKE_CLAUDE_ARGS_FILE", argsFile)
-	r := newRunner(t)
+	r := newRunner(t, "FAKE_CLAUDE_ARGS_FILE="+argsFile)
 	res, err := r.RunSkillGenerate(context.Background(), SkillInput{SkillName: "s", Memories: []MemoryInput{{Label: "l", Content: "c"}}})
 	if err != nil {
 		t.Fatal(err)
@@ -288,10 +319,11 @@ func TestRunSkillGenerate(t *testing.T) {
 }
 
 func TestRunSkillGenerateErrors(t *testing.T) {
+	t.Parallel()
 	for _, mode := range []string{"badskill", "fail", "nooutput"} {
 		t.Run(mode, func(t *testing.T) {
-			t.Setenv("FAKE_CLAUDE_MODE", mode)
-			if _, err := newRunner(t).RunSkillGenerate(context.Background(), SkillInput{SkillName: "s"}); err == nil {
+			t.Parallel()
+			if _, err := newRunner(t, "FAKE_CLAUDE_MODE="+mode).RunSkillGenerate(context.Background(), SkillInput{SkillName: "s"}); err == nil {
 				t.Fatal("エラーになるべき")
 			}
 		})
@@ -299,9 +331,9 @@ func TestRunSkillGenerateErrors(t *testing.T) {
 }
 
 func TestRunDailyReport(t *testing.T) {
+	t.Parallel()
 	argsFile := filepath.Join(t.TempDir(), "args")
-	t.Setenv("FAKE_CLAUDE_ARGS_FILE", argsFile)
-	body, err := newRunner(t).RunDailyReport(context.Background(), DailyInput{Date: "2026-11-10", Digest: "d"})
+	body, err := newRunner(t, "FAKE_CLAUDE_ARGS_FILE="+argsFile).RunDailyReport(context.Background(), DailyInput{Date: "2026-11-10", Digest: "d"})
 	if err != nil || !strings.Contains(body, "フェイク") {
 		t.Fatalf("%v %q", err, body)
 	}
@@ -310,8 +342,7 @@ func TestRunDailyReport(t *testing.T) {
 		t.Errorf("%s", args)
 	}
 	for _, mode := range []string{"fail", "nooutput"} {
-		t.Setenv("FAKE_CLAUDE_MODE", mode)
-		if _, err := newRunner(t).RunDailyReport(context.Background(), DailyInput{}); err == nil {
+		if _, err := newRunner(t, "FAKE_CLAUDE_MODE="+mode).RunDailyReport(context.Background(), DailyInput{}); err == nil {
 			t.Errorf("%s: エラーになるべき", mode)
 		}
 	}
