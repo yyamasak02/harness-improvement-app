@@ -131,6 +131,10 @@ CREATE VIRTUAL TABLE messages_fts USING fts5(text, content='messages', content_r
 3. ロールバックも applier 経由で行い、ロールバック自体もバックアップを取る。
 4. masking：`sk-ant-…`、`AKIA[0-9A-Z]{16}`、`ghp_` / `github_pat_`、`xox[baprs]-`、`Bearer …`、PEM 秘密鍵、メールアドレス、`(password|secret|token|api_key)\s*[:=]\s*\S+`（引用符つきの値は空白・エスケープ引用符を含めて全体）、引数形式の秘密（`--token 値`・`--api-key=値`・`--auth-token 値` のような接頭辞付きも。`--token-limit` など別語は対象外）を `[MASKED:<種別>]` に置き換える。ユーザーが追加パターンを設定できる。
 
+### 8.1 ユーザー体験の計測（開発・CI 専用）
+- 指標・測り方・予算は `docs/ux-metrics.md`。E2E（Playwright + mockApi / 合成ブリッジ）で自動計測し、結果を JSON（`frontend/ux-metrics-results/`）・CI のジョブサマリー・アーティファクトに出す。予算超過で CI が失敗する（`ux-metrics` ジョブ）。
+- アプリにテレメトリ・利用状況の送信・計測コードは入れない。計測の依存（`@axe-core/playwright`）は devDependencies のみ。`scripts/check-rules.sh` が、アプリ本体（`frontend/src`）の外部送信 API・計測コード、`dependencies` への計測用依存、`frontend/e2e` の localhost 以外の URL を検出する。
+
 ## 9. 完了の定義（v0.1）
 
 確認日: 2026-11-17（Linux/WSL 上のローカル + GitHub Actions macos-latest）

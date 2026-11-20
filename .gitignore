@@ -16,3 +16,4 @@ __pycache__/
 .claude/worktrees/
 frontend/test-results/
 frontend/playwright-report/
+frontend/ux-metrics-results/

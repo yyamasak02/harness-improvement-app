@@ -2,7 +2,7 @@
 # 品質ゲート自体のテスト: 違反を意図的に作り、check-rules / check-tests-changed / check-commit-msg が検出できることを確認する。
 set -uo pipefail
 cd "$(dirname "$0")/.."
-tmp=$(mktemp -d); trap 'rm -rf "$tmp"; rm -f internal/zz_violation.go internal/zz_violation_test.go' EXIT
+tmp=$(mktemp -d); trap 'rm -rf "$tmp"; rm -f internal/zz_violation.go internal/zz_violation_test.go frontend/src/zz_violation.ts frontend/e2e/zz_violation.ts' EXIT
 fail=0
 expect_fail() { # name, command...
   local name="$1"; shift
@@ -27,6 +27,19 @@ expect_fail "OS 非依存ファイルでの Unix 専用 syscall の検出" bash 
 printf 'package internal\n\nimport "os/exec"\n\nvar _ = exec.Command("xdg-open", "x")\n' > internal/zz_violation.go
 expect_fail "osutil 外での OS 依存コマンド起動の検出" bash scripts/check-rules.sh
 rm -f internal/zz_violation.go
+# 計測・テレメトリ（#157）: 検出対象の API 名はファイルに書き出して検査する
+printf 'export const send = () => navigator.sendBeacon("/x", "y")\n' > frontend/src/zz_violation.ts
+expect_fail "アプリ本体の外部送信 API（sendBeacon）の検出" bash scripts/check-rules.sh
+printf 'export const ob = () => new PerformanceObserver(() => {})\n' > frontend/src/zz_violation.ts
+expect_fail "アプリ本体の計測コード（PerformanceObserver）の検出" bash scripts/check-rules.sh
+rm -f frontend/src/zz_violation.ts
+printf '{"dependencies": {"@axe-core/playwright": "^4"}}\n' > "$tmp/pkg-bad.json"
+expect_fail "計測用依存が dependencies にある状態の検出" env HARNESS_PKG_JSON="$tmp/pkg-bad.json" bash scripts/check-rules.sh
+printf '{"dependencies": {"react": "^19"}, "devDependencies": {"@axe-core/playwright": "^4"}}\n' > "$tmp/pkg-ok.json"
+HARNESS_PKG_JSON="$tmp/pkg-ok.json" bash scripts/check-rules.sh >/dev/null 2>&1 && echo "ok: devDependencies の計測用依存は許可" || { echo "NG: devDependencies の計測用依存が拒否された"; fail=1; }
+printf '// zz\nconst u = "https://collector.invalid/x"\n' > frontend/e2e/zz_violation.ts
+expect_fail "E2E の計測コードの外部 URL の検出" bash scripts/check-rules.sh
+rm -f frontend/e2e/zz_violation.ts
 bash scripts/check-rules.sh >/dev/null 2>&1 && echo "ok: 違反なしでは成功" || { echo "NG: クリーンな状態で失敗"; fail=1; }
 
 # check-commit-msg

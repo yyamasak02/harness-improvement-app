@@ -9,7 +9,8 @@
     "test": "vitest run",
     "test:coverage": "vitest run --coverage",
     "preview": "vite preview",
-    "e2e": "npm run build && playwright test"
+    "e2e": "npm run build && playwright test",
+    "e2e:ux": "npm run build && node e2e/summarize-ux.mjs --clean && (playwright test -c playwright.ux.config.ts; s=$?; node e2e/summarize-ux.mjs; r=$?; [ $s -eq 0 ] && [ $r -eq 0 ])"
   },
   "dependencies": {
     "diff": "^9.0.0",
@@ -20,6 +21,7 @@
     "recharts": "^3.10.1"
   },
   "devDependencies": {
+    "@axe-core/playwright": "^4.13.0",
     "@playwright/test": "^1.65.1",
     "@testing-library/jest-dom": "^6.9.1",
     "@testing-library/react": "^16.3.3",
