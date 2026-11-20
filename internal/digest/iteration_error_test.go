@@ -75,7 +75,7 @@ FROM raw_messages`, sid)
 	if err == nil {
 		t.Fatalf("反復中のエラーが握りつぶされた:\n%s", out)
 	}
-	if !strings.Contains(err.Error(), "訂正の反復") && !strings.Contains(err.Error(), "訂正の読み取り") {
-		t.Errorf("反復中のエラーになっていない（Query で失敗している可能性）: %v", err)
+	if !strings.Contains(err.Error(), "訂正の反復") {
+		t.Errorf("rows.Err() の分岐（訂正の反復）のエラーになっていない（Query・Scan で失敗している可能性）: %v", err)
 	}
 }
