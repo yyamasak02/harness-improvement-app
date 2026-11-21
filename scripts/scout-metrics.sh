@@ -30,3 +30,6 @@ git grep -nE 'TODO|FIXME' -- '*.go' '*.ts' '*.tsx' | head -10 || true
 
 echo "== UX 指標（docs/ux-metrics.md。結果が無ければその旨のみ。詳細は ux-review skill）"
 bash scripts/ux-report.sh 2>/dev/null | head -25 || true
+
+echo "== ビルドサイズ（docs/perf-metrics.md。Go ベンチは bash scripts/perf-report.sh）"
+bash scripts/perf-report.sh --size-only 2>/dev/null | tail -3 || true
