@@ -64,14 +64,12 @@ var onlyImports = map[string][]string{
 	".": {"internal/service"},
 }
 
-// allowlistCap は許容リストの件数の固定上限。増やす変更は禁止（違反は直す）。
-// リストを減らしたら、この値も同じだけ下げる（件数が一致しないと失敗する）。目標は 0。
-const allowlistCap = 1
+// allowlistCap は許容リストの件数の固定上限。M3 完了で 0（空）になった。
+// 増やす変更は禁止（違反は依存の向きを直す）。件数が一致しないと失敗する。
+const allowlistCap = 0
 
-// allowlist は現状の違反（"from -> to"）と理由。リファクタリング（docs/architecture.md の移行計画）で 0 にする。
-var allowlist = map[string]string{
-	". -> internal/applier": "エントリが service を介さずに applier を直接使う。M3 で service に集約して解消",
-}
+// allowlist は許容する違反（"from -> to"）と理由。現在は空で、項目の追加は禁止。
+var allowlist = map[string]string{}
 
 type pkgInfo struct {
 	imports map[string]bool // プロジェクト内の相対パス

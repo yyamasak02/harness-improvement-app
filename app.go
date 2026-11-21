@@ -9,7 +9,6 @@ import (
 
 	wruntime "github.com/wailsapp/wails/v2/pkg/runtime"
 
-	"harness-app/internal/applier"
 	"harness-app/internal/service"
 )
 
@@ -239,9 +238,9 @@ func (a *App) CancelGeneration() {
 }
 
 // ApplyProposal はユーザーが UI で「適用」を押したときだけ呼ばれる。
-func (a *App) ApplyProposal(path, content, baseHash string) (applier.Manifest, error) {
+func (a *App) ApplyProposal(path, content, baseHash string) (service.Manifest, error) {
 	if err := a.ready(); err != nil {
-		return applier.Manifest{}, err
+		return service.Manifest{}, err
 	}
 	return a.svc.ApplyProposal(path, content, baseHash)
 }
@@ -254,7 +253,7 @@ func (a *App) GenerateSkill(req service.SkillRequest) (*service.SkillProposal, e
 }
 
 // ApplySkill はユーザーが UI で「適用」を押したときだけ呼ばれる。
-func (a *App) ApplySkill(name string, files []service.SkillApplyFile) ([]applier.Manifest, error) {
+func (a *App) ApplySkill(name string, files []service.SkillApplyFile) ([]service.Manifest, error) {
 	if err := a.ready(); err != nil {
 		return nil, err
 	}
@@ -291,23 +290,23 @@ func (a *App) LaunchdPlist() (string, error) {
 	return a.svc.LaunchdPlist()
 }
 
-func (a *App) ListBackups() ([]applier.Entry, error) {
+func (a *App) ListBackups() ([]service.Entry, error) {
 	if err := a.ready(); err != nil {
 		return nil, err
 	}
 	return a.svc.ListBackups()
 }
 
-func (a *App) GetBackup(id string) (applier.Entry, error) {
+func (a *App) GetBackup(id string) (service.Entry, error) {
 	if err := a.ready(); err != nil {
-		return applier.Entry{}, err
+		return service.Entry{}, err
 	}
 	return a.svc.GetBackup(id)
 }
 
-func (a *App) Rollback(id string) (applier.Manifest, error) {
+func (a *App) Rollback(id string) (service.Manifest, error) {
 	if err := a.ready(); err != nil {
-		return applier.Manifest{}, err
+		return service.Manifest{}, err
 	}
 	return a.svc.Rollback(id)
 }
