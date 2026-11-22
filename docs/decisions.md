@@ -41,3 +41,10 @@
 - 2026-11-21 M3 第3段階（#183）: osutil は型が無いため service.OpenPath（関数の委譲）で app.go の import を外す。wailsjs は変わらない（App のメソッドは不変）
 - 2026-11-21 M3 第4段階（#183）: store の Session / SearchHit を service の型エイリアスで公開し app.go の import を外す。wailsjs は変わらない（生成物の型名: `ListSessions` は `logmodel.Session`（store.Session が logmodel.Session の別名のため）、`store` 名前空間なのは `SearchHit` だけ。エイリアスでは名前は変わらない）
 - 2026-11-21 M3 第5段階（#183）: collector の Stats を service.IndexStats（型エイリアス）、Watch を Service.Watch（ClaudeDir を内部で渡す委譲）で公開し app.go の import を外す。wailsjs は変わらない（生成物の型名は collector.Stats のまま）
+- 2026-11-22 Windows 版の WSL 対象環境（#224 設計。ユーザー判断: Claude Code デスクトップ版に近い実装）: **UI は Windows、処理は WSL 内**。UNC（`\\wsl.localhost\`）越しの読み書きは採らない（他アプリで遅い・ファイル監視が効かない・パス解決が壊れる報告があり、applier の原子的書き込み（temp → fsync → rename）の安全性を検証できないため）。UNC は入口としてのみ受け付け、選ばれたらそのディストロ内の Linux パスで開き直す。
+  - 範囲（案 C）: collector・store・digest・masking・targets・applier・runner を GUI 無しの純 Go バックエンドとして WSL 内で動かし、Windows 側 GUI（Wails）は薄い層にする。データ（store・設定）は環境ごとに分け、Windows と WSL を混ぜない。信頼・許可はディストロ単位。app.go を service 経由にした M3（#183）の境界で通信を挟む。
+  - 通信: `wsl.exe -d <ディストロ> -- <バックエンド> serve` の標準入出力（JSON）。ポートを開けない・外部通信の入口を増やさない（外部通信は `claude -p` のみ）。localhost の TCP は採らない。
+  - 配置: Windows 版インストーラにバックエンド（Linux 用）を同梱し、WSL 側のアプリ自身のデータ領域（`~/.config/harness-app/` 配下）に自動配置する。起動のたびにバージョンを照合して違えば置き直す。外部ダウンロードはしない。`~/.claude` には書かない。安全規則の「実ホームを書き込まない」は、`~/.claude` とユーザーの持ち物を指し、アプリ自身のデータ領域への配置は対象外と整理する（実装時に safety.md の表現を確認）。
+  - 選択肢: `wsl.exe` があり WSL 2 のディストロがあるときだけ表示する。WSL 1・`wsl.exe` 無し・管理端末で無効の場合は出さず、理由を表示する。
+  - 初期の制限: 機能を絞って始める（Claude Code の WSL セッションと同様）。制限は実装時に issue で管理する。
+  - 実装は段階に分ける（バックエンド切り出し → 通信 → 設定に環境選択 → 配置とバージョン照合 → 実機確認は #52 に追記）。段階ごとに issue を起票する。
